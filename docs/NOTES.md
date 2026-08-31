@@ -64,10 +64,16 @@ works). Delete it to start clean.
 - **`rastro-core/events.ts`** — the `UxEvent` contract (§19.2) and `isUxEvent`, the Required-set
   check the collector rejects malformed records with.
 - **`rastro-core/seams.ts`** — all seven swap points from §19.5, typed.
+- **`rastro-core/redact.ts`** — the §4.9 privacy requirements, both of which the conventions
+  make MUST-level: `tokenizePath` (`/users/42/settings` → `/users/:id/settings`, query
+  strings and fragments dropped) and `redact` for free text. `buildEvent` is the single
+  choke point that applies them, so no emit path can skip redaction by forgetting to.
 - **`rastro-analysis/sessionize.ts`** — group by `session.id`, order by `ux.seq`. The only real
   analysis in this commit, and the only one with real tests.
 - **`rastro-react`** — provider, `useTelemetry().track()`, batching + flush lifecycle, and the
-  three exporters (`otlp`, `console`, `multi`).
+  three exporters (`otlp`, `console`, `multi`). `track()` props become attributes with string
+  values redacted and reserved-namespace keys (`session.`, `url.`, `service.`, `ux.`)
+  dropped, so an app cannot overwrite the Required set.
 - **`collector`** — OTLP decode, SQLite `EventStore`, the session endpoint.
 - **`dashboard`** — the plain events table (§19.4 step 1) and a `SessionTimeline` placeholder.
 
@@ -76,7 +82,7 @@ works). Delete it to start clean.
 | Thing | State |
 |---|---|
 | `core/fingerprint.ts` | `data-telemetry-id` override is **real**; everything else degrades to `unknown\|<tag>`. No fiber walk. §4.2.1 is step 3. |
-| `core/redact.ts` | Naive email + long-digit regex. No URL tokenization, no allow/deny model. |
+| `core/redact.ts` | Text redaction and path tokenization are **real**. Still missing the per-attribute allow/deny model, which is what would catch numeric PII like `{ userId: 84213 }`. |
 | `react/capture.ts` | One real delegated passive listener, but it emits placeholder-identity events. No `ux.route_change`, `ux.form_submit`, `ux.form_abandon`, no `ux.active_ms`. |
 | `analysis/graph.ts` | `buildGraph` throws. Test file carries `it.todo` cases. |
 | `analysis/friction.ts` | `detectFriction` throws. §19.4 step 6 says pick exactly one signal. |
@@ -85,9 +91,12 @@ works). Delete it to start clean.
 
 ### Tests
 
-`pnpm -r test` → 10 passing, 50 `todo`. The passing ones are `sessionize` (grouping,
+`pnpm -r test` → 41 passing, 48 `todo`. The passing ones cover `sessionize` (grouping,
 `ux.seq` ordering, attribute flattening, the `ux.active_ms` default, the single-session case
-the §13.1 endpoint uses) and `redact`. The todos in `fingerprint.test.ts` and
+the §13.1 endpoint uses), `redact`/`tokenizePath` (including the two known gaps, asserted),
+and `sanitizeProps`/`buildEvent` (redaction, reserved-namespace rejection, and the guarantee
+that a custom attribute can never overwrite the Required set). The todos in
+`fingerprint.test.ts` and
 `graph.test.ts` name the cases meant to drive steps 3 and 5 — including the
 before/after-refactor stability suite §4.2.1 calls the most valuable test file in the repo.
 
@@ -131,13 +140,16 @@ Verified: replaying a batch stores nothing new.
 - **`ux.anonymous_id` and `session.id` are per-page-load.** No browser storage is used, so
   every reload looks like a new visitor and a new session. The real §4.5 session rule — idle
   threshold, long-lived SPA tabs, backgrounded mobile — is unwritten.
-- **`url.path` is not tokenized.** `capture.ts` reads `location.pathname` verbatim, so
-  `/users/42` goes on the wire as `/users/42`. That violates the convention's privacy
-  requirement the moment a real app uses it. Needs the `RouteAdapter` seam (§4.6) and
-  tokenization in `redact.ts` (§4.9).
-- **`track()` drops its props.** They should become attributes, but they must go through the
-  `Redactor` seam first — otherwise `track("saved", { email })` puts raw user content on the
-  wire.
+- **Path tokenization is a heuristic, and it has a real blind spot.** It recognizes the
+  *shape* of identifiers, so numbers, UUIDs, hashes, emails and nanoids are caught. It cannot
+  catch `/users/johndoe` or `/posts/my-divorce-settlement`, because nothing distinguishes
+  those from `/docs/getting-started`. The fix is the `RouteAdapter` seam (§4.6) — a router
+  knows its own pattern and hands you `/users/:userId` with no guessing. Both gaps are
+  asserted in `redact.test.ts` so they stay visible decisions rather than silent holes.
+- **Numeric `track()` props are not redacted.** Only strings go through the Redactor, because
+  the default text rule is "4+ consecutive digits" and applying it to numbers would destroy
+  legitimate metadata (`{ durationMs: 4200 }`) while catching numeric PII only by accident.
+  `{ userId: 84213 }` needs the §4.9 allow/deny model.
 - **CORS on the collector is wide open** and there is no project key.
 - **The unload path is not wired.** `transport.ts` relies on the exporter's `fetch` keepalive.
   `sendBeaconOtlp()` exists but is unused, because the one-method `Exporter` interface has no

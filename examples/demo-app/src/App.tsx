@@ -10,8 +10,18 @@ export function App(): ReactElement {
 
   // THE hardcoded event. One on mount, flushed immediately rather than waiting out the batch
   // interval, so the dashboard table fills in without you wondering whether it worked.
+  //
+  // The props dogfood §4.9: `plan` and `seats` arrive as attributes untouched, `owner` is
+  // redacted before it leaves the browser, and `ux.seq` is dropped because apps do not get
+  // to write into a reserved namespace. Check the stored record at
+  // /projects/demo-app/events to see all three.
   useEffect(() => {
-    track('demo.hello');
+    track('demo.hello', {
+      plan: 'pro',
+      seats: 3,
+      owner: 'jane@example.com',
+      'ux.seq': 999,
+    });
     void flush().then(() => setSent((n) => n + 1));
   }, [track, flush]);
 

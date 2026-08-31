@@ -45,13 +45,23 @@ export interface FingerprintStrategy {
 }
 
 /**
- * Redaction seam (§4.9). Default: regex email/number strip.
- * Swap for: enterprise DLP rules, or a no-op inside a trusted internal app.
+ * Redaction seam (§4.9). Default: regex email/number strip plus heuristic path tokenization.
+ * Swap for: enterprise DLP rules, or `noopRedactor` inside a trusted internal app.
  *
- * Runs on `ux.accessible_name` BEFORE it enters the fingerprint, and on `url.path`.
+ * The conventions make both methods MUST-level, so they sit on one interface: an adopter
+ * swapping in their own rules should not be able to replace half the policy by accident.
  */
 export interface Redactor {
+  /**
+   * Free text: `ux.accessible_name` (BEFORE it enters the fingerprint) and every string
+   * value passed to `track(name, props)`.
+   */
   redact(text: string): string;
+  /**
+   * URL paths: `/users/42/settings` → `/users/:id/settings`. MUST also drop query strings
+   * and fragments, which are where the worst leaks actually live.
+   */
+  tokenizePath(path: string): string;
 }
 
 /**

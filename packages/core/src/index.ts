@@ -1,8 +1,10 @@
 // packages/core/src/index.ts
 // The shared contract. No React, no Node APIs — portable and trivially testable.
-export type { UxEvent } from './events.js';
+export type { AttributeValue, UxEvent } from './events.js';
 export {
+  isReservedAttribute,
   isUxEvent,
+  RESERVED_ATTRIBUTE_NAMESPACES,
   REQUIRED_ATTRIBUTES,
   SESSION_END,
   SESSION_START,
@@ -29,4 +31,11 @@ export {
   OVERRIDE_ATTRIBUTE,
   UNKNOWN_CHAIN,
 } from './fingerprint.js';
-export { defaultRedactor, redact, REDACTED } from './redact.js';
+export {
+  defaultRedactor,
+  noopRedactor,
+  PATH_PARAM,
+  redact,
+  REDACTED,
+  tokenizePath,
+} from './redact.js';

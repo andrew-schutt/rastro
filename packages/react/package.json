@@ -1,7 +1,7 @@
 {
   "name": "rastro-react",
   "version": "0.0.0",
-  "description": "rastro-react — the SDK: one provider, auto-capture, OTLP out.",
+  "description": "rastro-react \u2014 the SDK: one provider, auto-capture, OTLP out.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,12 +12,14 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
     "rastro-core": "workspace:*"

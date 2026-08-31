@@ -30,12 +30,32 @@ export interface UxEvent {
     'ux.component_chain'?: string[];   // [SPEC] Opt-In — outermost → innermost, fingerprint debugging
     'ux.role'?: string;                // [SPEC] Opt-In — queryable slice of the fingerprint
     'ux.accessible_name'?: string;     // [SPEC] Opt-In — redacted before emit (§4.9)
+
+    // [SPEC] Custom attributes from `track(name, props)`. The conventions say props become
+    // attributes, so the shape has to admit them. Keys in a reserved namespace are rejected
+    // at the boundary, not here — see RESERVED_ATTRIBUTE_NAMESPACES.
+    [key: string]: AttributeValue | undefined;
   };
   resource: {
     'service.name': string;            // STANDARD — the app
     'service.version'?: string;        // STANDARD — deploy dimension (§13/§14)
     'ux.convention.version'?: string;  // [SPEC] Recommended — which spec version this conforms to
   };
+}
+
+/** What an OTLP attribute value may hold. Anything else is dropped rather than guessed at. */
+export type AttributeValue = string | number | boolean | string[];
+
+/**
+ * Attribute namespaces owned by OpenTelemetry or by these conventions. Custom props from
+ * `track()` MUST NOT write into them: a stray `{ 'ux.seq': 0 }` would corrupt the one thing
+ * every consumer is required to order by.
+ */
+export const RESERVED_ATTRIBUTE_NAMESPACES = ['session.', 'url.', 'service.', 'ux.'] as const;
+
+/** Is this attribute key owned by the conventions rather than the application? */
+export function isReservedAttribute(key: string): boolean {
+  return RESERVED_ATTRIBUTE_NAMESPACES.some((namespace) => key.startsWith(namespace));
 }
 
 /**

@@ -4,8 +4,14 @@
 // Walking-skeleton step 2 (§19.4) replaces this with real capture. Today it proves the wire:
 // one delegated, passive click listener that emits a PLACEHOLDER event so the pipe
 // demo-app → OTLP → SQLite → dashboard is exercised by a real user gesture.
-import type { UxEvent } from 'rastro-core';
-import { SEVERITY_INFO, UX_CONVENTION_VERSION, fingerprint } from 'rastro-core';
+import type { AttributeValue, Redactor, UxEvent } from 'rastro-core';
+import {
+  SEVERITY_INFO,
+  UX_CONVENTION_VERSION,
+  defaultRedactor,
+  fingerprint,
+  isReservedAttribute,
+} from 'rastro-core';
 
 /** Per-session state the event factory needs. One instance per RastroProvider. */
 export interface SessionState {
@@ -43,27 +49,84 @@ export function createSessionState(app: string, serviceVersion?: string): Sessio
 export interface BuildEventInput {
   eventName: string;
   fingerprint: string;
-  /** Tokenized and PII-stripped (§4.9). */
+  /** Raw path. Tokenized here — callers do not have to pre-sanitize it (§4.9). */
   route?: string;
   interactionMethod?: 'mouse' | 'keyboard' | 'touch';
   activeMs?: number;
   role?: string;
+  /** Raw label. Redacted here (§4.9). */
   accessibleName?: string;
+  /** Custom attributes from `track(name, props)`. Already sanitized by `sanitizeProps`. */
+  attributes?: Record<string, AttributeValue>;
 }
 
-/** Build one conforming UxEvent. The single place the Required set is assembled. */
-export function buildEvent(state: SessionState, input: BuildEventInput): UxEvent {
-  // TODO(§4.6): route detection is a RouteAdapter seam, not `location.pathname`. This value
-  // is NOT tokenized, so `/users/42` arrives as `/users/42` and violates the convention's
-  // privacy requirement the moment a real app uses it.
-  const route =
-    input.route ?? (typeof location === 'undefined' ? '/' : location.pathname);
+/**
+ * Turn `track()` props into attributes, enforcing the two rules that keep them safe.
+ *
+ * 1. **Reserved namespaces are rejected.** `session.`, `url.`, `service.`, and `ux.` belong
+ *    to the conventions. A stray `{ 'ux.seq': 0 }` would silently corrupt the ordering every
+ *    consumer is required to trust, so it is dropped with a warning rather than merged.
+ * 2. **String values go through the Redactor.** `track('saved', { email })` is the obvious
+ *    way for raw user content to reach the wire, and it is the one this closes.
+ *
+ * ⚠ Numbers and booleans pass through untouched, and that is a deliberate, documented gap.
+ * The default redactor's text rule is "4+ consecutive digits", and applying it to numbers
+ * would destroy exactly the metadata worth keeping — `{ durationMs: 4200 }`, `{ items: 12 }`
+ * — while only catching numeric PII by accident. Catching `{ userId: 84213 }` needs the
+ * per-attribute allow/deny model in §4.9, not a blunter regex.
+ */
+export function sanitizeProps(
+  props: TrackProps | undefined,
+  redactor: Redactor = defaultRedactor,
+): Record<string, AttributeValue> {
+  const attributes: Record<string, AttributeValue> = {};
+  if (props === undefined) return attributes;
+
+  for (const [key, value] of Object.entries(props)) {
+    if (isReservedAttribute(key)) {
+      console.warn(
+        `[rastro] track(): dropped prop "${key}" — the ${key.split('.')[0]}.* namespace is ` +
+          'owned by the semantic conventions.',
+      );
+      continue;
+    }
+
+    attributes[key] = typeof value === 'string' ? redactor.redact(value) : value;
+  }
+
+  return attributes;
+}
+
+/** Attribute values an app may attach to a custom event. */
+export type TrackProps = Record<string, string | number | boolean>;
+
+/**
+ * Build one conforming UxEvent. The single place the Required set is assembled, and the
+ * single choke point where §4.9 redaction is enforced — every path is tokenized and every
+ * label redacted here, so no caller can emit an unsanitized record by forgetting to.
+ */
+export function buildEvent(
+  state: SessionState,
+  input: BuildEventInput,
+  redactor: Redactor = defaultRedactor,
+): UxEvent {
+  // TODO(§4.6): route detection belongs behind the RouteAdapter seam, not
+  // `location.pathname`. An adapter reports the router's own pattern (`/users/:userId`),
+  // which is both more accurate and immune to the heuristic's blind spots — `tokenizePath`
+  // cannot tell `/users/johndoe` from `/docs/getting-started`.
+  const rawRoute = input.route ?? (typeof location === 'undefined' ? '/' : location.pathname);
+  const route = redactor.tokenizePath(rawRoute);
 
   return {
     eventName: input.eventName,
     timeUnixNano: `${Date.now()}000000`,
     severityNumber: SEVERITY_INFO,
     attributes: {
+      // Custom props FIRST, so the conventions' own attributes below always win a collision.
+      // `sanitizeProps` already rejects reserved namespaces; this is the belt to that braces,
+      // and it is what stops a stray prop from redefining the Required set.
+      ...input.attributes,
+
       'session.id': state.sessionId,
       'url.path': route,
       'ux.event_id': crypto.randomUUID(),
@@ -77,7 +140,7 @@ export function buildEvent(state: SessionState, input: BuildEventInput): UxEvent
       ...(input.role === undefined ? {} : { 'ux.role': input.role }),
       ...(input.accessibleName === undefined
         ? {}
-        : { 'ux.accessible_name': input.accessibleName }),
+        : { 'ux.accessible_name': redactor.redact(input.accessibleName) }),
     },
     resource: {
       'service.name': state.app,
@@ -92,6 +155,8 @@ export function buildEvent(state: SessionState, input: BuildEventInput): UxEvent
 export interface CaptureOptions {
   state: SessionState;
   onEvent: (event: UxEvent) => void;
+  /** The §4.9 policy. Defaults to `defaultRedactor` so a bare call is still safe. */
+  redactor?: Redactor;
   /** Defaults to `document`. One listener for the whole tree — never per element (§4.1). */
   root?: Document | Element;
 }
@@ -121,7 +186,12 @@ export interface CaptureOptions {
  *     synchronously inside the handler.
  *   - §4.8 SSR: no DOM at boot under Next; guard every registration.
  */
-export function startCapture({ state, onEvent, root }: CaptureOptions): () => void {
+export function startCapture({
+  state,
+  onEvent,
+  root,
+  redactor = defaultRedactor,
+}: CaptureOptions): () => void {
   if (typeof document === 'undefined') return () => {}; // SSR: nothing to attach to (§4.8)
 
   const target: Document | Element = root ?? document;
@@ -131,11 +201,15 @@ export function startCapture({ state, onEvent, root }: CaptureOptions): () => vo
     if (!(element instanceof Element)) return;
 
     onEvent(
-      buildEvent(state, {
-        eventName: 'ux.click',
-        fingerprint: fingerprint(element),
-        interactionMethod: 'mouse', // TODO: derive; see above
-      }),
+      buildEvent(
+        state,
+        {
+          eventName: 'ux.click',
+          fingerprint: fingerprint(element),
+          interactionMethod: 'mouse', // TODO: derive; see above
+        },
+        redactor,
+      ),
     );
   };
 

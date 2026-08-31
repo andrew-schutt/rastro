@@ -4,7 +4,8 @@
 //
 // Zero-config first (§ design principles): baseline value from the provider alone.
 import { useEffect, useMemo, type ReactNode } from 'react';
-import type { Exporter } from 'rastro-core';
+import type { Exporter, Redactor } from 'rastro-core';
+import { defaultRedactor } from 'rastro-core';
 import { createSessionState, startCapture } from './capture.js';
 import { RastroContext, type RastroContextValue } from './context.js';
 import { createTransport } from './transport.js';
@@ -16,6 +17,11 @@ export interface RastroProviderProps {
   exporter: Exporter;
   /** `service.version` — the deploy dimension behind "new behavior changes" (§13). */
   version?: string;
+  /**
+   * The §4.9 redaction policy (§19.5 seam). Defaults to email/number stripping plus
+   * heuristic path tokenization. Pass `noopRedactor` only for a trusted internal app.
+   */
+  redactor?: Redactor;
   /** Turn off the delegated root listener and emit only via `track()`. */
   autoCapture?: boolean;
   children?: ReactNode;
@@ -25,6 +31,7 @@ export function RastroProvider({
   app,
   exporter,
   version,
+  redactor = defaultRedactor,
   autoCapture = true,
   children,
 }: RastroProviderProps): ReactNode {
@@ -35,8 +42,9 @@ export function RastroProvider({
     () => ({
       state: createSessionState(app, version),
       transport: createTransport({ exporter }),
+      redactor,
     }),
-    [app, version, exporter],
+    [app, version, exporter, redactor],
   );
 
   // §4.8: effects never run on the server, which is what keeps the provider safe to render
@@ -50,6 +58,7 @@ export function RastroProvider({
     if (!autoCapture) return;
     return startCapture({
       state: value.state,
+      redactor: value.redactor,
       onEvent: (event) => value.transport.enqueue(event),
     });
   }, [autoCapture, value]);
