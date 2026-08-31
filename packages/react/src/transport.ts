@@ -17,11 +17,18 @@ export interface TransportOptions {
 }
 
 export interface Transport {
-  /** Queue one event. Flushes immediately if the batch is full. */
+  /** Queue one event. Flushes immediately if the batch is full. Always accepted. */
   enqueue(event: UxEvent): void;
   /** Drain the queue to the exporter. Safe to call with an empty queue. */
   flush(): Promise<void>;
-  /** Detach listeners and timers, flushing whatever is left. */
+  /**
+   * Attach the flush timer and the page-lifecycle listeners. Idempotent, and safe to call
+   * again after `stop()` — React StrictMode mounts, unmounts, and remounts every effect in
+   * development, so a transport that could only be started once would go deaf after the
+   * first remount.
+   */
+  start(): void;
+  /** Detach listeners and timers, flushing whatever is left. Does not discard the queue. */
   stop(): Promise<void>;
 }
 
@@ -34,7 +41,7 @@ export function createTransport({
   flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
 }: TransportOptions): Transport {
   let queue: UxEvent[] = [];
-  let stopped = false;
+  let timer: ReturnType<typeof setInterval> | undefined;
 
   const flush = async (): Promise<void> => {
     if (queue.length === 0) return;
@@ -55,27 +62,31 @@ export function createTransport({
   };
 
   const enqueue = (event: UxEvent): void => {
-    if (stopped) return;
     queue.push(event);
     if (queue.length >= maxBatchSize) void flush();
   };
 
-  const timer = setInterval(() => void flush(), flushIntervalMs);
-
   // The only reliable "user is leaving" signal on mobile Safari (§4.4). `pagehide` covers the
   // bfcache path that `visibilitychange` alone misses.
-  const onHide = (): void => {
-    if (typeof document !== 'undefined' && document.visibilityState !== 'hidden') return;
+  const onVisibilityChange = (): void => {
+    if (document.visibilityState !== 'hidden') return;
     void flush();
   };
   const onPageHide = (): void => void flush();
 
-  if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', onHide);
-  }
-  if (typeof window !== 'undefined') {
-    window.addEventListener('pagehide', onPageHide);
-  }
+  const start = (): void => {
+    if (timer !== undefined) return; // already started
+
+    timer = setInterval(() => void flush(), flushIntervalMs);
+
+    // §4.8: guarded so the provider is safe to render on the server, where neither exists.
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', onPageHide);
+    }
+  };
 
   // TODO(§4.4, §19.6): the unload flush currently relies on the exporter's own keepalive.
   // `navigator.sendBeacon` is the only send that reliably survives teardown, but it is
@@ -84,11 +95,12 @@ export function createTransport({
   // §4.4 work. `sendBeaconOtlp` in exporters/otlp.ts is the piece waiting to be wired in.
 
   const stop = async (): Promise<void> => {
-    if (stopped) return;
-    stopped = true;
-    clearInterval(timer);
+    if (timer !== undefined) {
+      clearInterval(timer);
+      timer = undefined;
+    }
     if (typeof document !== 'undefined') {
-      document.removeEventListener('visibilitychange', onHide);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     }
     if (typeof window !== 'undefined') {
       window.removeEventListener('pagehide', onPageHide);
@@ -96,5 +108,5 @@ export function createTransport({
     await flush();
   };
 
-  return { enqueue, flush, stop };
+  return { enqueue, flush, start, stop };
 }

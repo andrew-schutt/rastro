@@ -39,17 +39,20 @@ export function RastroProvider({
     [app, version, exporter],
   );
 
+  // §4.8: effects never run on the server, which is what keeps the provider safe to render
+  // under Next. Nothing outside them touches the DOM or sets a timer.
   useEffect(() => {
-    // §4.8: this effect never runs on the server, which is what keeps the provider safe to
-    // render under Next. Nothing above touches the DOM.
+    value.transport.start();
+    return () => void value.transport.stop();
+  }, [value]);
+
+  useEffect(() => {
     if (!autoCapture) return;
     return startCapture({
       state: value.state,
       onEvent: (event) => value.transport.enqueue(event),
     });
   }, [autoCapture, value]);
-
-  useEffect(() => () => void value.transport.stop(), [value]);
 
   return <RastroContext.Provider value={value}>{children}</RastroContext.Provider>;
 }
