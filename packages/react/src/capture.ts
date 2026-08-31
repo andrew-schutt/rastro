@@ -1,10 +1,13 @@
 // packages/react/src/capture.ts
-// A single delegated root listener (docs/PLAN.md §4.1). STUB.
+// Delegated root capture (docs/PLAN.md §4.1) — walking-skeleton step 2 (§19.4).
 //
-// Walking-skeleton step 2 (§19.4) replaces this with real capture. Today it proves the wire:
-// one delegated, passive click listener that emits a PLACEHOLDER event so the pipe
-// demo-app → OTLP → SQLite → dashboard is exercised by a real user gesture.
-import type { AttributeValue, Redactor, UxEvent } from 'rastro-core';
+// One listener per event type at the document root, in the capture phase, passive. This
+// emits the four interaction events the conventions define — ux.click, ux.route_change,
+// ux.form_submit, ux.form_abandon — each carrying visibility-adjusted dwell.
+//
+// What is still a placeholder is IDENTITY, not capture: `fingerprint()` is a stub until
+// step 3, so every element without a `data-telemetry-id` collapses to `unknown|<tag>`.
+import type { AttributeValue, Redactor, RouteAdapter, UxEvent } from 'rastro-core';
 import {
   SEVERITY_INFO,
   UX_CONVENTION_VERSION,
@@ -12,6 +15,9 @@ import {
   fingerprint,
   isReservedAttribute,
 } from 'rastro-core';
+import { MAX_DWELL_MS, cappedDwell, createActiveClock } from './dwell.js';
+import { createFormTracker, type FormOutcome } from './forms.js';
+import { historyRouteAdapter } from './route.js';
 
 /** Per-session state the event factory needs. One instance per RastroProvider. */
 export interface SessionState {
@@ -56,6 +62,8 @@ export interface BuildEventInput {
   role?: string;
   /** Raw label. Redacted here (§4.9). */
   accessibleName?: string;
+  /** On `ux.route_change`, the previous path. Tokenized here, like `route`. */
+  fromPath?: string;
   /** Custom attributes from `track(name, props)`. Already sanitized by `sanitizeProps`. */
   attributes?: Record<string, AttributeValue>;
 }
@@ -141,6 +149,9 @@ export function buildEvent(
       ...(input.accessibleName === undefined
         ? {}
         : { 'ux.accessible_name': redactor.redact(input.accessibleName) }),
+      ...(input.fromPath === undefined
+        ? {}
+        : { 'ux.from_path': redactor.tokenizePath(input.fromPath) }),
     },
     resource: {
       'service.name': state.app,
@@ -152,6 +163,70 @@ export function buildEvent(
   };
 }
 
+/**
+ * Selector for things a user meaningfully activates. A click that resolves to none of these
+ * is inert background and is dropped — recording it would bury real interactions in noise.
+ *
+ * `[data-telemetry-id]` is included so an explicit opt-in always counts, even on a div.
+ */
+const INTERACTIVE_SELECTOR = [
+  'a[href]',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'summary',
+  'label',
+  '[data-telemetry-id]',
+  '[role="button"]',
+  '[role="link"]',
+  '[role="tab"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]',
+  '[role="menuitemradio"]',
+  '[role="option"]',
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="switch"]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+/** The shape of a click event this needs, narrowed so the logic below is testable. */
+export interface InteractionSource {
+  /** `UIEvent.detail` — 0 when a click was synthesized from Enter/Space on a control. */
+  detail?: number;
+  /** `PointerEvent.pointerType` — 'mouse' | 'pen' | 'touch', or '' for keyboard. */
+  pointerType?: string;
+}
+
+/**
+ * Classify how an interaction happened (`ux.interaction.method`), which is what powers the
+ * accessibility and ergonomics signals.
+ *
+ * Keyboard is checked first: activating a button with Enter or Space produces a real click
+ * event whose `detail` is 0 and whose `pointerType` is empty, so reading `pointerType` alone
+ * would silently label every keyboard user a mouse user.
+ *
+ * A pen reports as touch: it is direct manipulation, and the enum has no third option.
+ */
+export function interactionMethodOf(
+  source: InteractionSource,
+): 'mouse' | 'keyboard' | 'touch' | undefined {
+  if (source.detail === 0) return 'keyboard';
+
+  switch (source.pointerType) {
+    case 'touch':
+    case 'pen':
+      return 'touch';
+    case 'mouse':
+      return 'mouse';
+    default:
+      // A non-pointer click event with a non-zero detail. Real, but unclassifiable — and
+      // `ux.interaction.method` is Recommended, so omitting beats guessing.
+      return undefined;
+  }
+}
+
 export interface CaptureOptions {
   state: SessionState;
   onEvent: (event: UxEvent) => void;
@@ -159,60 +234,157 @@ export interface CaptureOptions {
   redactor?: Redactor;
   /** Defaults to `document`. One listener for the whole tree — never per element (§4.1). */
   root?: Document | Element;
+  /** Route detection (§4.6 seam). Defaults to the `history` patch. */
+  routeAdapter?: RouteAdapter;
+  /** Cap on a reported dwell (§4.5). */
+  maxDwellMs?: number;
 }
 
 /**
- * Attach the delegated root listener. Returns a teardown function.
+ * Attach the delegated root listeners. Returns a teardown function.
  *
- * STUB. What is real: exactly one listener, registered passive and in the capture phase so a
- * `stopPropagation` in app code cannot blind it, and the §4.7 rule that nothing expensive
- * runs inside the handler.
+ * One listener per event type at the root, registered passive (§4.7 — never block the main
+ * thread on a user gesture) and in the capture phase, so a `stopPropagation` in app code
+ * cannot blind the SDK. Never per-element listeners: that is memory and performance death on
+ * a large app (§4.1).
  *
- * What is a placeholder: `fingerprint()` is itself a stub (`unknown|<tag>` unless the element
- * carries `data-telemetry-id`), so every event here carries a placeholder identity. Do not
- * read meaning into these numbers.
+ * Emits `ux.click`, `ux.route_change`, `ux.form_submit`, and `ux.form_abandon`, each with a
+ * visibility-adjusted `ux.active_ms` (§4.5).
  *
- * TODO(§19.4 step 2) real capture:
- *   - `ux.click` only fires for genuinely interactive targets — walk up to the nearest
- *     button/link/[role]/input, and ignore clicks on inert background.
- *   - `ux.interaction.method`: mouse vs keyboard vs touch, from `PointerEvent.pointerType`
- *     and `MouseEvent.detail === 0` for keyboard activation.
- *   - `ux.route_change` via the RouteAdapter seam (§4.6), carrying `ux.from_path`.
- *   - `ux.form_submit` / `ux.form_abandon` (focus entered a form, then left) — the abandon
- *     signal is the one §4.4 warns dies on unload.
- *   - `ux.active_ms`: visibility-adjusted dwell. MUST subtract time while `document.hidden`
- *     was true, or the flagship metric is really "who switched tabs" (§4.5).
- *   - §4.7 performance: defer the fiber walk to `requestIdleCallback`, never run it
- *     synchronously inside the handler.
- *   - §4.8 SSR: no DOM at boot under Next; guard every registration.
+ * ⚠ The identities are still placeholders. `fingerprint()` is a stub until §19.4 step 3, so
+ * every element without a `data-telemetry-id` collapses to `unknown|<tag>`. The capture is
+ * real; the join key is not yet.
+ *
+ * TODO(§4.7): step 3 puts a synchronous fiber walk inside these handlers, which is exactly
+ * the jank §4.7 warns about. The fix is to capture the cheap DOM facts synchronously — the
+ * element, the method, and `ux.seq`, which MUST stay in gesture order — and defer only the
+ * expensive derivation to `requestIdleCallback`.
+ * TODO(§10): a click that resolves to no interactive target is dropped here. Those are the
+ * raw material for the dead-click friction signal, which needs state-change observation to
+ * tell "clicked nothing" from "clicked something that did nothing".
  */
 export function startCapture({
   state,
   onEvent,
   root,
   redactor = defaultRedactor,
+  routeAdapter = historyRouteAdapter(),
+  maxDwellMs = MAX_DWELL_MS,
 }: CaptureOptions): () => void {
   if (typeof document === 'undefined') return () => {}; // SSR: nothing to attach to (§4.8)
 
   const target: Document | Element = root ?? document;
+  const clock = createActiveClock();
+  const forms = createFormTracker();
 
-  const onClick = (event: Event): void => {
-    const element = event.target;
-    if (!(element instanceof Element)) return;
+  let lastEventAtMs = clock.elapsed();
+  let currentPath = routeAdapter.current();
 
-    onEvent(
-      buildEvent(
-        state,
-        {
-          eventName: 'ux.click',
-          fingerprint: fingerprint(element),
-          interactionMethod: 'mouse', // TODO: derive; see above
-        },
-        redactor,
-      ),
-    );
+  /** Dwell since the previous event in this session — what `ux.active_ms` means by default. */
+  const dwellSinceLastEvent = (): number => {
+    const nowMs = clock.elapsed();
+    const dwell = cappedDwell(nowMs - lastEventAtMs, maxDwellMs);
+    lastEventAtMs = nowMs;
+    return dwell;
   };
 
-  target.addEventListener('click', onClick, { passive: true, capture: true });
-  return () => target.removeEventListener('click', onClick, { capture: true });
+  const emit = (input: BuildEventInput): void => {
+    onEvent(buildEvent(state, input, redactor));
+  };
+
+  const onClick = (event: Event): void => {
+    if (!(event.target instanceof Element)) return;
+
+    // Walk up to the thing the user actually activated — a click almost always lands on a
+    // span or an svg inside the control, not the control itself.
+    const element = event.target.closest(INTERACTIVE_SELECTOR);
+    if (element === null) return;
+
+    // A click outside the active form ends that form's episode. Emitted before the click
+    // itself: the form was left, and then the new thing was interacted with.
+    emitFormOutcome(forms.interactionOutside(element.closest('form'), clock.elapsed()));
+
+    const source = event as Partial<InteractionSource> & Event;
+    const method = interactionMethodOf({
+      ...(source.detail === undefined ? {} : { detail: source.detail }),
+      ...(source.pointerType === undefined ? {} : { pointerType: source.pointerType }),
+    });
+
+    emit({
+      eventName: 'ux.click',
+      fingerprint: fingerprint(element),
+      route: currentPath,
+      activeMs: dwellSinceLastEvent(),
+      ...(method === undefined ? {} : { interactionMethod: method }),
+    });
+  };
+
+  const onSubmit = (event: Event): void => {
+    if (!(event.target instanceof Element)) return;
+    const form = event.target.closest('form');
+    if (form === null) return;
+
+    emitFormOutcome(forms.submitted(form, clock.elapsed()));
+  };
+
+  const onFocusIn = (event: Event): void => {
+    const form = event.target instanceof Element ? event.target.closest('form') : null;
+    emitFormOutcome(forms.focusEntered(form, clock.elapsed()));
+  };
+
+  // The §4.4 signal that dies on unload. transport.ts flushes on the same event, so the
+  // abandonment is queued before the flush rather than after it.
+  const onPageHide = (): void => emitFormOutcome(forms.pageHidden(clock.elapsed()));
+
+  function emitFormOutcome(outcome: FormOutcome | null): void {
+    if (outcome === null) return;
+    if (!(outcome.form instanceof Element)) return;
+
+    lastEventAtMs = clock.elapsed();
+    emit({
+      eventName: outcome.kind === 'form_submit' ? 'ux.form_submit' : 'ux.form_abandon',
+      fingerprint: fingerprint(outcome.form),
+      route: currentPath,
+      // `ux.active_ms` here is time-to-complete, not the gap since the last event.
+      ...(outcome.activeMs === undefined
+        ? {}
+        : { activeMs: cappedDwell(outcome.activeMs, maxDwellMs) }),
+    });
+  }
+
+  const unsubscribeRoute = routeAdapter.subscribe((path) => {
+    if (path === currentPath) return; // a replaceState that did not move the user
+
+    // Navigating away from a half-filled form abandons it just as surely as clicking away.
+    emitFormOutcome(forms.interactionOutside(null, clock.elapsed()));
+
+    const fromPath = currentPath;
+    currentPath = path;
+
+    emit({
+      eventName: 'ux.route_change',
+      // A route change is not an element interaction. The route IS the identity.
+      fingerprint: `route:${redactor.tokenizePath(path)}`,
+      route: path,
+      activeMs: dwellSinceLastEvent(),
+      fromPath,
+    });
+  });
+
+  // Passive: these never call preventDefault, and saying so lets the browser scroll without
+  // waiting on the handler (§4.7). Capture phase: app code cannot hide events from the SDK.
+  const options: AddEventListenerOptions = { passive: true, capture: true };
+  target.addEventListener('click', onClick, options);
+  target.addEventListener('submit', onSubmit, options);
+  target.addEventListener('focusin', onFocusIn, options);
+  window.addEventListener('pagehide', onPageHide);
+
+  return () => {
+    target.removeEventListener('click', onClick, options);
+    target.removeEventListener('submit', onSubmit, options);
+    target.removeEventListener('focusin', onFocusIn, options);
+    window.removeEventListener('pagehide', onPageHide);
+    unsubscribeRoute();
+    clock.stop();
+  };
 }

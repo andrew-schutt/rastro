@@ -4,7 +4,7 @@
 //
 // Zero-config first (§ design principles): baseline value from the provider alone.
 import { useEffect, useMemo, type ReactNode } from 'react';
-import type { Exporter, Redactor } from 'rastro-core';
+import type { Exporter, RouteAdapter, Redactor } from 'rastro-core';
 import { defaultRedactor } from 'rastro-core';
 import { createSessionState, startCapture } from './capture.js';
 import { RastroContext, type RastroContextValue } from './context.js';
@@ -22,7 +22,13 @@ export interface RastroProviderProps {
    * heuristic path tokenization. Pass `noopRedactor` only for a trusted internal app.
    */
   redactor?: Redactor;
-  /** Turn off the delegated root listener and emit only via `track()`. */
+  /**
+   * Route detection (§4.6 seam). Defaults to patching `history`. Pass a router-specific
+   * adapter where one exists — it reports the route PATTERN, which is both more accurate
+   * and immune to `tokenizePath`'s blind spots.
+   */
+  routeAdapter?: RouteAdapter;
+  /** Turn off the delegated root listeners and emit only via `track()`. */
   autoCapture?: boolean;
   children?: ReactNode;
 }
@@ -32,6 +38,7 @@ export function RastroProvider({
   exporter,
   version,
   redactor = defaultRedactor,
+  routeAdapter,
   autoCapture = true,
   children,
 }: RastroProviderProps): ReactNode {
@@ -60,8 +67,9 @@ export function RastroProvider({
       state: value.state,
       redactor: value.redactor,
       onEvent: (event) => value.transport.enqueue(event),
+      ...(routeAdapter === undefined ? {} : { routeAdapter }),
     });
-  }, [autoCapture, value]);
+  }, [autoCapture, routeAdapter, value]);
 
   return <RastroContext.Provider value={value}>{children}</RastroContext.Provider>;
 }

@@ -1,28 +1,103 @@
 // examples/demo-app/src/App.tsx
-// Walking-skeleton step 1 (§19.4): "hardcode one event in demo-app and watch it travel the
-// whole pipe."
+// A real-ish app to dogfood on. Everything below is captured with ZERO instrumentation —
+// no handlers call the SDK. The one exception is the `track()` call, which demonstrates the
+// Level-2 enrichment escape hatch from §3.
+//
+// Between them these exercise every event the conventions define for capture:
+//   ux.click         every button and link
+//   ux.route_change  the nav (pushState, no reload)
+//   ux.form_submit   the settings form
+//   ux.form_abandon  focus a field, then click away without submitting
 import { useEffect, useState, type ReactElement } from 'react';
 import { useTelemetry } from 'rastro-react';
 
+/** Routes with a dynamic segment, so path tokenization is visible in the dashboard. */
+const ROUTES = ['/', '/users/42/settings', '/orders/10482'] as const;
+
+function Nav(): ReactElement {
+  const [path, setPath] = useState(location.pathname);
+
+  // A hand-rolled router: pushState with no reload, which is exactly what the
+  // historyRouteAdapter patches. A real app would use React Router here.
+  useEffect(() => {
+    const onPopState = (): void => setPath(location.pathname);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const go = (to: string): void => {
+    history.pushState({}, '', to);
+    setPath(to);
+  };
+
+  return (
+    <nav>
+      {ROUTES.map((route) => (
+        <button
+          key={route}
+          type="button"
+          onClick={() => go(route)}
+          aria-current={route === path ? 'page' : undefined}
+        >
+          {route}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function SettingsForm(): ReactElement {
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <form
+      data-telemetry-id="settings-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setSaved(true);
+      }}
+    >
+      <h2>Profile</h2>
+      <p>
+        <label>
+          Display name <input name="name" defaultValue="" />
+        </label>
+      </p>
+      <p>
+        <label>
+          Email <input name="email" type="email" defaultValue="" />
+        </label>
+      </p>
+      <p>
+        {/* The override makes this the one element with a real, stable identity today. */}
+        <button type="submit" data-telemetry-id="save-profile">
+          Save Profile
+        </button>{' '}
+        <button type="button">A button with no telemetry id</button>
+      </p>
+      {saved && <p>Saved.</p>}
+      <p className="hint">
+        Focus a field then click a nav button without submitting — that is
+        <code> ux.form_abandon</code>.
+      </p>
+    </form>
+  );
+}
+
 export function App(): ReactElement {
   const { track, flush, sessionId } = useTelemetry();
-  const [sent, setSent] = useState(0);
 
-  // THE hardcoded event. One on mount, flushed immediately rather than waiting out the batch
-  // interval, so the dashboard table fills in without you wondering whether it worked.
-  //
-  // The props dogfood §4.9: `plan` and `seats` arrive as attributes untouched, `owner` is
-  // redacted before it leaves the browser, and `ux.seq` is dropped because apps do not get
-  // to write into a reserved namespace. Check the stored record at
-  // /projects/demo-app/events to see all three.
+  // Level-2 enrichment (§3): a custom event autocapture could not know to emit. The props
+  // dogfood §4.9 — `plan` and `seats` arrive untouched, `owner` is redacted before it leaves
+  // the browser, and `ux.seq` is dropped because apps do not write to reserved namespaces.
   useEffect(() => {
-    track('demo.hello', {
+    track('demo.session_ready', {
       plan: 'pro',
       seats: 3,
       owner: 'jane@example.com',
       'ux.seq': 999,
     });
-    void flush().then(() => setSent((n) => n + 1));
+    void flush();
   }, [track, flush]);
 
   return (
@@ -31,26 +106,13 @@ export function App(): ReactElement {
       <p>
         session <code>{sessionId}</code>
       </p>
-      <p>
-        Sent {sent} hardcoded event{sent === 1 ? '' : 's'} to the collector.
-      </p>
 
-      <p>
-        {/* Clicking exercises the delegated root listener in capture.ts. That listener is a
-            STUB: the event is real and travels the whole pipe, but its ux.fingerprint is a
-            placeholder until §19.4 steps 2 and 3. The data-telemetry-id override IS real,
-            so this button fingerprints as `id:demo-save`. */}
-        <button type="button" data-telemetry-id="demo-save" onClick={() => void flush()}>
-          Save Profile
-        </button>{' '}
-        <button type="button" onClick={() => void flush()}>
-          A button with no telemetry id
-        </button>
-      </p>
+      <Nav />
+      <SettingsForm />
 
-      <p style={{ opacity: 0.6 }}>
-        Open the dashboard at <a href="http://localhost:5173">localhost:5173</a> to see these
-        events in the table.
+      <p className="hint">
+        Everything here is captured with no instrumentation. Open the dashboard at{' '}
+        <a href="http://localhost:5173">localhost:5173</a> — events appear within ~2s.
       </p>
     </main>
   );

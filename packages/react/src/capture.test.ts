@@ -2,7 +2,12 @@
 // `sanitizeProps` and `buildEvent` are pure, so they test without a DOM or a renderer.
 import { describe, expect, it, vi } from 'vitest';
 import { REDACTED, noopRedactor } from 'rastro-core';
-import { buildEvent, createSessionState, sanitizeProps } from './capture.js';
+import {
+  buildEvent,
+  createSessionState,
+  interactionMethodOf,
+  sanitizeProps,
+} from './capture.js';
 
 describe('sanitizeProps', () => {
   it('passes ordinary props through as attributes', () => {
@@ -109,5 +114,48 @@ describe('buildEvent', () => {
     expect(first.attributes['ux.seq']).toBe(1);
     expect(second.attributes['ux.seq']).toBe(2);
     expect(first.attributes['session.id']).toBe(second.attributes['session.id']);
+  });
+});
+
+describe('interactionMethodOf', () => {
+  it('classifies a mouse click', () => {
+    expect(interactionMethodOf({ detail: 1, pointerType: 'mouse' })).toBe('mouse');
+  });
+
+  it('classifies a touch tap', () => {
+    expect(interactionMethodOf({ detail: 1, pointerType: 'touch' })).toBe('touch');
+  });
+
+  it('classifies a pen as touch — direct manipulation, and the enum has no third option', () => {
+    expect(interactionMethodOf({ detail: 1, pointerType: 'pen' })).toBe('touch');
+  });
+
+  it('classifies keyboard activation by detail === 0, NOT by pointerType', () => {
+    // Enter/Space on a button produces a real click whose pointerType is empty. Reading
+    // pointerType first would label every keyboard user a mouse user.
+    expect(interactionMethodOf({ detail: 0, pointerType: '' })).toBe('keyboard');
+  });
+
+  it('prefers keyboard even when a pointerType is somehow present', () => {
+    expect(interactionMethodOf({ detail: 0, pointerType: 'mouse' })).toBe('keyboard');
+  });
+
+  it('omits the method rather than guessing when nothing identifies it', () => {
+    expect(interactionMethodOf({ detail: 1 })).toBeUndefined();
+    expect(interactionMethodOf({})).toBeUndefined();
+  });
+});
+
+describe('buildEvent — route change', () => {
+  it('tokenizes ux.from_path like url.path', () => {
+    const event = buildEvent(createSessionState('test-app'), {
+      eventName: 'ux.route_change',
+      fingerprint: 'route:/users/:id',
+      route: '/users/99',
+      fromPath: '/orders/12345?token=secret',
+    });
+
+    expect(event.attributes['url.path']).toBe('/users/:id');
+    expect(event.attributes['ux.from_path']).toBe('/orders/:id');
   });
 });
