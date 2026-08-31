@@ -568,7 +568,7 @@ Because the wire format is OTLP, the ingest step is swappable for anyone's OTel 
 
 ## 19. Repository scaffold — start here
 
-This is the concrete kickoff: a pnpm TypeScript monorepo, small enough to hold in your head, structured so the interesting part (the SDK + fingerprinting) is isolated and the plumbing stays boring. The npm scope is `@rastro`.
+This is the concrete kickoff: a pnpm TypeScript monorepo, small enough to hold in your head, structured so the interesting part (the SDK + fingerprinting) is isolated and the plumbing stays boring. Packages publish unscoped with a `rastro-` prefix (`rastro-core`, `rastro-react`, `rastro-analysis`); the apps stay `private`.
 
 **Stack (MVP — nothing more):** TypeScript end to end · pnpm workspaces · Fastify collector · Postgres *or* SQLite (SQLite means contributors clone-and-run with zero setup — a real OSS adoption win at this scale) · Vite + React + **React Flow** for the graph. **No ClickHouse, no OpenTelemetry, no AI, no auth beyond a project key.** Each of those has a home in the earlier sections when the project outgrows the MVP; none belongs in commit #1.
 
@@ -586,7 +586,7 @@ rastro/
 │   │       ├── seams.ts         # every swap-point interface (§19.5)
 │   │       ├── fingerprint.ts   # §4.2.1 — the interesting code
 │   │       └── redact.ts        # PII redaction hook (§4.9)
-│   ├── react/                   # @rastro/react — the SDK devs install
+│   ├── react/                   # rastro-react — the SDK devs install
 │   │   └── src/
 │   │       ├── Provider.tsx     # <RastroProvider app exporter>
 │   │       ├── useTelemetry.ts  # track(name, props?)

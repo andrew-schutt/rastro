@@ -3,5 +3,7 @@ dist/
 *.tsbuildinfo
 *.sqlite
 *.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
 .DS_Store
 .vite/
