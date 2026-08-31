@@ -1,5 +1,5 @@
 // apps/collector/src/ingest.ts
-// POST /v1/logs — accept OTLP logs, assign observedTime, insert (PLAN.md §19.4 step 1).
+// POST /v1/logs — accept OTLP logs, assign observedTime, insert (docs/PLAN.md §19.4 step 1).
 import type { FastifyInstance } from 'fastify';
 import type { EventStore, UxEvent } from 'rastro-core';
 import { isUxEvent } from 'rastro-core';
@@ -108,7 +108,7 @@ export function registerIngest(app: FastifyInstance, store: EventStore): void {
     if (rejected > 0) {
       request.log.warn(
         { rejected },
-        'dropped records missing the Required set (SEMANTIC-CONVENTIONS.md)',
+        'dropped records missing the Required set (docs/SEMANTIC-CONVENTIONS.md)',
       );
     }
 

@@ -1,5 +1,5 @@
 // apps/collector/src/db.ts
-// The storage seam (PLAN.md §8, §19.5), with a SQLite default.
+// The storage seam (docs/PLAN.md §8, §19.5), with a SQLite default.
 //
 // SQLite so contributors clone-and-run with zero setup — a real OSS adoption win at this
 // scale. Swapping to Postgres or ClickHouse later means writing another `EventStore`, and

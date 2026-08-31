@@ -1,5 +1,5 @@
 // apps/dashboard/src/SessionTimeline.tsx
-// One session on a time axis (PLAN.md §13.1). PLACEHOLDER.
+// One session on a time axis (docs/PLAN.md §13.1). PLACEHOLDER.
 //
 // §19.4 builds this properly at step 4, after real capture and fingerprinting exist — until
 // then every fingerprint is `unknown|<tag>` and a timeline of those says nothing. What is

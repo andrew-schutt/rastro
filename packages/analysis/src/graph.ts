@@ -1,5 +1,5 @@
 // packages/analysis/src/graph.ts
-// Session[] → FlowGraph (PLAN.md §19.3, §9). STUB.
+// Session[] → FlowGraph (docs/PLAN.md §19.3, §9). STUB.
 //
 // This is walking-skeleton step 5 (§19.4) and the headline demo. It is written test-first
 // against fixture traces — see graph.test.ts for the cases that should drive it.
@@ -35,7 +35,8 @@ export type { FlowEdge, FlowGraph, FlowNode } from 'rastro-core';
  */
 export function buildGraph(_sessions: Session[]): FlowGraph {
   throw new Error(
-    'buildGraph: not implemented — walking-skeleton step 5 (PLAN.md §19.4). See graph.test.ts.',
+    'buildGraph: not implemented — walking-skeleton step 5 (docs/PLAN.md §19.4).' +
+      ' See graph.test.ts.',
   );
 }
 

@@ -1,5 +1,5 @@
 // packages/react/src/capture.ts
-// A single delegated root listener (PLAN.md §4.1). STUB.
+// A single delegated root listener (docs/PLAN.md §4.1). STUB.
 //
 // Walking-skeleton step 2 (§19.4) replaces this with real capture. Today it proves the wire:
 // one delegated, passive click listener that emits a PLACEHOLDER event so the pipe

@@ -1,5 +1,5 @@
 // packages/core/src/redact.ts
-// PII redaction hook (PLAN.md §4.9). STUB — naive body, real signature.
+// PII redaction hook (docs/PLAN.md §4.9). STUB — naive body, real signature.
 import type { Redactor } from './seams.js';
 
 /** What a redacted span is replaced with. Kept visible so you can spot over-redaction. */

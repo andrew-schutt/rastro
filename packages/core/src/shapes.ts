@@ -1,5 +1,5 @@
 // packages/core/src/shapes.ts
-// The click-to-graph data shapes (PLAN.md §19.3).
+// The click-to-graph data shapes (docs/PLAN.md §19.3).
 //
 // §19.3 declares these next to the functions that produce them, in `packages/analysis`.
 // They live here instead because `seams.ts` types `GraphBuilder` and `Interpreter` in terms

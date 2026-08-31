@@ -1,5 +1,5 @@
 // packages/analysis/src/sessionize.ts
-// UxEvent[] → Session[] (PLAN.md §19.3, §4.5). IMPLEMENTED.
+// UxEvent[] → Session[] (docs/PLAN.md §19.3, §4.5). IMPLEMENTED.
 //
 // The OTel envelope stops here: downstream analysis works on the flat Step/Session types,
 // never on raw records.
@@ -12,9 +12,9 @@ export type { Session, Step } from 'rastro-core';
 /**
  * Group events by `session.id` and order each group by `ux.seq`.
  *
- * `ux.seq` is the sole authority for order (SEMANTIC-CONVENTIONS.md, "Ordering and
- * sessions"). Timestamps are for display and latency only — user clocks are skewed, and
- * ordering by them scrambles sequences (§4.5).
+ * `ux.seq` is the sole authority for order (the conventions' "Ordering and sessions").
+ * Timestamps are for display and latency only — user clocks are skewed, and ordering by
+ * them scrambles sequences (§4.5).
  *
  * Sessions are returned in the order their first event appears in `events`; steps within a
  * session are sorted ascending by `ux.seq`.

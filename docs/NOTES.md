@@ -146,10 +146,9 @@ Verified: replaying a batch stores nothing new.
 - **Fingerprints are meaningless.** Every element that lacks `data-telemetry-id` collapses to
   `unknown|<tag>`. Do not read anything into numbers computed from this data yet.
 
-## Doc nits found while building
+## Doc nits
 
-- `README.md` links to `docs/PLAN.md` and `docs/demo.gif`; the plan is at `PLAN.md` in the
-  repo root and there is no `docs/` directory. Left alone rather than guessing which should
-  move.
+- `README.md` renders a `docs/demo.gif` that does not exist yet. §19.4 step 5 is where it
+  gets recorded — the flow graph is the demo worth capturing, not this table.
 - §19.3's pipeline sketch says transport posts to `POST /events`; §19.4 and §19.6 both say
   `/v1/logs`, which is what is implemented.

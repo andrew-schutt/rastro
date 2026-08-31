@@ -1,12 +1,13 @@
 // packages/core/src/events.ts
 // What the SDK emits, shaped as an OTel LogRecord (Event). One interaction = one record.
 //
-// This file is the keystone (PLAN.md §19.2). The `ux.*` attribute names ARE the semantic
-// convention — SEMANTIC-CONVENTIONS.md is the contract, and this type must stay in lockstep
-// with it. Renaming anything here ripples through the SDK, the collector, and every query.
+// This file is the keystone (docs/PLAN.md §19.2). The `ux.*` attribute names ARE the semantic
+// convention — docs/SEMANTIC-CONVENTIONS.md is the contract, and this type must stay in
+// lockstep with it. Renaming anything here ripples through the SDK, the collector, and
+// every analysis query.
 //
-// ⚠ DEVIATION FROM §19.2 (see NOTES.md): the snippet in the plan predates
-// SEMANTIC-CONVENTIONS.md and omits five attributes the spec defines. They are added below,
+// ⚠ DEVIATION FROM §19.2 (see docs/NOTES.md): the snippet in the plan predates
+// docs/SEMANTIC-CONVENTIONS.md and omits five attributes the spec defines. They are added below,
 // all optional, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
 // this is a superset — nothing that conformed to §19.2 stops conforming.
 export interface UxEvent {
@@ -28,7 +29,7 @@ export interface UxEvent {
     'ux.from_path'?: string;           // [SPEC] Opt-In — on ux.route_change, previous url.path
     'ux.component_chain'?: string[];   // [SPEC] Opt-In — outermost → innermost, fingerprint debugging
     'ux.role'?: string;                // [SPEC] Opt-In — queryable slice of the fingerprint
-    'ux.accessible_name'?: string;     // [SPEC] Opt-In — MUST be redacted before emit (§4.9)
+    'ux.accessible_name'?: string;     // [SPEC] Opt-In — redacted before emit (§4.9)
   };
   resource: {
     'service.name': string;            // STANDARD — the app
@@ -38,14 +39,14 @@ export interface UxEvent {
 }
 
 /**
- * The version of SEMANTIC-CONVENTIONS.md that records produced by this build conform to.
+ * The version of the semantic conventions that records from this build conform to.
  * Rides on the resource as `ux.convention.version` so the analysis layer can handle
  * mixed-version data across migrations.
  */
 export const UX_CONVENTION_VERSION = '0.1';
 
 /**
- * The Required set from SEMANTIC-CONVENTIONS.md: every conforming record MUST carry these
+ * The Required set from the semantic conventions: every conforming record MUST carry these
  * attributes (plus `service.name` on the resource). Analysis depends on nothing else, so a
  * minimal conforming emitter still produces fully usable flows and timelines.
  */

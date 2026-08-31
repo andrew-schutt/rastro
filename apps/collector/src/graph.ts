@@ -1,5 +1,5 @@
 // apps/collector/src/graph.ts
-// GET /projects/:app/graph — load events → analysis (PLAN.md §19.1). STUB.
+// GET /projects/:app/graph — load events → analysis (docs/PLAN.md §19.1). STUB.
 //
 // The route exists so the shape of the API is fixed and the dashboard can be written against
 // it; the analysis behind it (`buildGraph`) is walking-skeleton step 5 (§19.4).
@@ -18,7 +18,8 @@ export function registerGraph(app: FastifyInstance, store: EventStore): void {
       // 501, not 500: this is a documented gap, not a failure. The dashboard renders the
       // events table until step 5 lands.
       return reply.code(501).send({
-        error: 'buildGraph is not implemented yet — walking-skeleton step 5 (PLAN.md §19.4)',
+        error:
+          'buildGraph is not implemented yet — walking-skeleton step 5 (docs/PLAN.md §19.4)',
         sessions: sessions.length,
         events: events.length,
       });

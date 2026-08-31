@@ -1,5 +1,5 @@
 // packages/analysis/src/friction.ts
-// Deterministic friction signals (PLAN.md §10). STUB.
+// Deterministic friction signals (docs/PLAN.md §10). STUB.
 //
 // Walking-skeleton step 6 (§19.4) is explicit: add EXACTLY ONE signal for v1. The signal set
 // below is mature, re-implementable, and not novel — §10's advice is to under-invest in
@@ -40,6 +40,7 @@ export interface FrictionSignal {
  */
 export function detectFriction(_sessions: Session[]): FrictionSignal[] {
   throw new Error(
-    'detectFriction: not implemented — walking-skeleton step 6 (PLAN.md §19.4). One signal only.',
+    'detectFriction: not implemented — walking-skeleton step 6 (docs/PLAN.md §19.4).' +
+      ' One signal only.',
   );
 }

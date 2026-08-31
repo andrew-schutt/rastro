@@ -1,5 +1,5 @@
 // packages/core/src/fingerprint.ts
-// Stable element identity (PLAN.md §4.2.1) — the interesting code.
+// Stable element identity (docs/PLAN.md §4.2.1) — the interesting code.
 //
 // STUB. Real signature, naive body, no fiber walk yet. This is deliberately the LAST thing
 // built (walking-skeleton step 3, §19.4) because it is the project's existence condition
@@ -15,7 +15,7 @@ export const UNKNOWN_CHAIN = 'unknown';
 /**
  * Derive a stable fingerprint for an element.
  *
- * Format (§4.2.1, and SEMANTIC-CONVENTIONS.md "Fingerprint format"):
+ * Format (§4.2.1, and docs/SEMANTIC-CONVENTIONS.md "Fingerprint format"):
  *   `<component chain>|<role>|"<accessible name>"`
  *   e.g. `Settings>ProfileForm>SaveButton|button|"Save Profile"`
  * An explicit override yields `id:<value>` and skips derivation entirely.

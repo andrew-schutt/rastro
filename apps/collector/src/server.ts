@@ -1,6 +1,6 @@
 // apps/collector/src/server.ts
 // The only backend process: OTLP ingest AND the graph/session API, so there is one thing to
-// run (PLAN.md §19.1).
+// run (docs/PLAN.md §19.1).
 import { pathToFileURL } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { EventStore } from 'rastro-core';

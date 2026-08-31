@@ -89,7 +89,7 @@ click → capture (stable fingerprint) → OTel Event → OTLP → collector →
   same node across sessions and small refactors. This is the hard part; see the plan.
 - **OpenTelemetry-native.** Interactions are OTel *Events* (log records), grouped by
   the standard `session.id`. UX meaning rides in a small `ux.*` attribute namespace —
-  see [`SEMANTIC-CONVENTIONS.md`](SEMANTIC-CONVENTIONS.md).
+  see [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md).
 - **Analysis is pure.** `sessionize` and `buildGraph` are pure functions over event
   arrays — easy to test with fixture traces, and where all the actual intelligence lives.
 
@@ -138,8 +138,8 @@ examples/demo-app    a React app to dogfood on
 ## Documentation
 
 - [`docs/PLAN.md`](docs/PLAN.md) — full design, tradeoffs, and open unknowns
-- [`SEMANTIC-CONVENTIONS.md`](SEMANTIC-CONVENTIONS.md) — the `ux.*` spec you instrument against
-- [`NOTES.md`](NOTES.md) — how to run this repo, and what is implemented vs. stubbed
+- [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md) — the `ux.*` spec you instrument against
+- [`docs/NOTES.md`](docs/NOTES.md) — how to run this repo, and what is implemented vs. stubbed
 
 ## License
 
