@@ -23,7 +23,7 @@ into your existing observability stack *and* into Rastro's UX-behavioral analysi
 
 A developer-native UX-flow tool for React:
 
-1. A tiny SDK (`@rastro/react`) auto-captures meaningful interactions and emits
+1. A tiny SDK (`rastro-react`) auto-captures meaningful interactions and emits
    them as OpenTelemetry Events.
 2. A small collector ingests OTLP and stores the events.
 3. A pure analysis layer turns raw events into **sessions**, a **flow graph**, and
@@ -36,11 +36,11 @@ clicks into stable, comparable user behavior. Everything else is deliberately th
 ## Quick start
 
 ```bash
-pnpm add @rastro/react
+pnpm add rastro-react
 ```
 
 ```tsx
-import { RastroProvider, otlpExporter } from "@rastro/react";
+import { RastroProvider, otlpExporter } from "rastro-react";
 
 export default function App() {
   return (
@@ -57,7 +57,7 @@ export default function App() {
 That's the whole integration. Optional enrichment where auto-capture isn't enough:
 
 ```tsx
-import { useTelemetry } from "@rastro/react";
+import { useTelemetry } from "rastro-react";
 
 const { track } = useTelemetry();
 track("profile.saved");                 // custom event, same conventions
@@ -116,7 +116,7 @@ to do one thing — turn behavior into legible flows — well.
 
 ```
 packages/core        shared types, fingerprinting, redaction, seam interfaces
-packages/react       @rastro/react — the SDK
+packages/react       rastro-react — the SDK
 packages/analysis    pure functions: events → sessions → flow graph
 apps/collector       Fastify: OTLP ingest + graph/session API
 apps/dashboard       Vite + React Flow
@@ -139,6 +139,7 @@ examples/demo-app    a React app to dogfood on
 
 - [`docs/PLAN.md`](docs/PLAN.md) — full design, tradeoffs, and open unknowns
 - [`SEMANTIC-CONVENTIONS.md`](SEMANTIC-CONVENTIONS.md) — the `ux.*` spec you instrument against
+- [`NOTES.md`](NOTES.md) — how to run this repo, and what is implemented vs. stubbed
 
 ## License
 
