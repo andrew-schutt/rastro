@@ -1,5 +1,5 @@
 // apps/collector/src/ingest.ts
-// POST /v1/logs — accept OTLP logs, assign observedTime, insert (docs/PLAN.md §19.4 step 1).
+// POST /v1/logs — accept OTLP logs, assign observedTime, insert (docs/DESIGN.md §19.4 step 1).
 import type { FastifyInstance } from 'fastify';
 import type { EventStore, UxEvent } from 'rastro-core';
 import { isUxEvent } from 'rastro-core';

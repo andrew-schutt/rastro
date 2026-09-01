@@ -1,5 +1,5 @@
 // apps/dashboard/src/timeline.ts
-// The arithmetic behind the session timeline (docs/PLAN.md §13.1), kept pure and out of the
+// The arithmetic behind the session timeline (docs/DESIGN.md §13.1), kept pure and out of the
 // component so the part that can actually be wrong is testable.
 import type { Step } from 'rastro-core';
 

@@ -1,4 +1,4 @@
-# Rastro — Build Plan
+# Rastro — Design
 
 *UX flow intelligence for React: turn interaction behavior into legible user flows.*
 

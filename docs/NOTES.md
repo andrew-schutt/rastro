@@ -1,6 +1,6 @@
 # NOTES — commit #1 (walking skeleton, step 1)
 
-This is the scaffold in [`PLAN.md`](PLAN.md) §19. It stands up the pnpm monorepo and gets
+This is the scaffold in [`DESIGN.md`](DESIGN.md) §19. It stands up the pnpm monorepo and gets
 **all six steps of §19.4** running end to end:
 
 ```
@@ -367,6 +367,9 @@ Verified: replaying a batch stores nothing new.
 - **Dead clicks are dropped, not recorded.** A click resolving to no interactive target is
   ignored. Those are the raw material for §10's dead-click signal, which needs state-change
   observation to tell "clicked nothing" from "clicked something that did nothing".
+
+These are ordered by how much each hurts the product. [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md)
+re-orders them by a different axis — which of them block a de-risking gate — and only two do.
 
 ## Doc nits
 

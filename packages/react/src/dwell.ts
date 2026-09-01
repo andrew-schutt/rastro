@@ -1,5 +1,5 @@
 // packages/react/src/dwell.ts
-// Visibility-adjusted timing (docs/PLAN.md §4.5).
+// Visibility-adjusted timing (docs/DESIGN.md §4.5).
 //
 // §4.5 calls this out as a silent correctness bug in the exact number the analysis reasons
 // over: wall-clock dwell includes tab-backgrounding, someone walking away, and dev tools

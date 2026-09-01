@@ -1,5 +1,5 @@
 // apps/collector/src/graph.ts
-// GET /projects/:app/graph — load events → analysis (docs/PLAN.md §19.1).
+// GET /projects/:app/graph — load events → analysis (docs/DESIGN.md §19.1).
 //
 // The whole spine in four lines: load events → sessionize → buildGraph → send. Everything
 // interesting is in the pure analysis layer, which is the point of §19.3's shape.

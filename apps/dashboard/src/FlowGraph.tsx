@@ -1,5 +1,5 @@
 // apps/dashboard/src/FlowGraph.tsx
-// The flow graph (docs/PLAN.md §19.4 step 5, §9) — the headline view.
+// The flow graph (docs/DESIGN.md §19.4 step 5, §9) — the headline view.
 //
 // Thin by design: `FlowGraph` maps almost 1:1 onto React Flow's nodes/edges props, so all
 // this does is translate and style. Every number on screen was computed by `buildGraph`,

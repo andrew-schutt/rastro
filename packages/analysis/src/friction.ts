@@ -1,5 +1,5 @@
 // packages/analysis/src/friction.ts
-// Deterministic friction signals (docs/PLAN.md §10).
+// Deterministic friction signals (docs/DESIGN.md §10).
 //
 // ⚠ §19.4 step 6 says to add EXACTLY ONE signal, and names two candidates: drop-off
 // highlighting, or rage-click detection. Both are implemented here, at the maintainer's

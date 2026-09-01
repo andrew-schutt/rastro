@@ -1,5 +1,5 @@
 // packages/analysis/src/graph.ts
-// Session[] -> FlowGraph (docs/PLAN.md §19.3, §9). The aggregate view, and where the
+// Session[] -> FlowGraph (docs/DESIGN.md §19.3, §9). The aggregate view, and where the
 // intelligence lives — `FlowGraph` maps almost 1:1 onto React Flow's nodes/edges props, so
 // the dashboard stays thin by design.
 import type { FlowEdge, FlowGraph, FlowNode, GraphBuilder, Session, Step } from 'rastro-core';

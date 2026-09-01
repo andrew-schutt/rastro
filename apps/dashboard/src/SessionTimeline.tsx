@@ -1,5 +1,5 @@
 // apps/dashboard/src/SessionTimeline.tsx
-// One session on a time axis (docs/PLAN.md §13.1).
+// One session on a time axis (docs/DESIGN.md §13.1).
 //
 // §19.4 step 4, and the first real view: no cross-session aggregation, no mining, no
 // spaghetti-taming — just one session's events ordered by ux.seq. §13.1 calls it the
