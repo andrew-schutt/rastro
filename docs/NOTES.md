@@ -113,23 +113,29 @@ works). Delete it to start clean.
 
 ### Tests
 
-`pnpm -r test` → **74 passing, 48 `todo`**.
+`pnpm -r test` → **97 passing, 48 `todo`**.
 
-The passing ones cover `sessionize` (grouping, `ux.seq` ordering, attribute flattening, the
-`ux.active_ms` default, the single-session case the §13.1 endpoint uses),
-`redact`/`tokenizePath` (including the two known gaps, asserted), `sanitizeProps`/`buildEvent`
-(redaction, reserved-namespace rejection, and the guarantee that a custom attribute can never
-overwrite the Required set), the visibility-adjusted clock, and the form state machine.
+Coverage sits in two deliberate layers.
 
-The DOM-facing parts of capture are deliberately thin wrappers over pure logic —
-`interactionMethodOf`, `createActiveClock`, `createFormTracker` — so all of it tests without
-jsdom, which is not a dependency here. What that leaves untested by unit tests is the DOM
-wiring itself: listener registration, `closest()` target resolution, and the history patch.
-Those are covered by driving a real headless Chrome against the demo app (see below).
+**Pure, no DOM** (`sessionize`, `redact`/`tokenizePath`, `sanitizeProps`/`buildEvent`,
+`createActiveClock`, `createFormTracker`, `interactionMethodOf`). The DOM-facing parts of
+capture are thin wrappers over these, which is what keeps the interesting logic testable
+without a browser at all.
 
-**Adding `jsdom` as a dev dependency is the obvious next testing improvement** — it would let
-`startCapture` and `historyRouteAdapter` be tested directly rather than only end to end.
-Not added without asking.
+**jsdom** (`capture.dom.test.ts`, `route.dom.test.ts`), for the wiring the pure tests cannot
+reach: listener registration and teardown, resolving a click up to its interactive ancestor,
+dropping inert background clicks, and the history patch's reference counting. Files opt in
+with a `@vitest-environment jsdom` docblock, so the pure suites stay in node and stay fast.
+
+Both layers earn their place — checked by mutating the source and confirming a test fails.
+Reading `pointerType` before `detail` (which would label every keyboard user a mouse user) is
+caught only by the pure test, because jsdom's `MouseEvent` has no `pointerType` to be misled
+by. Making the history patch per-adapter instead of reference-counted is caught only by the
+jsdom test.
+
+`jsdom` is the one dev dependency added for this. React Testing Library is deliberately not
+needed: React 19 exports `act`, and `createRoot` is enough for the fiber-walk tests step 3
+will want.
 
 The todos in `fingerprint.test.ts` and `graph.test.ts` name the cases meant to drive steps 3
 and 5 — including the before/after-refactor stability suite §4.2.1 calls the most valuable
@@ -147,7 +153,8 @@ Driven against a real headless Chrome with genuine mouse and keyboard input, on 
 - `track()` props: `plan`/`seats` stored, `owner` redacted, `ux.seq: 999` dropped
 
 The hidden-tab rule in `dwell.ts` is unit-tested rather than driven in the browser — there is
-no CDP command to force `document.visibilityState`.
+no CDP command to force `document.visibilityState`. Real pointer events are browser-only too:
+jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `MouseEvent`.
 
 ---
 
