@@ -16,7 +16,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { UNKNOWN_CHAIN, componentChain, fingerprint, getFiber } from 'rastro-core';
 
 declare global {
-  // eslint-disable-next-line no-var
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
 

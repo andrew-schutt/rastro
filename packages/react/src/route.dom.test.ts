@@ -5,6 +5,9 @@
  * The history patch is shared process-wide (there is one `history` per window), so these
  * assert the reference counting as much as the notification.
  */
+/* eslint-disable @typescript-eslint/unbound-method -- comparing unbound `history.pushState`
+   references is the entire subject of this file: that is how "was it patched?" and "was the
+   original restored?" are asserted. The methods are never called off the captured reference. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { historyRouteAdapter } from './route.js';
 
