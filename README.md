@@ -1,5 +1,7 @@
 # Rastro
 
+[![CI](https://github.com/andrew-schutt/rastro/actions/workflows/ci.yml/badge.svg)](https://github.com/andrew-schutt/rastro/actions/workflows/ci.yml)
+
 **See the paths your users actually take — with zero instrumentation.**
 
 Drop one provider into a React app and Rastro reconstructs real user flows from
