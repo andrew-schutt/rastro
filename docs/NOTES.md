@@ -1,7 +1,7 @@
 # NOTES — commit #1 (walking skeleton, step 1)
 
 This is the scaffold in [`PLAN.md`](PLAN.md) §19. It stands up the pnpm monorepo and gets
-**steps 1–4 of §19.4** running end to end:
+**steps 1–5 of §19.4** running end to end:
 
 ```
 demo-app fires an event → otlpExporter → POST /v1/logs → SQLite
@@ -11,8 +11,8 @@ demo-app fires an event → otlpExporter → POST /v1/logs → SQLite
 Capture and identity are both real: clicks, SPA route changes, and the form submit/abandon
 pair are picked up with zero instrumentation, and each carries a stable composite fingerprint
 derived from the React component ancestry — `App>Nav|button:button|"/users/42/settings"`.
-The session timeline (§13.1) renders one session on a real time axis. No graph building, no
-friction, no AI.
+The session timeline (§13.1) renders one session on a real time axis, and the flow graph
+aggregates every session into the paths users actually take. No friction layer, no AI.
 
 ---
 
@@ -51,7 +51,10 @@ collapse every field inside into the form's identity.
 
 The nav routes include `/users/42/settings`, so tokenization is visible in the table as
 `/users/:id/settings`. Open **http://localhost:5173**; events appear within ~2s (it polls).
-Click a `session.id` in the table to open that session's timeline: every step on a time axis
+The **Flow** view is the aggregate: nodes are elements, edges are transitions labelled
+`sessions × median dwell`, thickness scales with sessions, and an edge turns amber when it
+leaves a node where at least half of sessions ended. The **Events** view is the raw table —
+click a `session.id` there to open that session's timeline: every step on a time axis
 built from cumulative `ux.active_ms`, with the connector height proportional to the dwell — so
 a long hesitation is literally the tallest gap on the page. That is §13.1's "replay-lite", and
 it is the point of building this view before the flow graph.
@@ -69,7 +72,7 @@ the browser console.
 | `POST /v1/logs` | **implemented** — OTLP logs in, `observedTimeUnixNano` assigned, insert |
 | `GET /projects/:app/sessions/:id` | **implemented** — §13.1, via `sessionize` |
 | `GET /projects/:app/events` | **implemented** — not in §19.1; step 1's table needs it |
-| `GET /projects/:app/graph` | **501** until `buildGraph` lands (§19.4 step 5) |
+| `GET /projects/:app/graph` | **implemented** — sessionize → buildGraph. `?minEdgeCount=` prunes rare transitions (§8) |
 | `GET /health` | implemented |
 
 The SQLite file is `apps/collector/rastro.sqlite` (override with `RASTRO_DB`; `:memory:`
@@ -88,8 +91,10 @@ works). Delete it to start clean.
   make MUST-level: `tokenizePath` (`/users/42/settings` → `/users/:id/settings`, query
   strings and fragments dropped) and `redact` for free text. `buildEvent` is the single
   choke point that applies them, so no emit path can skip redaction by forgetting to.
-- **`rastro-analysis/sessionize.ts`** — group by `session.id`, order by `ux.seq`. The only real
-  analysis in this commit, and the only one with real tests.
+- **`rastro-analysis/sessionize.ts`** — group by `session.id`, order by `ux.seq`.
+- **`rastro-analysis/graph.ts`** — `buildGraph`: node hits, per-session transition counts,
+  median dwell per edge, and drop-off rate. Pure, order-independent, and the only place any
+  aggregate number is computed.
 - **`rastro-react`** — provider, `useTelemetry().track()`, batching + flush lifecycle, and the
   three exporters (`otlp`, `console`, `multi`). `track()` props become attributes with string
   values redacted and reserved-namespace keys (`session.`, `url.`, `service.`, `ux.`)
@@ -110,6 +115,10 @@ works). Delete it to start clean.
   without re-collecting. The Opt-In attributes `ux.component_chain`, `ux.role`, and
   `ux.accessible_name` are emitted only when switched on via the provider's `optIn` prop.
 - **`collector`** — OTLP decode, SQLite `EventStore`, the session endpoint.
+- **`dashboard/FlowGraph.tsx`** — the flow graph in React Flow, over a hand-rolled layered
+  layout (`layout.ts`). Vertical, because a user flow's long dimension is its step count and a
+  browser window is wide but short — laid out horizontally the demo's ten-step flow shrank to
+  an unreadable smear.
 - **`dashboard`** — the plain events table (§19.4 step 1) and the real `SessionTimeline`
   (§13.1): steps on a cumulative-`ux.active_ms` axis, colour-coded by event kind, route
   changes highlighted where context moves, and `ux.interaction.method` per step. Its
@@ -121,14 +130,12 @@ works). Delete it to start clean.
 |---|---|
 | `core/redact.ts` | Text redaction and path tokenization are **real**. Still missing the per-attribute allow/deny model, which is what would catch numeric PII like `{ userId: 84213 }`. |
 | `session.start` / `session.end` | Defined in the conventions, not emitted. Neither is needed by any analysis today, and `session.end` is unanswerable without the §4.5 idle rule. |
-| `analysis/graph.ts` | `buildGraph` throws. Test file carries `it.todo` cases. |
 | `analysis/friction.ts` | `detectFriction` throws. §19.4 step 6 says pick exactly one signal. |
-| `dashboard/FlowGraph.tsx` | Does not exist. React Flow is installed but unused — step 5. |
 | `Interpreter` seam | Interface only, default `none`. The analytics must stand alone first (§1, §11). |
 
 ### Tests
 
-`pnpm -r test` → **203 passing, 21 `todo`**.
+`pnpm -r test` → **257 passing, 1 `todo`**.
 
 Coverage sits in two deliberate layers.
 
@@ -157,7 +164,8 @@ and `peerDependencies`). React Testing Library is deliberately not used: React 1
 scaling, duration formatting — separately from the component, so the part that can actually be
 wrong is unit-tested without rendering anything.
 
-The remaining todos in `graph.test.ts` name the cases meant to drive step 5.
+`layout.ts` is likewise separate from `FlowGraph.tsx`, so ranking, cycle handling, and
+collision-freedom are unit-tested without rendering React Flow.
 
 ### Verified end to end
 
@@ -174,6 +182,8 @@ Driven against a real headless Chrome with genuine mouse and keyboard input, on 
 - a driven session rendering on the timeline: a 3.5s pause before navigating, a 6.5s
   hesitation before abandoning the form, then a submit — the tallest gap being the
   hesitation, which is exactly what §13.1 exists to surface
+- four sessions aggregating into an 11-node, 13-edge flow graph, with a 6.5s median on the
+  `SettingsForm input → form` edge and a 0.75 drop-off on the form
 
 The hidden-tab rule in `dwell.ts` is unit-tested rather than driven in the browser — there is
 no CDP command to force `document.visibilityState`. Real pointer events are browser-only too:
@@ -222,6 +232,22 @@ from a route change is not readable — so §19.3's `Step` cannot render the vie
 specifies. Adding them keeps the load-bearing rule intact ("the OTel envelope stops at
 sessionize; downstream works on flat types, not raw records"); the alternative was the
 dashboard reaching back into raw OTel attributes, which breaks it.
+
+**`FlowEdge.count` is sessions, not traversals.** §19.3's field comment says "how many
+sessions made this A→B transition", so a session bouncing A→B→A→B contributes 1. Edge weight
+then answers "how common is this path across users" rather than letting one hammering user
+dominate. `medianMs` still samples every traversal — more samples, better median. The two
+readings are genuinely in tension in §19.3, which also says "walk consecutive step pairs →
+tally edges"; the field comment won because it is the more specific statement.
+
+**`dropoffRate` is a property of `from`, reported on every edge leaving it**, so all of a
+node's outgoing edges carry the same number. That is what §19.3 specifies. It is redundant on
+the wire and arguably belongs on `FlowNode` — worth settling before the shape ossifies.
+
+**`labelFor` parses the fingerprint, which the conventions say consumers SHOULD NOT do.** The
+distinction relied on: nothing it produces feeds a metric or a join. `FlowNode.id` stays the
+whole fingerprint and everything is keyed on that; `labelFor` only decides what text sits
+inside a box, and falls back to the raw fingerprint on anything unfamiliar.
 
 **Three files in `packages/react` are not in §19.1's list**: `dwell.ts`, `forms.ts`, and
 `route.ts`. Capture would otherwise be one 400-line file mixing four concerns, and each of
@@ -298,13 +324,22 @@ Verified: replaying a batch stores nothing new.
   synchronously. A fiber walk inside a passive handler is exactly the jank §4.7 warns about;
   the fix is to take the cheap DOM facts synchronously — `ux.seq` MUST stay in gesture order —
   and defer only the derivation to `requestIdleCallback`.
+- **The graph loads every event into memory.** `GET /projects/:app/graph` caps at 50k events
+  and aggregates in Node. That is the honest ceiling of "store the record as JSON and read it
+  all back", and it is exactly the pressure toward ClickHouse §8 describes — not something to
+  fix with a bigger cap.
+- **Spaghetti-taming is barely started.** `minEdgeCount` prunes rare transitions and nothing
+  else. §8 wants loop collapsing and folding the long tail into an "other" edge rather than
+  deleting it. On the demo's ten nodes it does not matter; on a real app it will.
 - **Dead clicks are dropped, not recorded.** A click resolving to no interactive target is
   ignored. Those are the raw material for §10's dead-click signal, which needs state-change
   observation to tell "clicked nothing" from "clicked something that did nothing".
 
 ## Doc nits
 
-- `README.md` renders a `docs/demo.gif` that does not exist yet. §19.4 step 5 is where it
-  gets recorded — the flow graph is the demo worth capturing, not this table.
+- `README.md` renders a `docs/demo.gif` that does not exist yet. §19.4 step 5 says to record
+  it here, and the view it wants now exists — but a screen capture is a manual step, so the
+  link stays broken until someone records one. Run the demo app, drive a few sessions, and
+  capture the **Flow** view.
 - §19.3's pipeline sketch says transport posts to `POST /events`; §19.4 and §19.6 both say
   `/v1/logs`, which is what is implemented.

@@ -1,7 +1,7 @@
 // apps/dashboard/src/api.ts
 // The collector is the only backend (§19.1), so this is the whole data layer. Requests are
 // same-origin in dev via the Vite proxy in vite.config.ts.
-import type { Session, UxEvent } from 'rastro-core';
+import type { FlowGraph, Session, UxEvent } from 'rastro-core';
 
 export interface EventsResponse {
   app: string;
@@ -34,5 +34,17 @@ export function fetchSession(app: string, sessionId: string): Promise<SessionRes
   );
 }
 
-// TODO(§19.4 step 5): fetchGraph() → FlowGraph, once GET /projects/:app/graph stops
-// answering 501 and FlowGraph.tsx replaces the table.
+export interface GraphResponse {
+  app: string;
+  /** How many sessions and events the graph was aggregated from. */
+  sessions: number;
+  events: number;
+  graph: FlowGraph;
+}
+
+/** The aggregate flow across every stored session (§19.3, §9). */
+export function fetchGraph(app: string, minEdgeCount = 1): Promise<GraphResponse> {
+  return get<GraphResponse>(
+    `/projects/${encodeURIComponent(app)}/graph?minEdgeCount=${minEdgeCount}`,
+  );
+}

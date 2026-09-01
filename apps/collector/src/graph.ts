@@ -1,28 +1,40 @@
 // apps/collector/src/graph.ts
-// GET /projects/:app/graph — load events → analysis (docs/PLAN.md §19.1). STUB.
+// GET /projects/:app/graph — load events → analysis (docs/PLAN.md §19.1).
 //
-// The route exists so the shape of the API is fixed and the dashboard can be written against
-// it; the analysis behind it (`buildGraph`) is walking-skeleton step 5 (§19.4).
+// The whole spine in four lines: load events → sessionize → buildGraph → send. Everything
+// interesting is in the pure analysis layer, which is the point of §19.3's shape.
 import type { FastifyInstance } from 'fastify';
 import type { EventStore } from 'rastro-core';
 import { buildGraph, sessionize } from 'rastro-analysis';
 
-export function registerGraph(app: FastifyInstance, store: EventStore): void {
-  app.get<{ Params: { app: string } }>('/projects/:app/graph', async (request, reply) => {
-    const events = await store.listByApp(request.params.app, 10_000);
-    const sessions = sessionize(events);
+/**
+ * Cap on events loaded per graph request.
+ *
+ * TODO(§8): this is the honest limit of "store the record as JSON and read it all back".
+ * Beyond this the aggregation belongs in the store — which is exactly the pressure toward
+ * ClickHouse that §8 describes, not something to paper over with a bigger number.
+ */
+const MAX_EVENTS = 50_000;
 
-    try {
-      return reply.send(buildGraph(sessions));
-    } catch {
-      // 501, not 500: this is a documented gap, not a failure. The dashboard renders the
-      // events table until step 5 lands.
-      return reply.code(501).send({
-        error:
-          'buildGraph is not implemented yet — walking-skeleton step 5 (docs/PLAN.md §19.4)',
+export function registerGraph(app: FastifyInstance, store: EventStore): void {
+  app.get<{ Params: { app: string }; Querystring: { minEdgeCount?: string } }>(
+    '/projects/:app/graph',
+    async (request, reply) => {
+      const events = await store.listByApp(request.params.app, MAX_EVENTS);
+      const sessions = sessionize(events);
+
+      // §8's spaghetti-taming, exposed so the dashboard can dial it without a redeploy.
+      const minEdgeCount = Number(request.query.minEdgeCount ?? '1');
+      const graph = buildGraph(sessions, {
+        minEdgeCount: Number.isFinite(minEdgeCount) && minEdgeCount > 0 ? minEdgeCount : 1,
+      });
+
+      return reply.send({
+        app: request.params.app,
         sessions: sessions.length,
         events: events.length,
+        graph,
       });
-    }
-  });
+    },
+  );
 }
