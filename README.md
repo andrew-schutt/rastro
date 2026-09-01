@@ -13,9 +13,11 @@ into your existing observability stack *and* into Rastro's UX-behavioral analysi
 > *Development* stability and will change. This is a project built in the open;
 > see [`docs/PLAN.md`](docs/PLAN.md) for the full design and its open questions.
 
-<!-- Replace with a real capture once the Flow Explorer renders. The gif is the -->
-<!-- single most persuasive thing in this README — record it at walking-skeleton step 5. -->
-![Rastro flow graph](docs/demo.gif)
+![Rastro reconstructing a user flow as the demo app is used](docs/demo.gif)
+
+<sub>The Flow Explorer, live. Someone uses the demo app — navigates, starts filling a form,
+hesitates, abandons it, comes back and hammers Save — and the flow, the dwell times, and the
+rage click are reconstructed from behaviour alone. No events were tagged to produce this.</sub>
 
 ---
 

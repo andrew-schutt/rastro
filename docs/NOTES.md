@@ -365,9 +365,8 @@ Verified: replaying a batch stores nothing new.
 
 ## Doc nits
 
-- `README.md` renders a `docs/demo.gif` that does not exist yet. §19.4 step 5 says to record
-  it here, and the view it wants now exists — but a screen capture is a manual step, so the
-  link stays broken until someone records one. Run the demo app, drive a few sessions, and
-  capture the **Flow** view.
+- `docs/demo.gif` is recorded. It is a live capture: the dashboard is screenshotted in one
+  headless browser while the demo app is driven in another, so the graph in it grows from real
+  use rather than being posed. Re-record with `scripts/record-demo.mjs` if the view changes.
 - §19.3's pipeline sketch says transport posts to `POST /events`; §19.4 and §19.6 both say
   `/v1/logs`, which is what is implemented.

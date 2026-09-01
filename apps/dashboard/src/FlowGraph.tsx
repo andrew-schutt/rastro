@@ -4,12 +4,13 @@
 // Thin by design: `FlowGraph` maps almost 1:1 onto React Flow's nodes/edges props, so all
 // this does is translate and style. Every number on screen was computed by `buildGraph`,
 // which is pure and unit-tested; nothing is derived here.
-import { useMemo, type ReactElement } from 'react';
+import { useEffect, useMemo, type ReactElement } from 'react';
 import ReactFlow, {
   Background,
   Controls,
   MarkerType,
   Position,
+  useReactFlow,
   type Edge,
   type Node,
 } from 'reactflow';
@@ -27,6 +28,26 @@ export interface FlowGraphProps {
 
 const DROPOFF_COLOR = '#d1892f';
 const FRICTION_COLOR = '#d0454c';
+
+/**
+ * Re-fit the viewport when the set of nodes changes.
+ *
+ * `fitView` on `<ReactFlow>` only runs at mount. The dashboard polls, so a graph that grows
+ * while you watch it grows straight off the bottom of the viewport — which is exactly what a
+ * live capture of the thing showed. Keyed on the node ids rather than a render count, so
+ * panning around a graph that is not changing is left alone.
+ */
+function FitOnGrowth({ nodeKey }: { nodeKey: string }): null {
+  const { fitView } = useReactFlow();
+
+  useEffect(() => {
+    // A frame's delay: the new nodes must be measured before a fit can include them.
+    const timer = setTimeout(() => fitView({ padding: 0.12, minZoom: 0.7, maxZoom: 1 }), 50);
+    return () => clearTimeout(timer);
+  }, [nodeKey, fitView]);
+
+  return null;
+}
 
 export function FlowGraph({ graph, friction }: FlowGraphProps): ReactElement {
   const { nodes, edges } = useMemo(() => {
@@ -120,6 +141,7 @@ export function FlowGraph({ graph, friction }: FlowGraphProps): ReactElement {
           minZoom={0.15}
           proOptions={{ hideAttribution: true }}
         >
+          <FitOnGrowth nodeKey={nodes.map((node) => node.id).join('|')} />
           <Background gap={20} />
           <Controls showInteractive={false} />
         </ReactFlow>
