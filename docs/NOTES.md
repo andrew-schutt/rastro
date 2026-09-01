@@ -20,8 +20,13 @@ their own without it (§1).
 
 ## Running it
 
-Requires **Node ≥ 22.18** (the collector's dev script runs TypeScript directly via Node's
-native type stripping) and **pnpm**. `corepack enable pnpm` if you don't have it.
+Requires **Node ≥ 22.18** and **pnpm** (`corepack enable pnpm`). Two things set that floor:
+pnpm 11 imports `node:sqlite` and refuses to start below Node 22.13, and the collector's dev
+script runs TypeScript directly via native type stripping, which needs 22.18.
+
+That is the floor for *developing* this repo. The published libraries declare `>=20`, which
+is a claim about consuming them — they are plain compiled ESM and need neither pnpm nor type
+stripping. CI covers 22 and 24.
 
 ```bash
 pnpm install
