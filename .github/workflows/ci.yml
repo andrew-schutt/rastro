@@ -43,4 +43,10 @@ jobs:
       # (their build scripts run `tsc --noEmit` first). better-sqlite3 compiles here.
       - run: pnpm -r build
 
+      # Type-checks the test files, which the build configs exclude so they stay out of dist.
+      # Vitest transpiles without checking, so this is the only thing that reads them — a
+      # fixture that stops matching the UxEvent contract fails here or nowhere. Runs after
+      # build because cross-package types resolve through each package's emitted dist.
+      - run: pnpm -r typecheck
+
       - run: pnpm -r test
