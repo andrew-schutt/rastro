@@ -218,6 +218,8 @@ So v1's known failure modes, stated plainly: **i18n and copy edits cause false s
 
 The industry fix for "minification kills names" and "semantics without runtime friction" is a **Babel/SWC plugin** that injects `displayName` and source location `(file:line)` at build time. This is the actual way to get `<Action>`-level meaning *and* stable identity without asking developers to wrap every element by hand. The original reached straight for runtime wrappers (§7 of the source) and skipped the build-time layer that makes the whole semantic story tractable.
 
+**A second reason, added later:** source location is also a **rename-proof anchor**, which the runtime fiber walk can never be. A component rename changes `fn.name` but does not move the file — so `src/settings/ProfileForm.tsx` survives exactly the refactor that mints a new fingerprint at runtime. This is the fallback if drift turns out not to be reliably detectable after the fact; see [`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md). So §4.3 earns its place twice over: minification is the reason it is *needed*, and identity stability across refactors is a second, independent payoff.
+
 **❓ Unknown:** SWC (Next's default) vs Babel plugin authoring effort and maintenance burden across toolchains (Vite, CRA-legacy, Next, Remix). Non-trivial and toolchain-fragmented.
 
 ### 4.4 Delivery reliability — where your best signals die
