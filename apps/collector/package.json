@@ -8,7 +8,7 @@
   "main": "./dist/server.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.test.json",
     "dev": "node --watch src/server.ts",
     "start": "node dist/server.js",
     "test": "vitest run --passWithNoTests"

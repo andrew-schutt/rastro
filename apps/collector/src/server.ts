@@ -44,7 +44,7 @@ export function buildServer({ store, logger = true }: BuildServerOptions): Fasti
   });
   app.options('/*', async (_request, reply) => reply.code(204).send());
 
-  app.get('/health', async () => ({ ok: true }));
+  app.get('/health', () => ({ ok: true }));
 
   registerIngest(app, store);
   registerSession(app, store);

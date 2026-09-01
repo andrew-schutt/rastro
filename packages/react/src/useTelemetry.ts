@@ -20,9 +20,9 @@ export interface Telemetry {
    * String props are redacted and reserved-namespace keys are dropped (§4.9). Numeric props
    * pass through untouched — see `sanitizeProps` for why, and for what that does not cover.
    */
-  track(name: string, props?: TrackProps): void;
+  track: (name: string, props?: TrackProps) => void;
   /** Force a flush. Useful right before a deliberate navigation. */
-  flush(): Promise<void>;
+  flush: () => Promise<void>;
   /** The current `session.id` — the handle for GET /projects/:app/sessions/:id (§13.1). */
   sessionId: string;
 }

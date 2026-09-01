@@ -45,6 +45,10 @@ export function App(): ReactElement {
   }, [app]);
 
   useEffect(() => {
+    // `load` is async, so every setState in it runs in a promise callback, not synchronously
+    // in the effect body — which is the "subscribe to an external system" shape the rule's own
+    // guidance blesses. The rule cannot see through the await.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
     // Poll rather than push: no websocket, no state to keep in sync, and a click in the demo
     // app shows up here within a couple of seconds without a reload.

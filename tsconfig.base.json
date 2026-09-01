@@ -14,6 +14,18 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
 
+    // Dead code and unreachable branches are errors, not warnings, so they cannot accumulate.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+
+    // apps/collector's dev script runs `node --watch src/server.ts` on native type stripping,
+    // which cannot erase enums, namespaces, or constructor parameter properties. This makes
+    // writing one a compile error rather than a dev-script-only runtime failure.
+    "erasableSyntaxOnly": true,
+
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

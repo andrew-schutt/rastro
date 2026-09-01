@@ -11,6 +11,10 @@
 // all optional, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
 // this is a superset — nothing that conformed to §19.2 stops conforming.
 export interface UxEvent {
+  // The literals are absorbed by `string` for the type checker, which is the point: they
+  // document the built-in events and drive editor autocomplete while `track()` keeps the
+  // union open to app-defined names. §19.2 declares it exactly this way.
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   eventName: 'ux.click' | 'ux.route_change' | 'ux.form_submit' | string; // custom via track()
   timeUnixNano: string;          // client time — reference only
   observedTimeUnixNano?: string; // assigned at the collector — authoritative order (§4.5)

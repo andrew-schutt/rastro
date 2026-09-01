@@ -114,10 +114,54 @@ Tests sit in two deliberate layers, and new code should land in the right one:
 A test that does not fail when you mutate the source it covers is not earning its place.
 Check.
 
+## Static analysis
+
+Three layers, all of which CI fails on. Run them together before pushing:
+
+```bash
+pnpm -r build && pnpm -r typecheck && pnpm lint && pnpm -r test
+```
+
+**The TypeScript compiler is the first layer and does most of the work.**
+`tsconfig.base.json` runs `strict` plus `noUncheckedIndexedAccess`,
+`exactOptionalPropertyTypes`, `noImplicitReturns`, `noUnused*`, and `erasableSyntaxOnly` —
+that last one because `apps/collector`'s dev script runs TypeScript through Node's native type
+stripping, which cannot erase an enum or a constructor parameter property. Writing one should
+be a compile error, not a dev-script-only runtime failure.
+
+`pnpm -r typecheck` reads `tsconfig.test.json`, which covers source *and* tests. The build
+configs exclude tests so they stay out of `dist`, and Vitest transpiles without checking, so
+this is the only thing that type-checks the suites.
+
+**ESLint is the second layer, and it is the stock recommended sets — nothing bespoke.**
+`js.configs.recommended`, `typescript-eslint`'s `recommendedTypeChecked`, and
+`react-hooks`. The value is in the type-aware rules the compiler cannot express — floating
+promises, misused promises, unbound methods — and in `react-hooks/exhaustive-deps`, raised to
+an error because a warning nobody fails on is a warning nobody reads.
+
+**Formatting is not linted.** There is no Prettier, deliberately: adopting one means a
+single reformat commit across every file, and `git blame` is load-bearing here — the commit
+convention exists so blame answers *why*. Match the surrounding style by hand.
+
+### Suppressions
+
+`--max-warnings=0`, so an unused `eslint-disable` fails the build. A stale suppression is
+worse than none, because it reads as a live decision that no longer applies.
+
+**Every suppression carries a reason on the line above it**, and the bar is that the rule is
+wrong here, not that the fix is inconvenient. The four in the tree are the reference:
+`no-redundant-type-constituents` on `UxEvent.eventName` (the literals are documentation and
+autocomplete; `track()` keeps the union open), `unbound-method` in `route.ts` and
+`route.dom.test.ts` (capturing the unbound method *is* the history patch), and
+`set-state-in-effect` in the dashboard (the rule cannot see through an `await`). Prefer fixing
+the type — `Telemetry`'s methods became function properties rather than being suppressed,
+which is both what the rule asked for and the stricter declaration.
+
 ## Dependencies
 
 The stack is fixed: pnpm workspaces · TypeScript strict + ESM · Fastify collector ·
-better-sqlite3 behind the `EventStore` interface · Vite + React + React Flow · Vitest + jsdom.
+better-sqlite3 behind the `EventStore` interface · Vite + React + React Flow · Vitest + jsdom ·
+ESLint with typescript-eslint.
 
 Adding to it is a decision to be raised in an issue first, not an implementation detail to be
 discovered in a diff. `DESIGN.md` §19 is explicit that ClickHouse, AI, and auth each have a

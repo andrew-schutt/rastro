@@ -31,6 +31,9 @@ function install(): void {
 
   originals = new Map();
   for (const method of PATCHED_METHODS) {
+    // Capturing the unbound method IS the patch; it is re-bound below via
+    // `original.apply(this, args)`, which supplies the receiver the rule warns about.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     const original = history[method];
     originals.set(method, original);
 

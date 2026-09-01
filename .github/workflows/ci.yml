@@ -43,4 +43,15 @@ jobs:
       # (their build scripts run `tsc --noEmit` first). better-sqlite3 compiles here.
       - run: pnpm -r build
 
+      # Type-checks the test files, which the build configs exclude so they stay out of dist.
+      # Vitest transpiles without checking, so this is the only thing that reads them — a
+      # fixture that stops matching the UxEvent contract fails here or nowhere. Runs after
+      # build because cross-package types resolve through each package's emitted dist.
+      - run: pnpm -r typecheck
+
+      # Type-aware linting, so it needs the emitted dist too. --max-warnings=0 makes an
+      # unused eslint-disable directive a failure: a stale suppression is worse than none,
+      # because it reads as a live decision that no longer applies.
+      - run: pnpm lint
+
       - run: pnpm -r test
