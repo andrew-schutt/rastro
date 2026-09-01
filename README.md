@@ -151,4 +151,4 @@ examples/demo-app    a React app to dogfood on
 
 ## License
 
-[MIT](LICENSE) © 2026 &lt;copyright holder&gt; — replace the placeholder in `LICENSE` with your name or handle.
+[MIT](LICENSE) © 2026 Andrew Schutt
