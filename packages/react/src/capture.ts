@@ -1,5 +1,5 @@
 // packages/react/src/capture.ts
-// Delegated root capture (docs/PLAN.md §4.1) — walking-skeleton step 2 (§19.4).
+// Delegated root capture (docs/DESIGN.md §4.1) — walking-skeleton step 2 (§19.4).
 //
 // One listener per event type at the document root, in the capture phase, passive. This
 // emits the four interaction events the conventions define — ux.click, ux.route_change,

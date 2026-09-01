@@ -1,6 +1,6 @@
 # NOTES — commit #1 (walking skeleton, step 1)
 
-This is the scaffold in [`PLAN.md`](PLAN.md) §19. It stands up the pnpm monorepo and gets
+This is the scaffold in [`DESIGN.md`](DESIGN.md) §19. It stands up the pnpm monorepo and gets
 **all six steps of §19.4** running end to end:
 
 ```

@@ -1,5 +1,5 @@
 // packages/analysis/src/sessionize.ts
-// UxEvent[] → Session[] (docs/PLAN.md §19.3, §4.5). IMPLEMENTED.
+// UxEvent[] → Session[] (docs/DESIGN.md §19.3, §4.5). IMPLEMENTED.
 //
 // The OTel envelope stops here: downstream analysis works on the flat Step/Session types,
 // never on raw records.

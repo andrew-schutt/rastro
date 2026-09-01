@@ -56,7 +56,7 @@ into a single identity — quietly, with no error, corrupting every count downst
 
 **Until the build-time plugin ships, this is reliable in development and not in a minified
 production build.** That is a real constraint, not a caveat to skim; see
-[§4.2.1 and §4.3 of the plan](https://github.com/andrew-schutt/rastro/blob/main/docs/PLAN.md).
+[§4.2.1 and §4.3 of the plan](https://github.com/andrew-schutt/rastro/blob/main/docs/DESIGN.md).
 
 ## What it emits
 

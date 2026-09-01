@@ -1,5 +1,5 @@
 // packages/core/src/redact.ts
-// PII redaction and URL tokenization (docs/PLAN.md §4.9).
+// PII redaction and URL tokenization (docs/DESIGN.md §4.9).
 //
 // The conventions make both of these MUST-level requirements, not nice-to-haves:
 //   - `url.path` MUST be tokenized before emit — no ids, emails, or tokens in the path.

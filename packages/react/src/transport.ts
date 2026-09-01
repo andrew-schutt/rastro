@@ -1,5 +1,5 @@
 // packages/react/src/transport.ts
-// Batching + the flush lifecycle (docs/PLAN.md §4.4, §19.6).
+// Batching + the flush lifecycle (docs/DESIGN.md §4.4, §19.6).
 //
 // This sits ABOVE the Exporter seam, generic and shared: the exporter only answers "deliver
 // this batch, and in whose shape", so swapping destinations never re-opens delivery

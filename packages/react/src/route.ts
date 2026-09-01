@@ -1,5 +1,5 @@
 // packages/react/src/route.ts
-// Route detection (docs/PLAN.md §4.6) — the default `RouteAdapter` implementation.
+// Route detection (docs/DESIGN.md §4.6) — the default `RouteAdapter` implementation.
 //
 // §4.6 is blunt that this is per-router integration work, not one function: React Router v5
 // vs v6, TanStack, Next Pages, Next App Router all detect navigation differently. The

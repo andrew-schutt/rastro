@@ -1,5 +1,5 @@
 // packages/core/src/seams.ts
-// Every deliberate swap point (docs/PLAN.md §19.5).
+// Every deliberate swap point (docs/DESIGN.md §19.5).
 //
 // The rule: depend on a small interface at any boundary where a reasonable person would want
 // a different implementation. Defining the interface is the whole win — the alternate

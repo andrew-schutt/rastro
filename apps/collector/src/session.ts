@@ -1,5 +1,5 @@
 // apps/collector/src/session.ts
-// GET /projects/:app/sessions/:id — one session's events (docs/PLAN.md §13.1).
+// GET /projects/:app/sessions/:id — one session's events (docs/DESIGN.md §13.1).
 //
 // The easiest real view, and a high-value early one: no cross-session aggregation, no mining,
 // no spaghetti-taming. Just one session's events sorted by `ux.seq`. It reuses `sessionize`

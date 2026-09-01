@@ -1,7 +1,7 @@
 // packages/core/src/events.ts
 // What the SDK emits, shaped as an OTel LogRecord (Event). One interaction = one record.
 //
-// This file is the keystone (docs/PLAN.md §19.2). The `ux.*` attribute names ARE the semantic
+// This file is the keystone (docs/DESIGN.md §19.2). The `ux.*` attribute names ARE the semantic
 // convention — docs/SEMANTIC-CONVENTIONS.md is the contract, and this type must stay in
 // lockstep with it. Renaming anything here ripples through the SDK, the collector, and
 // every analysis query.

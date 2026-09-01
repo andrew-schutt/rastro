@@ -1,5 +1,5 @@
 // packages/core/src/fingerprint.ts
-// Stable element identity (docs/PLAN.md §4.2.1) — the interesting code, and the project's
+// Stable element identity (docs/DESIGN.md §4.2.1) — the interesting code, and the project's
 // existence condition. If this is wrong, every number the tool ever produces is noise (§4.2).
 //
 // Deliberately good enough, not perfect: stable across sessions and small refactors, readable

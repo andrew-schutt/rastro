@@ -13,7 +13,7 @@ into your existing observability stack *and* into Rastro's UX-behavioral analysi
 
 > ⚠️ **Status: pre-alpha.** APIs, wire shapes, and the `ux.*` conventions are at
 > *Development* stability and will change. This is a project built in the open;
-> see [`docs/PLAN.md`](docs/PLAN.md) for the full design and its open questions.
+> see [`docs/DESIGN.md`](docs/DESIGN.md) for the full design and its open questions.
 
 ![Rastro reconstructing a user flow as the demo app is used](docs/demo.gif)
 
@@ -95,7 +95,7 @@ click → capture (stable fingerprint) → OTel Event → OTLP → collector →
   > ⚠️ **Fingerprints need unminified component names.** Identity is anchored on the
   > React component chain, and a production build renames `SaveButton` to `t` — so
   > unrelated elements collapse into one identity, quietly, with no error. Until the
-  > build-time plugin ships ([`docs/PLAN.md`](docs/PLAN.md) §4.3), v1 is reliable in
+  > build-time plugin ships ([`docs/DESIGN.md`](docs/DESIGN.md) §4.3), v1 is reliable in
   > development and on the example app, and **not** in a minified production build.
 - **OpenTelemetry-native.** Interactions are OTel *Events* (log records), grouped by
   the standard `session.id`. UX meaning rides in a small `ux.*` attribute namespace —
@@ -147,7 +147,7 @@ examples/demo-app    a React app to dogfood on
 
 ## Documentation
 
-- [`docs/PLAN.md`](docs/PLAN.md) — full design, tradeoffs, and open unknowns
+- [`docs/DESIGN.md`](docs/DESIGN.md) — full design, tradeoffs, and open unknowns
 - [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md) — the `ux.*` spec you instrument against
 - [`docs/NOTES.md`](docs/NOTES.md) — how to run this repo, and what is implemented vs. stubbed
 
