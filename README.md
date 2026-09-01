@@ -151,6 +151,7 @@ examples/demo-app    a React app to dogfood on
 - [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md) — the `ux.*` spec you instrument against
 - [`docs/NOTES.md`](docs/NOTES.md) — how to run this repo, and what is implemented vs. stubbed
 - [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) — the next body of work: closing the two de-risking gates
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — commit, branch, and merge conventions, and what counts as verified
 
 ## License
 
