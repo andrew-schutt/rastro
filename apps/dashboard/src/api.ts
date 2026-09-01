@@ -2,6 +2,7 @@
 // The collector is the only backend (§19.1), so this is the whole data layer. Requests are
 // same-origin in dev via the Vite proxy in vite.config.ts.
 import type { FlowGraph, Session, UxEvent } from 'rastro-core';
+import type { FrictionByNode, FrictionSignal } from 'rastro-analysis';
 
 export interface EventsResponse {
   app: string;
@@ -40,6 +41,10 @@ export interface GraphResponse {
   sessions: number;
   events: number;
   graph: FlowGraph;
+  /** §10 signals rolled up per element, ranked by sessions affected. */
+  friction: FrictionByNode[];
+  /** The individual occurrences behind the roll-up. */
+  signals: FrictionSignal[];
 }
 
 /** The aggregate flow across every stored session (§19.3, §9). */

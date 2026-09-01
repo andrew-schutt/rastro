@@ -13,11 +13,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "rastro-analysis": "workspace:*",
+    "rastro-core": "workspace:*",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "reactflow": "^11.11.4",
-    "rastro-analysis": "workspace:*",
-    "rastro-core": "workspace:*"
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
     "@types/react": "^19.1.9",

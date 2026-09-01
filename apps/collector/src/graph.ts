@@ -5,7 +5,7 @@
 // interesting is in the pure analysis layer, which is the point of §19.3's shape.
 import type { FastifyInstance } from 'fastify';
 import type { EventStore } from 'rastro-core';
-import { buildGraph, sessionize } from 'rastro-analysis';
+import { buildGraph, detectFriction, frictionByNode, sessionize } from 'rastro-analysis';
 
 /**
  * Cap on events loaded per graph request.
@@ -29,11 +29,17 @@ export function registerGraph(app: FastifyInstance, store: EventStore): void {
         minEdgeCount: Number.isFinite(minEdgeCount) && minEdgeCount > 0 ? minEdgeCount : 1,
       });
 
+      // §10's signals ride with the graph rather than on their own endpoint: they are node
+      // annotations, and a second round trip would let the two drift out of sync on screen.
+      const signals = detectFriction(sessions);
+
       return reply.send({
         app: request.params.app,
         sessions: sessions.length,
         events: events.length,
         graph,
+        friction: frictionByNode(signals),
+        signals,
       });
     },
   );

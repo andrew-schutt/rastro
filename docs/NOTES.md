@@ -1,7 +1,7 @@
 # NOTES — commit #1 (walking skeleton, step 1)
 
 This is the scaffold in [`PLAN.md`](PLAN.md) §19. It stands up the pnpm monorepo and gets
-**steps 1–5 of §19.4** running end to end:
+**all six steps of §19.4** running end to end:
 
 ```
 demo-app fires an event → otlpExporter → POST /v1/logs → SQLite
@@ -11,8 +11,10 @@ demo-app fires an event → otlpExporter → POST /v1/logs → SQLite
 Capture and identity are both real: clicks, SPA route changes, and the form submit/abandon
 pair are picked up with zero instrumentation, and each carries a stable composite fingerprint
 derived from the React component ancestry — `App>Nav|button:button|"/users/42/settings"`.
-The session timeline (§13.1) renders one session on a real time axis, and the flow graph
-aggregates every session into the paths users actually take. No friction layer, no AI.
+The session timeline (§13.1) renders one session on a real time axis, the flow graph
+aggregates every session into the paths users actually take, and the friction layer (§10)
+flags rage clicks and high-abandonment nodes. No AI — and by design the analytics stand on
+their own without it (§1).
 
 ---
 
@@ -53,7 +55,9 @@ The nav routes include `/users/42/settings`, so tokenization is visible in the t
 `/users/:id/settings`. Open **http://localhost:5173**; events appear within ~2s (it polls).
 The **Flow** view is the aggregate: nodes are elements, edges are transitions labelled
 `sessions × median dwell`, thickness scales with sessions, and an edge turns amber when it
-leaves a node where at least half of sessions ended. The **Events** view is the raw table —
+leaves a node where at least half of sessions ended, and a red outline with a count marks a
+node the friction layer flagged. A ranked friction list sits below the graph. The **Events**
+view is the raw table —
 click a `session.id` there to open that session's timeline: every step on a time axis
 built from cumulative `ux.active_ms`, with the connector height proportional to the dwell — so
 a long hesitation is literally the tallest gap on the page. That is §13.1's "replay-lite", and
@@ -72,7 +76,7 @@ the browser console.
 | `POST /v1/logs` | **implemented** — OTLP logs in, `observedTimeUnixNano` assigned, insert |
 | `GET /projects/:app/sessions/:id` | **implemented** — §13.1, via `sessionize` |
 | `GET /projects/:app/events` | **implemented** — not in §19.1; step 1's table needs it |
-| `GET /projects/:app/graph` | **implemented** — sessionize → buildGraph. `?minEdgeCount=` prunes rare transitions (§8) |
+| `GET /projects/:app/graph` | **implemented** — sessionize → buildGraph → detectFriction. `?minEdgeCount=` prunes rare transitions (§8) |
 | `GET /health` | implemented |
 
 The SQLite file is `apps/collector/rastro.sqlite` (override with `RASTRO_DB`; `:memory:`
@@ -95,6 +99,8 @@ works). Delete it to start clean.
 - **`rastro-analysis/graph.ts`** — `buildGraph`: node hits, per-session transition counts,
   median dwell per edge, and drop-off rate. Pure, order-independent, and the only place any
   aggregate number is computed.
+- **`rastro-analysis/friction.ts`** — `detectFriction`: rage clicks and high abandonment,
+  ranked, plus `frictionByNode` to roll them up per element.
 - **`rastro-react`** — provider, `useTelemetry().track()`, batching + flush lifecycle, and the
   three exporters (`otlp`, `console`, `multi`). `track()` props become attributes with string
   values redacted and reserved-namespace keys (`session.`, `url.`, `service.`, `ux.`)
@@ -130,12 +136,11 @@ works). Delete it to start clean.
 |---|---|
 | `core/redact.ts` | Text redaction and path tokenization are **real**. Still missing the per-attribute allow/deny model, which is what would catch numeric PII like `{ userId: 84213 }`. |
 | `session.start` / `session.end` | Defined in the conventions, not emitted. Neither is needed by any analysis today, and `session.end` is unanswerable without the §4.5 idle rule. |
-| `analysis/friction.ts` | `detectFriction` throws. §19.4 step 6 says pick exactly one signal. |
 | `Interpreter` seam | Interface only, default `none`. The analytics must stand alone first (§1, §11). |
 
 ### Tests
 
-`pnpm -r test` → **257 passing, 1 `todo`**.
+`pnpm -r test` → **284 passing, 1 `todo`**.
 
 Coverage sits in two deliberate layers.
 
@@ -182,8 +187,11 @@ Driven against a real headless Chrome with genuine mouse and keyboard input, on 
 - a driven session rendering on the timeline: a 3.5s pause before navigating, a 6.5s
   hesitation before abandoning the form, then a submit — the tallest gap being the
   hesitation, which is exactly what §13.1 exists to surface
-- four sessions aggregating into an 11-node, 13-edge flow graph, with a 6.5s median on the
+- four sessions aggregating into an 11-node flow graph, with a 6.5s median on the
   `SettingsForm input → form` edge and a 0.75 drop-off on the form
+- three frustrated sessions producing `rage_click` on `id:save-profile` (max 5 clicks) and
+  `high_abandonment` on `App>SettingsForm|form` (4 sessions, 100%), ranked in that order by
+  sessions affected
 
 The hidden-tab rule in `dwell.ts` is unit-tested rather than driven in the browser — there is
 no CDP command to force `document.visibilityState`. Real pointer events are browser-only too:
@@ -248,6 +256,20 @@ the wire and arguably belongs on `FlowNode` — worth settling before the shape 
 distinction relied on: nothing it produces feeds a metric or a join. `FlowNode.id` stays the
 whole fingerprint and everything is keyed on that; `labelFor` only decides what text sits
 inside a box, and falls back to the raw fingerprint on anything unfamiliar.
+
+**Two friction signals, where §19.4 step 6 says exactly one.** A deliberate call, not an
+oversight. §10's own advice is to under-invest in inventing signals and over-invest in
+*ranking* them (§11) — and ranking is undefined with a single kind. Two forced the real
+question: `magnitude` is kind-specific (clicks vs. drop-off percentage) and must never be
+compared across kinds, so `frictionByNode` ranks on sessions affected, the one number that
+means the same thing for both. The cost is that `high_abandonment` partly restates what the
+flow graph already showed, and that it is inherently an aggregate signal squeezed into a
+per-session shape. If the friction list ever needs trimming, that is the one to cut.
+
+**Rage detection sees through derived events.** Only a route change breaks a run. Clicking a
+submit button emits `ux.click` *and* `ux.form_submit`, so treating every non-click as a break
+made rage clicking a submit button — the likeliest place for it — undetectable. Found by
+driving it in a real browser, not by a unit test.
 
 **Three files in `packages/react` are not in §19.1's list**: `dwell.ts`, `forms.ts`, and
 `route.ts`. Capture would otherwise be one 400-line file mixing four concerns, and each of
@@ -328,6 +350,12 @@ Verified: replaying a batch stores nothing new.
   and aggregates in Node. That is the honest ceiling of "store the record as JSON and read it
   all back", and it is exactly the pressure toward ClickHouse §8 describes — not something to
   fix with a bigger cap.
+- **Friction is evidence, never a diagnosis (§12).** A rage click is as easily a slow network
+  or an unresponsive handler as a confusing control; an exit point may be where the task
+  legitimately finishes. The UI says so; any future AI layer must too.
+- **Ranking is half-built.** §11 wants `Impact × Confidence × Frequency`; this has Frequency
+  only. Confidence in particular is theatre until it is calibrated against a measured
+  outcome, which is why no number pretends to it.
 - **Spaghetti-taming is barely started.** `minEdgeCount` prunes rare transitions and nothing
   else. §8 wants loop collapsing and folding the long tail into an "other" edge rather than
   deleting it. On the demo's ten nodes it does not matter; on a real app it will.

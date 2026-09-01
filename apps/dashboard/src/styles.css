@@ -84,6 +84,17 @@ input {
   white-space: nowrap;
 }
 
+.node-friction {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  background: #d0454c;
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  flex: none;
+}
+
 .node-hits {
   font-variant-numeric: tabular-nums;
   opacity: 0.55;
@@ -274,4 +285,48 @@ th {
   font-size: 0.75rem;
   opacity: 0.45;
   width: 4.5rem;
+}
+
+.friction {
+  margin-top: 1.5rem;
+}
+
+.friction h2 {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+}
+
+.friction ol {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
+
+.friction li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  font-size: 0.85rem;
+}
+
+.friction-kind {
+  color: #d0454c;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  width: 13rem;
+  flex: none;
+}
+
+.friction-detail {
+  margin-left: auto;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.friction .note {
+  font-size: 0.8rem;
+  max-width: 46rem;
 }

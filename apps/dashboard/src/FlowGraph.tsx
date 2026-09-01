@@ -15,24 +15,39 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import type { FlowGraph as FlowGraphData } from 'rastro-core';
+import { DEFAULT_MIN_DROPOFF_RATE, labelFor, type FrictionByNode } from 'rastro-analysis';
 import { NODE_HEIGHT, NODE_WIDTH, edgeWidth, layoutGraph } from './layout.js';
 import { formatMs } from './timeline.js';
 
 export interface FlowGraphProps {
   graph: FlowGraphData;
+  /** §10 signals, rolled up per element and ranked. */
+  friction: FrictionByNode[];
 }
 
-/** Drop-off high enough to be worth seeing on the graph rather than hunting for. */
-const HIGH_DROPOFF = 0.5;
 const DROPOFF_COLOR = '#d1892f';
+const FRICTION_COLOR = '#d0454c';
 
-export function FlowGraph({ graph }: FlowGraphProps): ReactElement {
+export function FlowGraph({ graph, friction }: FlowGraphProps): ReactElement {
   const { nodes, edges } = useMemo(() => {
     const positioned = layoutGraph(graph);
+    const frictionByFingerprint = new Map(friction.map((entry) => [entry.fingerprint, entry]));
+    // An edge is amber when it LEAVES a node the friction layer flagged as high-abandonment —
+    // not when its own dropoffRate clears a threshold written here. Same source, so the graph
+    // and the list below it cannot disagree, and the edge inherits detectFriction's evidence
+    // floor: previously a single session ending anywhere lit an edge up.
+    const abandoned = new Set(
+      friction
+        .filter((entry) => entry.kinds.includes('high_abandonment'))
+        .map((entry) => entry.fingerprint),
+    );
     const maxCount = graph.edges.reduce((max, edge) => Math.max(max, edge.count), 0);
     const maxHits = graph.nodes.reduce((max, node) => Math.max(max, node.hits), 0);
 
-    const flowNodes: Node[] = positioned.map(({ node, x, y }) => ({
+    const flowNodes: Node[] = positioned.map(({ node, x, y }) => {
+      const signals = frictionByFingerprint.get(node.id);
+
+      return {
       id: node.id,
       position: { x, y },
       // The full fingerprint is the title, since the label is a display-only shortening.
@@ -40,6 +55,14 @@ export function FlowGraph({ graph }: FlowGraphProps): ReactElement {
         label: (
           <div className="node" title={node.id}>
             <span className="node-label">{node.label}</span>
+            {signals !== undefined && (
+              <span
+                className="node-friction"
+                title={`${signals.kinds.join(', ')} — ${signals.sessions} session(s)`}
+              >
+                {signals.sessions}
+              </span>
+            )}
             <span className="node-hits">{node.hits}</span>
           </div>
         ),
@@ -49,13 +72,15 @@ export function FlowGraph({ graph }: FlowGraphProps): ReactElement {
         height: NODE_HEIGHT,
         // Busier nodes read as heavier, so the main path is visible before reading anything.
         opacity: maxHits === 0 ? 1 : 0.55 + 0.45 * (node.hits / maxHits),
+        ...(signals === undefined ? {} : { borderColor: FRICTION_COLOR, borderWidth: 2 }),
       },
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,
-    }));
+      };
+    });
 
     const flowEdges: Edge[] = graph.edges.map((edge) => {
-      const heavyDropoff = edge.dropoffRate >= HIGH_DROPOFF;
+      const heavyDropoff = abandoned.has(edge.from);
 
       return {
         id: `${edge.from}->${edge.to}`,
@@ -75,7 +100,7 @@ export function FlowGraph({ graph }: FlowGraphProps): ReactElement {
     });
 
     return { nodes: flowNodes, edges: flowEdges };
-  }, [graph]);
+  }, [graph, friction]);
 
   if (graph.nodes.length === 0) {
     return <p className="note">No flow yet — interact with the demo app and it will appear.</p>;
@@ -102,9 +127,37 @@ export function FlowGraph({ graph }: FlowGraphProps): ReactElement {
 
       <p className="legend">
         Edge label is <strong>sessions × median dwell</strong>; thickness scales with sessions.
-        An amber edge leaves a node where at least {Math.round(HIGH_DROPOFF * 100)}% of sessions
-        ended.
+        An amber edge leaves a node where at least{' '}
+        {Math.round(DEFAULT_MIN_DROPOFF_RATE * 100)}% of sessions ended. A red outline marks
+        friction (§10), with the count of sessions affected.
       </p>
+
+      {friction.length > 0 && (
+        <section className="friction">
+          <h2>Friction</h2>
+          {/* §11: rank, and surface only the top few. 47 signals a week and nobody reads any. */}
+          <ol>
+            {friction.slice(0, 5).map((entry) => (
+              <li key={entry.fingerprint}>
+                <span className="friction-kind">{entry.kinds.join(' + ')}</span>
+                <code title={entry.fingerprint}>{labelFor(entry.fingerprint)}</code>
+                <span className="friction-detail">
+                  {entry.sessions} session{entry.sessions === 1 ? '' : 's'} ·{' '}
+                  {entry.kinds[0] === 'rage_click'
+                    ? `up to ${entry.maxMagnitude} clicks`
+                    : `${entry.maxMagnitude}% ended here`}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {/* §12: correlation is not causation, and this must never read as a diagnosis. */}
+          <p className="note">
+            These patterns <em>may</em> indicate friction. A rage click can equally be a slow
+            network or an unresponsive handler; an exit point can be where the task legitimately
+            finishes.
+          </p>
+        </section>
+      )}
     </>
   );
 }

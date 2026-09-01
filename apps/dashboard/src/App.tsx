@@ -8,6 +8,7 @@
 // readable fingerprint.
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import type { FlowGraph as FlowGraphData, Session, UxEvent } from 'rastro-core';
+import type { FrictionByNode } from 'rastro-analysis';
 import { fetchEvents, fetchGraph, fetchSession } from './api.js';
 import { FlowGraph } from './FlowGraph.js';
 import { SessionTimeline } from './SessionTimeline.js';
@@ -22,6 +23,7 @@ export function App(): ReactElement {
   const [view, setView] = useState<View>('flow');
   const [events, setEvents] = useState<UxEvent[]>([]);
   const [graph, setGraph] = useState<FlowGraphData | null>(null);
+  const [friction, setFriction] = useState<FrictionByNode[]>([]);
   const [sessionCount, setSessionCount] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,7 @@ export function App(): ReactElement {
       ]);
       setEvents(eventsResponse.events);
       setGraph(graphResponse.graph);
+      setFriction(graphResponse.friction);
       setSessionCount(graphResponse.sessions);
       setError(null);
     } catch (cause) {
@@ -92,7 +95,7 @@ export function App(): ReactElement {
         </p>
       )}
 
-      {view === 'flow' && graph !== null && <FlowGraph graph={graph} />}
+      {view === 'flow' && graph !== null && <FlowGraph graph={graph} friction={friction} />}
 
       {view === 'events' && events.length > 0 && (
         <table>
