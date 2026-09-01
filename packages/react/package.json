@@ -1,8 +1,28 @@
 {
   "name": "rastro-react",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "rastro-react \u2014 the SDK: one provider, auto-capture, OTLP out.",
   "license": "MIT",
+  "author": "Andrew Schutt <me@andrew-schutt.com>",
+  "homepage": "https://github.com/andrew-schutt/rastro/tree/main/packages/react#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrew-schutt/rastro.git",
+    "directory": "packages/react"
+  },
+  "bugs": "https://github.com/andrew-schutt/rastro/issues",
+  "keywords": [
+    "react",
+    "opentelemetry",
+    "otel",
+    "otlp",
+    "ux",
+    "telemetry",
+    "analytics",
+    "autocapture",
+    "product-analytics",
+    "user-flows"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

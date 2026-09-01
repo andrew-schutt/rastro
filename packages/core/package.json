@@ -1,8 +1,25 @@
 {
   "name": "rastro-core",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Framework-agnostic Rastro contract: the UxEvent type, shared data shapes, and every swap-point interface.",
   "license": "MIT",
+  "author": "Andrew Schutt <me@andrew-schutt.com>",
+  "homepage": "https://github.com/andrew-schutt/rastro/tree/main/packages/core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrew-schutt/rastro.git",
+    "directory": "packages/core"
+  },
+  "bugs": "https://github.com/andrew-schutt/rastro/issues",
+  "keywords": [
+    "opentelemetry",
+    "otel",
+    "otlp",
+    "ux",
+    "telemetry",
+    "analytics",
+    "semantic-conventions"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

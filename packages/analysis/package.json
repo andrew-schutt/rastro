@@ -1,8 +1,25 @@
 {
   "name": "rastro-analysis",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Pure functions: UxEvent[] → Session[] → FlowGraph. No I/O, no framework.",
   "license": "MIT",
+  "author": "Andrew Schutt <me@andrew-schutt.com>",
+  "homepage": "https://github.com/andrew-schutt/rastro/tree/main/packages/analysis#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrew-schutt/rastro.git",
+    "directory": "packages/analysis"
+  },
+  "bugs": "https://github.com/andrew-schutt/rastro/issues",
+  "keywords": [
+    "opentelemetry",
+    "ux",
+    "analytics",
+    "process-mining",
+    "flow-analysis",
+    "sessionize",
+    "user-flows"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
