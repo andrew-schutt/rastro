@@ -1,6 +1,10 @@
-# Rastro
+<p align="center">
+  <img src="docs/rastro-logo.png" alt="Rastro" width="520">
+</p>
 
-[![CI](https://github.com/andrew-schutt/rastro/actions/workflows/ci.yml/badge.svg)](https://github.com/andrew-schutt/rastro/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/andrew-schutt/rastro/actions/workflows/ci.yml"><img src="https://github.com/andrew-schutt/rastro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
 **See the paths your users actually take — with zero instrumentation.**
 
