@@ -17,6 +17,11 @@ createRoot(container).render(
       // Same-origin thanks to the Vite proxy; swap for consoleExporter() to run with no
       // backend at all, or multiExporter([...]) to fan out (§19.6).
       exporter={otlpExporter({ endpoint: '/v1/logs' })}
+      // §4.2.1: keep the raw components so fingerprints can be re-derived without
+      // re-collecting, and so drift is eyeballable while identity is being tuned.
+      // `accessibleName` stays off — it is redacted, but it is the closest thing to page
+      // content that leaves the browser.
+      optIn={{ componentChain: true, role: true }}
     >
       <App />
     </RastroProvider>

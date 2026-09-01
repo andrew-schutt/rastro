@@ -6,7 +6,7 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import type { Exporter, RouteAdapter, Redactor } from 'rastro-core';
 import { defaultRedactor } from 'rastro-core';
-import { createSessionState, startCapture } from './capture.js';
+import { createSessionState, startCapture, type OptInAttributes } from './capture.js';
 import { RastroContext, type RastroContextValue } from './context.js';
 import { createTransport } from './transport.js';
 
@@ -28,6 +28,12 @@ export interface RastroProviderProps {
    * and immune to `tokenizePath`'s blind spots.
    */
   routeAdapter?: RouteAdapter;
+  /**
+   * Opt-In attributes from the conventions (`ux.component_chain`, `ux.role`,
+   * `ux.accessible_name`). All off by default, per their requirement level. §4.2.1
+   * recommends `componentChain` while tuning fingerprints.
+   */
+  optIn?: OptInAttributes;
   /** Turn off the delegated root listeners and emit only via `track()`. */
   autoCapture?: boolean;
   children?: ReactNode;
@@ -39,6 +45,7 @@ export function RastroProvider({
   version,
   redactor = defaultRedactor,
   routeAdapter,
+  optIn,
   autoCapture = true,
   children,
 }: RastroProviderProps): ReactNode {
@@ -68,8 +75,9 @@ export function RastroProvider({
       redactor: value.redactor,
       onEvent: (event) => value.transport.enqueue(event),
       ...(routeAdapter === undefined ? {} : { routeAdapter }),
+      ...(optIn === undefined ? {} : { optIn }),
     });
-  }, [autoCapture, routeAdapter, value]);
+  }, [autoCapture, optIn, routeAdapter, value]);
 
   return <RastroContext.Provider value={value}>{children}</RastroContext.Provider>;
 }

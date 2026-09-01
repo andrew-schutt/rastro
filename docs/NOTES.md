@@ -1,16 +1,16 @@
 # NOTES — commit #1 (walking skeleton, step 1)
 
 This is the scaffold in [`PLAN.md`](PLAN.md) §19. It stands up the pnpm monorepo and gets
-**steps 1–2 of §19.4** running end to end:
+**steps 1–3 of §19.4** running end to end:
 
 ```
 demo-app fires an event → otlpExporter → POST /v1/logs → SQLite
    → GET /projects/:app/sessions/:id → dashboard table
 ```
 
-Capture is real: clicks, SPA route changes, and the form submit/abandon pair are picked up
-with zero instrumentation. What is still a placeholder is **identity** — `fingerprint()` is a
-stub, so every element without a `data-telemetry-id` collapses to `unknown|<tag>` (step 3).
+Capture and identity are both real: clicks, SPA route changes, and the form submit/abandon
+pair are picked up with zero instrumentation, and each carries a stable composite fingerprint
+derived from the React component ancestry — `App>Nav|button:button|"/users/42/settings"`.
 No graph building, no friction, no AI.
 
 ---
@@ -43,6 +43,10 @@ instrumentation in the app:
 | Click a nav button | `ux.route_change` with `ux.from_path` |
 | Focus a field, then submit | `ux.form_submit` with time-to-complete |
 | Focus a field, then click away without submitting | `ux.form_abandon` |
+
+Fingerprints in the table are real derived identities. The demo deliberately leaves
+`data-telemetry-id` off the form — the override matches an *ancestor*, so one there would
+collapse every field inside into the form's identity.
 
 The nav routes include `/users/42/settings`, so tokenization is visible in the table as
 `/users/:id/settings`. Open **http://localhost:5173**; events appear within ~2s (it polls).
@@ -95,6 +99,12 @@ works). Delete it to start clean.
 - **`react/forms.ts`** — the submit/abandon state machine, pure and DOM-free.
 - **`react/route.ts`** — the default `RouteAdapter`: a reference-counted `history` patch plus
   `popstate`/`hashchange`.
+- **`rastro-core/fingerprint.ts`** — §4.2.1 in full: the fiber walk, component chain with
+  forwardRef/memo unwrapping and noise filtering, role descriptor, approximated accessible
+  name (redacted), and composition with graceful degradation. `describeElement` returns the
+  fingerprint *and* its raw parts from one pass, so identities can be re-derived later
+  without re-collecting. The Opt-In attributes `ux.component_chain`, `ux.role`, and
+  `ux.accessible_name` are emitted only when switched on via the provider's `optIn` prop.
 - **`collector`** — OTLP decode, SQLite `EventStore`, the session endpoint.
 - **`dashboard`** — the plain events table (§19.4 step 1) and a `SessionTimeline` placeholder.
 
@@ -102,9 +112,7 @@ works). Delete it to start clean.
 
 | Thing | State |
 |---|---|
-| `core/fingerprint.ts` | `data-telemetry-id` override is **real**; everything else degrades to `unknown\|<tag>`. No fiber walk. §4.2.1 is step 3. |
 | `core/redact.ts` | Text redaction and path tokenization are **real**. Still missing the per-attribute allow/deny model, which is what would catch numeric PII like `{ userId: 84213 }`. |
-| `react/capture.ts` | Capture is **real**. The identities are not: every event carries a stub fingerprint until step 3. |
 | `session.start` / `session.end` | Defined in the conventions, not emitted. Neither is needed by any analysis today, and `session.end` is unanswerable without the §4.5 idle rule. |
 | `analysis/graph.ts` | `buildGraph` throws. Test file carries `it.todo` cases. |
 | `analysis/friction.ts` | `detectFriction` throws. §19.4 step 6 says pick exactly one signal. |
@@ -113,7 +121,7 @@ works). Delete it to start clean.
 
 ### Tests
 
-`pnpm -r test` → **97 passing, 48 `todo`**.
+`pnpm -r test` → **176 passing, 21 `todo`**.
 
 Coverage sits in two deliberate layers.
 
@@ -133,13 +141,12 @@ caught only by the pure test, because jsdom's `MouseEvent` has no `pointerType` 
 by. Making the history patch per-adapter instead of reference-counted is caught only by the
 jsdom test.
 
-`jsdom` is the one dev dependency added for this. React Testing Library is deliberately not
-needed: React 19 exports `act`, and `createRoot` is enough for the fiber-walk tests step 3
-will want.
+Test-only dev dependencies: `jsdom` (both packages) and `react-dom` (the renderer, in
+`packages/react` only — the SDK source never imports it, so it stays out of `dependencies`
+and `peerDependencies`). React Testing Library is deliberately not used: React 19 exports
+`act`, and `createRoot` is enough.
 
-The todos in `fingerprint.test.ts` and `graph.test.ts` name the cases meant to drive steps 3
-and 5 — including the before/after-refactor stability suite §4.2.1 calls the most valuable
-test file in the repo.
+The remaining todos in `graph.test.ts` name the cases meant to drive step 5.
 
 ### Verified end to end
 
@@ -171,6 +178,27 @@ nothing that conformed before stops conforming.
 `GraphBuilder` and `Interpreter` in terms of them and `core` must never depend on `analysis`.
 `rastro-analysis` re-exports them from `sessionize.ts` and `graph.ts`, so the import paths
 §19.3 documents still hold.
+
+**`NOISE` is wider than §4.2.1's regex.** The spec anchors `^Provider$`/`^Consumer$`, which
+only match React's own `Context.Provider` displayName — and in React 19 a context provider's
+fiber type is the context object, yielding no name at all, so the anchored form is nearly
+dead code. Every real wrapper is named `ThemeProvider`, `AuthProvider`, `QueryClientProvider`
+— or `RastroProvider`, which was landing in the chain of every fingerprint in the host app.
+Matching the suffix is what the rule was plainly reaching for.
+
+**`accName` does not take text content from containers**, where §4.2.1 takes it from any
+element. Applied to a `<form>` the spec version produced
+`App>SettingsForm|form|"Profile Display name Email Save Profile A button w"` — unstable (any
+label inside re-fingerprints the form), a wider PII surface, and not an accessible name in
+any real sense. W3C accname, which §4.2.1 says it is approximating, restricts name-from-
+content to specific roles; this is that rule, tag-shaped. Author-supplied labels
+(`aria-label`, `title`, `alt`) are still honoured on any element.
+
+**The Opt-In attributes are off by default.** The conventions mark `ux.component_chain`,
+`ux.role`, and `ux.accessible_name` as "captured only when explicitly enabled", so the
+provider takes an `optIn` prop and emits nothing extra without it. The demo turns on
+`componentChain` and `role`, and leaves `accessibleName` off — it is redacted, but it is the
+closest thing to page content that leaves the browser.
 
 **Three files in `packages/react` are not in §19.1's list**: `dwell.ts`, `forms.ts`, and
 `route.ts`. Capture would otherwise be one 400-line file mixing four concerns, and each of
@@ -225,10 +253,21 @@ Verified: replaying a batch stores nothing new.
   `sendBeaconOtlp()` exists but is unused, because the one-method `Exporter` interface has no
   way to express "deliver this during teardown". Resolving that is the real §4.4 work, and
   until it is done the abandonment and exit signals are the ones most likely to vanish.
-- **Fingerprints are meaningless.** Every element that lacks `data-telemetry-id` collapses to
-  `unknown|<tag>`. Worse for reading the data today: because the override matches an
-  *ancestor*, every field inside a marked form reports as the form. Do not read anything into
-  numbers computed from this data yet. This is step 3.
+- **Minified production builds destroy fingerprints.** Without the §4.3 build-time plugin,
+  `fn.name` becomes `t`, `a`, `e`, and minifiers reuse those per-module — so unrelated
+  components genuinely collapse into one identity. **This is the single most important
+  limitation of the tool**, it is a mass false *merge* rather than a visible failure, and it
+  means v1 is reliable only in dev, or in prod with the plugin. Asserted in
+  `fingerprint.dom.test.tsx` so it stays visible.
+- **i18n and copy edits cause false splits.** Same button, new text, new fingerprint. §4.2.1
+  accepts this cost knowingly: dropping the name would merge the forty buttons saying "Save".
+- **`data-telemetry-id` matches an ANCESTOR.** Putting one on a container collapses every
+  element inside it into the container's identity. That is per §4.2.1 and it is a useful
+  escape hatch, but it is a foot-gun on a `<form>` or a layout wrapper.
+- **The fiber walk reads React's private internals.** A React version that moves the
+  `__reactFiber$` key makes `getFiber` return null and every fingerprint degrade to
+  `unknown|<role>` — quietly, and everywhere at once. There is no public API for this; every
+  autocapture tool has the same exposure.
 - **The `history` patch does not see everything.** Next's App Router can change what the user
   sees without a `pushState` this can observe (§4.6). Each router wants a real `RouteAdapter`,
   which would also retire `tokenizePath`'s blind spot by reporting the route pattern directly.

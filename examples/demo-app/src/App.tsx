@@ -51,7 +51,9 @@ function SettingsForm(): ReactElement {
 
   return (
     <form
-      data-telemetry-id="settings-form"
+      // Deliberately NO data-telemetry-id: the override matches an ANCESTOR, so putting one
+      // here would collapse every field inside into the form's identity. Left off so the
+      // demo shows real derived fingerprints.
       onSubmit={(event) => {
         event.preventDefault();
         setSaved(true);

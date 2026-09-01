@@ -7,12 +7,18 @@
 //
 // What is still a placeholder is IDENTITY, not capture: `fingerprint()` is a stub until
 // step 3, so every element without a `data-telemetry-id` collapses to `unknown|<tag>`.
-import type { AttributeValue, Redactor, RouteAdapter, UxEvent } from 'rastro-core';
+import type {
+  AttributeValue,
+  ElementDescription,
+  Redactor,
+  RouteAdapter,
+  UxEvent,
+} from 'rastro-core';
 import {
   SEVERITY_INFO,
   UX_CONVENTION_VERSION,
   defaultRedactor,
-  fingerprint,
+  describeElement,
   isReservedAttribute,
 } from 'rastro-core';
 import { MAX_DWELL_MS, cappedDwell, createActiveClock } from './dwell.js';
@@ -64,6 +70,8 @@ export interface BuildEventInput {
   accessibleName?: string;
   /** On `ux.route_change`, the previous path. Tokenized here, like `route`. */
   fromPath?: string;
+  /** `ux.component_chain`, outermost → innermost. */
+  componentChain?: string[];
   /** Custom attributes from `track(name, props)`. Already sanitized by `sanitizeProps`. */
   attributes?: Record<string, AttributeValue>;
 }
@@ -146,6 +154,9 @@ export function buildEvent(
         : { 'ux.interaction.method': input.interactionMethod }),
       ...(input.activeMs === undefined ? {} : { 'ux.active_ms': input.activeMs }),
       ...(input.role === undefined ? {} : { 'ux.role': input.role }),
+      ...(input.componentChain === undefined
+        ? {}
+        : { 'ux.component_chain': input.componentChain }),
       ...(input.accessibleName === undefined
         ? {}
         : { 'ux.accessible_name': redactor.redact(input.accessibleName) }),
@@ -227,6 +238,38 @@ export function interactionMethodOf(
   }
 }
 
+/**
+ * The conventions mark `ux.component_chain`, `ux.role`, and `ux.accessible_name` **Opt-In**:
+ * "captured only when explicitly enabled". So they are off by default, and this is the
+ * switch.
+ *
+ * §4.2.1 recommends turning `componentChain` on while tuning fingerprints — it is what lets
+ * you re-derive identities later without re-collecting, and it is the debugging aid for
+ * fingerprint drift. `accessibleName` is the one to think twice about: it is redacted, but
+ * it is still the closest thing to page content that leaves the browser.
+ */
+export interface OptInAttributes {
+  componentChain?: boolean;
+  role?: boolean;
+  accessibleName?: boolean;
+}
+
+/** Pick out whichever Opt-In attributes are enabled, from an already-derived description. */
+function optInFrom(
+  described: ElementDescription,
+  optIn: OptInAttributes,
+): Pick<BuildEventInput, 'componentChain' | 'role' | 'accessibleName'> {
+  return {
+    ...(optIn.componentChain === true && described.componentChain.length > 0
+      ? { componentChain: described.componentChain }
+      : {}),
+    ...(optIn.role === true ? { role: described.role } : {}),
+    ...(optIn.accessibleName === true && described.accessibleName !== undefined
+      ? { accessibleName: described.accessibleName }
+      : {}),
+  };
+}
+
 export interface CaptureOptions {
   state: SessionState;
   onEvent: (event: UxEvent) => void;
@@ -238,6 +281,8 @@ export interface CaptureOptions {
   routeAdapter?: RouteAdapter;
   /** Cap on a reported dwell (§4.5). */
   maxDwellMs?: number;
+  /** Opt-In attributes from the conventions. All off by default. */
+  optIn?: OptInAttributes;
 }
 
 /**
@@ -270,6 +315,7 @@ export function startCapture({
   redactor = defaultRedactor,
   routeAdapter = historyRouteAdapter(),
   maxDwellMs = MAX_DWELL_MS,
+  optIn = {},
 }: CaptureOptions): () => void {
   if (typeof document === 'undefined') return () => {}; // SSR: nothing to attach to (§4.8)
 
@@ -310,11 +356,16 @@ export function startCapture({
       ...(source.pointerType === undefined ? {} : { pointerType: source.pointerType }),
     });
 
+    // One derivation per event: the fingerprint and its raw parts come from a single fiber
+    // walk rather than one per attribute (§4.7).
+    const described = describeElement(element, redactor);
+
     emit({
       eventName: 'ux.click',
-      fingerprint: fingerprint(element),
+      fingerprint: described.fingerprint,
       route: currentPath,
       activeMs: dwellSinceLastEvent(),
+      ...optInFrom(described, optIn),
       ...(method === undefined ? {} : { interactionMethod: method }),
     });
   };
@@ -340,11 +391,14 @@ export function startCapture({
     if (outcome === null) return;
     if (!(outcome.form instanceof Element)) return;
 
+    const described = describeElement(outcome.form, redactor);
+
     lastEventAtMs = clock.elapsed();
     emit({
       eventName: outcome.kind === 'form_submit' ? 'ux.form_submit' : 'ux.form_abandon',
-      fingerprint: fingerprint(outcome.form),
+      fingerprint: described.fingerprint,
       route: currentPath,
+      ...optInFrom(described, optIn),
       // `ux.active_ms` here is time-to-complete, not the gap since the last event.
       ...(outcome.activeMs === undefined
         ? {}

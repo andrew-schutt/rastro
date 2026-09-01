@@ -16,6 +16,7 @@ export type {
   BuildEventInput,
   CaptureOptions,
   InteractionSource,
+  OptInAttributes,
   SessionState,
 } from './capture.js';
 
@@ -40,5 +41,12 @@ export { SCOPE_NAME, toOtlpLogs } from './otlp.js';
 export type { OtlpLogsPayload } from './otlp.js';
 
 // Re-exported so an app that only installs rastro-react still gets the contract.
-export type { Exporter, Redactor, RouteAdapter, UxEvent } from 'rastro-core';
+export type {
+  ElementDescription,
+  Exporter,
+  Redactor,
+  RouteAdapter,
+  UxEvent,
+} from 'rastro-core';
+export { describeElement, fingerprint } from 'rastro-core';
 export { defaultRedactor, noopRedactor } from 'rastro-core';

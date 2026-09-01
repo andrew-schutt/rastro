@@ -76,7 +76,8 @@ describe('startCapture', () => {
       // A click almost always lands on a child, not the control itself.
       pointerClick(el('label'));
 
-      expect(last().attributes['ux.fingerprint']).toBe('unknown|button');
+      // No React render here, so the chain degrades; the role and name are real.
+      expect(last().attributes['ux.fingerprint']).toBe('unknown|button|"Save"');
     });
 
     it('drops a click on inert background', () => {
@@ -135,6 +136,8 @@ describe('startCapture', () => {
       el('settings').dispatchEvent(new Event('submit', { bubbles: true }));
 
       expect(names()).toEqual(['ux.form_submit']);
+      // A container takes no name from its own text, so the form's identity does not move
+      // when the copy inside it changes.
       expect(last().attributes['ux.fingerprint']).toBe('unknown|form');
     });
 

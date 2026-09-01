@@ -87,6 +87,12 @@ click → capture (stable fingerprint) → OTel Event → OTLP → collector →
 - **Stable element identity.** Rastro derives a fingerprint for each element from
   its React component ancestry + role + accessible name, so "Save Profile" is the
   same node across sessions and small refactors. This is the hard part; see the plan.
+
+  > ⚠️ **Fingerprints need unminified component names.** Identity is anchored on the
+  > React component chain, and a production build renames `SaveButton` to `t` — so
+  > unrelated elements collapse into one identity, quietly, with no error. Until the
+  > build-time plugin ships ([`docs/PLAN.md`](docs/PLAN.md) §4.3), v1 is reliable in
+  > development and on the example app, and **not** in a minified production build.
 - **OpenTelemetry-native.** Interactions are OTel *Events* (log records), grouped by
   the standard `session.id`. UX meaning rides in a small `ux.*` attribute namespace —
   see [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md).

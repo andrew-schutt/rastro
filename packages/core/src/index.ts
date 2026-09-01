@@ -26,11 +26,22 @@ export type {
 } from './seams.js';
 
 export {
+  accName,
+  componentChain,
   defaultFingerprintStrategy,
+  describeElement,
+  FIBER_PREFIXES,
   fingerprint,
+  getFiber,
+  MAX_CHAIN_DEPTH,
+  MAX_NAME_LENGTH,
+  NOISE,
+  norm,
   OVERRIDE_ATTRIBUTE,
+  roleOf,
   UNKNOWN_CHAIN,
 } from './fingerprint.js';
+export type { ElementDescription } from './fingerprint.js';
 export {
   defaultRedactor,
   noopRedactor,
