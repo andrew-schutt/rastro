@@ -368,6 +368,9 @@ Verified: replaying a batch stores nothing new.
   ignored. Those are the raw material for §10's dead-click signal, which needs state-change
   observation to tell "clicked nothing" from "clicked something that did nothing".
 
+These are ordered by how much each hurts the product. [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md)
+re-orders them by a different axis — which of them block a de-risking gate — and only two do.
+
 ## Doc nits
 
 - `docs/demo.gif` is recorded. It is a live capture: the dashboard is screenshotted in one
