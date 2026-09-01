@@ -1,7 +1,7 @@
 # NOTES — commit #1 (walking skeleton, step 1)
 
 This is the scaffold in [`PLAN.md`](PLAN.md) §19. It stands up the pnpm monorepo and gets
-**steps 1–3 of §19.4** running end to end:
+**steps 1–4 of §19.4** running end to end:
 
 ```
 demo-app fires an event → otlpExporter → POST /v1/logs → SQLite
@@ -11,7 +11,8 @@ demo-app fires an event → otlpExporter → POST /v1/logs → SQLite
 Capture and identity are both real: clicks, SPA route changes, and the form submit/abandon
 pair are picked up with zero instrumentation, and each carries a stable composite fingerprint
 derived from the React component ancestry — `App>Nav|button:button|"/users/42/settings"`.
-No graph building, no friction, no AI.
+The session timeline (§13.1) renders one session on a real time axis. No graph building, no
+friction, no AI.
 
 ---
 
@@ -50,7 +51,10 @@ collapse every field inside into the form's identity.
 
 The nav routes include `/users/42/settings`, so tokenization is visible in the table as
 `/users/:id/settings`. Open **http://localhost:5173**; events appear within ~2s (it polls).
-Click a `session.id` to open the session timeline placeholder.
+Click a `session.id` in the table to open that session's timeline: every step on a time axis
+built from cumulative `ux.active_ms`, with the connector height proportional to the dwell — so
+a long hesitation is literally the tallest gap on the page. That is §13.1's "replay-lite", and
+it is the point of building this view before the flow graph.
 
 Both Vite apps proxy to the collector, so the SDK posts to a same-origin `/v1/logs` exactly
 as the README's default does, and the dashboard needs no endpoint configuration.
@@ -106,7 +110,10 @@ works). Delete it to start clean.
   without re-collecting. The Opt-In attributes `ux.component_chain`, `ux.role`, and
   `ux.accessible_name` are emitted only when switched on via the provider's `optIn` prop.
 - **`collector`** — OTLP decode, SQLite `EventStore`, the session endpoint.
-- **`dashboard`** — the plain events table (§19.4 step 1) and a `SessionTimeline` placeholder.
+- **`dashboard`** — the plain events table (§19.4 step 1) and the real `SessionTimeline`
+  (§13.1): steps on a cumulative-`ux.active_ms` axis, colour-coded by event kind, route
+  changes highlighted where context moves, and `ux.interaction.method` per step. Its
+  arithmetic lives in `timeline.ts`, pure and unit-tested, so the component only renders.
 
 ### Stubbed — real signatures, naive bodies, TODOs naming the work
 
@@ -121,7 +128,7 @@ works). Delete it to start clean.
 
 ### Tests
 
-`pnpm -r test` → **176 passing, 21 `todo`**.
+`pnpm -r test` → **203 passing, 21 `todo`**.
 
 Coverage sits in two deliberate layers.
 
@@ -146,6 +153,10 @@ Test-only dev dependencies: `jsdom` (both packages) and `react-dom` (the rendere
 and `peerDependencies`). React Testing Library is deliberately not used: React 19 exports
 `act`, and `createRoot` is enough.
 
+`apps/dashboard/src/timeline.ts` holds the timeline's arithmetic — axis placement, gap
+scaling, duration formatting — separately from the component, so the part that can actually be
+wrong is unit-tested without rendering anything.
+
 The remaining todos in `graph.test.ts` name the cases meant to drive step 5.
 
 ### Verified end to end
@@ -158,6 +169,11 @@ Driven against a real headless Chrome with genuine mouse and keyboard input, on 
 - `ux.form_abandon` after focusing a field and clicking a nav button
 - `ux.form_submit` with a real time-to-complete, and **no false abandon** on the way to it
 - `track()` props: `plan`/`seats` stored, `owner` redacted, `ux.seq: 999` dropped
+- real fingerprints from the React tree: `App>Nav|button:button|"/users/42/settings"`,
+  `App>SettingsForm|input:email`, `App>SettingsForm|form`
+- a driven session rendering on the timeline: a 3.5s pause before navigating, a 6.5s
+  hesitation before abandoning the form, then a submit — the tallest gap being the
+  hesitation, which is exactly what §13.1 exists to surface
 
 The hidden-tab rule in `dwell.ts` is unit-tested rather than driven in the browser — there is
 no CDP command to force `document.visibilityState`. Real pointer events are browser-only too:
@@ -199,6 +215,13 @@ content to specific roles; this is that rule, tag-shaped. Author-supplied labels
 provider takes an `optIn` prop and emits nothing extra without it. The demo turns on
 `componentChain` and `role`, and leaves `accessibleName` off — it is redacted, but it is the
 closest thing to page content that leaves the browser.
+
+**`Step` gained `eventName` and `interactionMethod`**, which §19.3 does not have. §13.1
+requires the timeline to show `ux.interaction.method`, and a timeline that cannot tell a click
+from a route change is not readable — so §19.3's `Step` cannot render the view §13.1
+specifies. Adding them keeps the load-bearing rule intact ("the OTel envelope stops at
+sessionize; downstream works on flat types, not raw records"); the alternative was the
+dashboard reaching back into raw OTel attributes, which breaks it.
 
 **Three files in `packages/react` are not in §19.1's list**: `dwell.ts`, `forms.ts`, and
 `route.ts`. Capture would otherwise be one 400-line file mixing four concerns, and each of

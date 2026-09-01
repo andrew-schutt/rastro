@@ -1,50 +1,76 @@
 // apps/dashboard/src/SessionTimeline.tsx
-// One session on a time axis (docs/PLAN.md §13.1). PLACEHOLDER.
+// One session on a time axis (docs/PLAN.md §13.1).
 //
-// §19.4 builds this properly at step 4, after real capture and fingerprinting exist — until
-// then every fingerprint is `unknown|<tag>` and a timeline of those says nothing. What is
-// real here is the data path: the session comes back already sessionized, ordered by ux.seq.
+// §19.4 step 4, and the first real view: no cross-session aggregation, no mining, no
+// spaghetti-taming — just one session's events ordered by ux.seq. §13.1 calls it the
+// "replay-lite" from §12, the causation tool you get free from the event stream: a long
+// pause before an element is the thing you are looking for, and here it is literally the
+// tallest gap on the page.
+//
+// The data path is entirely the analysis layer's: the collector runs sessionize() over one
+// session.id and returns Step[]. This component does no flattening and never touches a raw
+// OTel record.
 import type { ReactElement } from 'react';
 import type { Session } from 'rastro-core';
+import { formatMs, gapHeight, kindOf, placeSteps, totalActiveMs } from './timeline.js';
 
 export interface SessionTimelineProps {
   session: Session;
 }
 
 export function SessionTimeline({ session }: SessionTimelineProps): ReactElement {
-  // Cumulative dwell is the time axis (§13.1). `activeMs` is the gap BEFORE each step, so the
-  // running total up to (not including) a step is when that step happened.
-  let elapsedMs = 0;
+  const { steps } = session;
+  const placed = placeSteps(steps);
 
   return (
     <section className="timeline">
-      <h2>
-        Session <code>{session.sessionId}</code>
-      </h2>
-      <p className="note">
-        Placeholder — §19.4 step 4. The ordering is real (ux.seq); the fingerprints are not
-        yet, because capture and fingerprinting are still stubs.
-      </p>
+      <header className="timeline-header">
+        <h2>Session timeline</h2>
+        <code className="session-id">{session.sessionId}</code>
+        <span className="meta">
+          {steps.length} step{steps.length === 1 ? '' : 's'} ·{' '}
+          {formatMs(totalActiveMs(placed))} active
+        </span>
+      </header>
 
-      <ol className="steps">
-        {session.steps.map((step) => {
-          const at = elapsedMs;
-          elapsedMs += step.activeMs;
+      {steps.length === 0 ? (
+        <p className="note">This session has no steps.</p>
+      ) : (
+        <ol className="track">
+          {placed.map(({ step, atMs }, index) => {
+            const { label, kind } = kindOf(step);
+            // The gap before this step. The first step has no predecessor to dwell after.
+            const gap = index === 0 ? 0 : step.activeMs;
+            const routeChanged = index > 0 && step.route !== placed[index - 1]?.step.route;
 
-          return (
-            <li key={step.seq}>
-              <span className="at">+{(at / 1000).toFixed(1)}s</span>
-              <span className="seq">#{step.seq}</span>
-              <code className="fingerprint">{step.fingerprint}</code>
-              <span className="route">{step.route}</span>
-              <span className="dwell">{step.activeMs}ms</span>
-            </li>
-          );
-        })}
-      </ol>
+            return (
+              <li key={step.seq}>
+                {index > 0 && (
+                  <div className="gap" style={{ height: `${gapHeight(gap)}px` }}>
+                    <span className="gap-label">{formatMs(gap)}</span>
+                  </div>
+                )}
 
-      {/* TODO(§13.1): a real time axis, not a list — proportional spacing, and each event
-          showing ux.interaction.method alongside the dwell gap before it. */}
+                <div className="step">
+                  <span className="at">{formatMs(atMs)}</span>
+                  <span className={`marker marker--${kind}`} aria-hidden="true" />
+                  <span className="seq">#{step.seq}</span>
+                  <span className={`kind kind--${kind}`} title={label}>
+                    {label}
+                  </span>
+                  <code className="fingerprint" title={step.fingerprint}>
+                    {step.fingerprint}
+                  </code>
+                  <span className={routeChanged ? 'route route--changed' : 'route'}>
+                    {step.route}
+                  </span>
+                  <span className="method">{step.interactionMethod ?? ''}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </section>
   );
 }

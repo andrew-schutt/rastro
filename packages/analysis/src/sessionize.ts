@@ -32,13 +32,19 @@ export function sessionize(events: UxEvent[]): Session[] {
       bySession.set(sessionId, steps);
     }
 
+    const method = attributes['ux.interaction.method'];
+
     steps.push({
+      eventName: event.eventName,
       fingerprint: attributes['ux.fingerprint'],
       route: attributes['url.path'],
       seq: attributes['ux.seq'],
       // `ux.active_ms` is Recommended, not Required — a minimal conforming emitter omits it.
       // 0 keeps the Step shape total instead of pushing the optionality downstream.
       activeMs: attributes['ux.active_ms'] ?? 0,
+      // `ux.interaction.method` stays optional: absent genuinely means "not observed", and a
+      // default here would invent an ergonomics signal that was never measured.
+      ...(method === undefined ? {} : { interactionMethod: method }),
     });
   }
 

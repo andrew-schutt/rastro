@@ -6,12 +6,25 @@
 // of them, and `core` must never depend on `analysis`. `rastro-analysis` re-exports them
 // from `sessionize.ts` / `graph.ts`, so the documented import paths still hold.
 
-/** One interaction, flattened out of the OTel envelope. The envelope stops at sessionize. */
+/**
+ * One interaction, flattened out of the OTel envelope. The envelope stops at sessionize.
+ *
+ * ⚠ `eventName` and `interactionMethod` are additions to §19.3's Step. §13.1 requires the
+ * session timeline to show `ux.interaction.method`, and a timeline that cannot tell a click
+ * from a route change is not readable — so the shape §19.3 specifies cannot render the view
+ * §13.1 specifies. Adding them here keeps the load-bearing rule intact ("the OTel envelope
+ * stops at sessionize; downstream works on flat types, not raw records"); the alternative
+ * was the dashboard reaching back into raw OTel attributes, which breaks it.
+ */
 export interface Step {
+  /** `ux.click`, `ux.route_change`, `ux.form_submit`, `ux.form_abandon`, or a custom name. */
+  eventName: string;
   fingerprint: string;
   route: string;
   seq: number;
+  /** Visibility-adjusted dwell BEFORE this step, in ms (§4.5). 0 when not reported. */
   activeMs: number;
+  interactionMethod?: 'mouse' | 'keyboard' | 'touch';
 }
 
 /** All of one `session.id`'s steps, sorted by `ux.seq`. */

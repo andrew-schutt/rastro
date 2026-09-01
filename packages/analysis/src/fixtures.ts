@@ -12,6 +12,7 @@ export interface EventOverrides {
   route?: string;
   activeMs?: number;
   app?: string;
+  interactionMethod?: 'mouse' | 'keyboard' | 'touch';
 }
 
 /** Build one conforming UxEvent. Every Required attribute gets a default. */
@@ -24,6 +25,7 @@ export function makeEvent(overrides: EventOverrides = {}): UxEvent {
     route = '/',
     activeMs,
     app = 'fixture-app',
+    interactionMethod,
   } = overrides;
 
   return {
@@ -38,6 +40,9 @@ export function makeEvent(overrides: EventOverrides = {}): UxEvent {
       'ux.fingerprint': fingerprint,
       'ux.anonymous_id': 'anon-1',
       ...(activeMs === undefined ? {} : { 'ux.active_ms': activeMs }),
+      ...(interactionMethod === undefined
+        ? {}
+        : { 'ux.interaction.method': interactionMethod }),
     },
     resource: {
       'service.name': app,

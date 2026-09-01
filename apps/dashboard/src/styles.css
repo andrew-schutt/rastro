@@ -62,22 +62,139 @@ th {
 
 .timeline {
   margin-top: 2.5rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  padding-top: 1.5rem;
 }
 
-.steps {
-  list-style: none;
-  padding: 0;
-}
-
-.steps li {
+.timeline-header {
   display: flex;
-  gap: 1rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  gap: 0.75rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
 }
 
-.steps .at,
-.steps .seq {
+.timeline-header h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.session-id {
+  opacity: 0.75;
+}
+
+.meta {
   opacity: 0.55;
-  min-width: 3.5rem;
+}
+
+.track {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 0.25rem;
+}
+
+/* The time axis: the connector's height IS the dwell, so a long pause is literally the
+   tallest thing on the page (§13.1). */
+.gap {
+  position: relative;
+  margin-left: 5.4rem;
+  border-left: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.gap-label {
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.2rem 0;
+}
+
+.at {
+  width: 4.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.55;
+  font-size: 0.8rem;
+}
+
+.marker {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex: none;
+  margin-left: -0.15rem;
+  background: currentColor;
+}
+
+.marker--click { color: #4c8dff; }
+.marker--route { color: #a06bff; }
+.marker--submit { color: #2fa36b; }
+.marker--abandon { color: #d1892f; }
+.marker--custom { color: #8a8a8a; }
+
+.seq {
+  opacity: 0.4;
+  font-size: 0.75rem;
+  width: 2rem;
+}
+
+.kind {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  width: 5.5rem;
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A custom event's name is app-owned and already dot-cased — uppercasing it makes
+   `checkout.completed` unreadable, and it is usually too long for the column. */
+.kind--custom {
+  text-transform: none;
+  letter-spacing: 0;
+  width: 9rem;
+  opacity: 0.55;
+}
+
+.kind--click { color: #4c8dff; }
+.kind--route { color: #a06bff; }
+.kind--submit { color: #2fa36b; }
+.kind--abandon { color: #d1892f; }
+
+.fingerprint {
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.route {
+  font-size: 0.8rem;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+/* A route change is where the user's context moved — worth seeing at a glance. */
+.route--changed {
+  opacity: 1;
+  color: #a06bff;
+}
+
+.method {
+  font-size: 0.75rem;
+  opacity: 0.45;
+  width: 4.5rem;
 }
