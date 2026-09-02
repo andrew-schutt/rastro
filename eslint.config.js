@@ -27,6 +27,7 @@ export default tseslint.config(
           './apps/collector/tsconfig.test.json',
           './apps/dashboard/tsconfig.json',
           './examples/demo-app/tsconfig.json',
+          './scripts/identity-spike/tsconfig.test.json',
         ],
         tsconfigRootDir: import.meta.dirname,
       },
@@ -40,7 +41,13 @@ export default tseslint.config(
 
   // The browser SDK and the two Vite apps.
   {
-    files: ['packages/react/**/*.{ts,tsx}', 'apps/dashboard/**/*.{ts,tsx}', 'examples/**/*.{ts,tsx}'],
+    files: [
+      'packages/react/**/*.{ts,tsx}',
+      'apps/dashboard/**/*.{ts,tsx}',
+      'examples/**/*.{ts,tsx}',
+      // The spike runs in a browser page against a rendered app, like the SDK it measures.
+      'scripts/identity-spike/**/*.{ts,tsx}',
+    ],
     languageOptions: { globals: globals.browser },
   },
 

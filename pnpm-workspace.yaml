@@ -2,6 +2,10 @@ packages:
   - 'packages/*'
   - 'apps/*'
   - 'examples/*'
+  # Measurement tooling for VALIDATION-PLAN.md, private and never published. A workspace
+  # member because it renders real React to read real fibers, so it needs the same test rig
+  # as the SDK rather than a hand-rolled one.
+  - 'scripts/identity-spike'
 
 # better-sqlite3 compiles a native binding; esbuild fetches its platform binary (via Vite).
 allowBuilds:

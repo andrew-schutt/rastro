@@ -1,0 +1,246 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * scripts/identity-spike/src/repeat-oracle.test.tsx
+ * The collision referee, against real React renders — the only place real fibers with real
+ * keys exist. A hand-built DOM cannot test this at all, which is the whole reason this is a
+ * workspace package with a renderer rather than a loose script.
+ */
+import { act, type ReactElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { classifyPair, groupByRepeat, repeatSiteOf } from './repeat-oracle.js';
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
+let container: HTMLElement;
+let root: ReturnType<typeof createRoot>;
+
+beforeEach(() => {
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+});
+
+function render(ui: ReactElement): (selector: string) => Element[] {
+  act(() => root.render(ui));
+  return (selector: string) => [...container.querySelectorAll(selector)];
+}
+
+const ROWS = [
+  { id: 'a1', name: 'Ada' },
+  { id: 'b2', name: 'Grace' },
+  { id: 'c3', name: 'Katherine' },
+];
+
+function Row({ name }: { name: string }): ReactElement {
+  return (
+    <tr>
+      <td>{name}</td>
+      <td>
+        <button type="button">Edit</button>
+      </td>
+    </tr>
+  );
+}
+
+function Table(): ReactElement {
+  return (
+    <table>
+      <tbody>
+        {ROWS.map((r) => (
+          <Row key={r.id} name={r.name} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+describe('repeatSiteOf', () => {
+  it('finds the enclosing keyed list item', () => {
+    const q = render(<Table />);
+    const site = repeatSiteOf(q('button')[0] as Element);
+    expect(site).not.toBeNull();
+    expect(site?.key).toBe('a1');
+  });
+
+  it('is null for an element outside any keyed list', () => {
+    const q = render(
+      <div>
+        <button type="button">Save</button>
+      </div>,
+    );
+    expect(repeatSiteOf(q('button')[0] as Element)).toBeNull();
+  });
+
+  // Nearest, not outermost: an outer list would call a row's Edit and Delete repeats.
+  it('takes the NEAREST keyed ancestor when lists nest', () => {
+    const q = render(
+      <ul>
+        {['outer1', 'outer2'].map((o) => (
+          <li key={o}>
+            <ul>
+              {['inner1', 'inner2'].map((i) => (
+                <li key={`${o}-${i}`}>
+                  <button type="button">Go</button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>,
+    );
+    expect(repeatSiteOf(q('button')[0] as Element)?.key).toBe('outer1-inner1');
+  });
+});
+
+describe('classifyPair', () => {
+  // THE case the referee exists for: 50 rows, one button, one identity — a right merge.
+  it('calls two rows of one list repeated siblings', () => {
+    const q = render(<Table />);
+    const buttons = q('button');
+    expect(classifyPair(buttons[0] as Element, buttons[1] as Element)).toEqual({
+      verdict: 'repeated-siblings',
+      reason: 'same-list-different-items',
+    });
+  });
+
+  // The mirror case: a row's two controls collide because the fingerprint cannot separate
+  // them. That is a real false merge, and the referee must not excuse it as "a list".
+  it('calls two controls inside ONE row distinct', () => {
+    const q = render(
+      <ul>
+        {ROWS.map((r) => (
+          <li key={r.id}>
+            <button type="button">Act</button>
+            <button type="button">Act</button>
+          </li>
+        ))}
+      </ul>,
+    );
+    const buttons = q('li:first-child button');
+    expect(classifyPair(buttons[0] as Element, buttons[1] as Element)).toEqual({
+      verdict: 'distinct',
+      reason: 'same-list-item',
+    });
+  });
+
+  it('calls rows of two SEPARATE lists distinct', () => {
+    const q = render(
+      <div>
+        <div id="admins">
+          <Table />
+        </div>
+        <div id="members">
+          <Table />
+        </div>
+      </div>,
+    );
+    const admin = q('#admins button')[0] as Element;
+    const member = q('#members button')[0] as Element;
+    expect(classifyPair(admin, member)).toEqual({
+      verdict: 'distinct',
+      reason: 'different-lists',
+    });
+  });
+
+  // React renders an unkeyed array happily — it only warns — so "no key" does not prove
+  // "no loop". Answering `distinct` here would inflate the very number the spike measures.
+  it('refuses to rule when neither element sits in a keyed list', () => {
+    const q = render(
+      <div>
+        <button type="button">Save</button>
+        <button type="button">Save</button>
+      </div>,
+    );
+    const buttons = q('button');
+    expect(classifyPair(buttons[0] as Element, buttons[1] as Element)).toEqual({
+      verdict: 'undecided',
+      reason: 'no-keyed-ancestor',
+    });
+  });
+
+  it('refuses to rule when only one side is keyed', () => {
+    const q = render(
+      <div>
+        <button type="button">Edit</button>
+        <Table />
+      </div>,
+    );
+    const [loose, inList] = [q('button')[0] as Element, q('table button')[0] as Element];
+    expect(classifyPair(loose, inList)).toEqual({
+      verdict: 'undecided',
+      reason: 'one-side-unkeyed',
+    });
+  });
+
+  // Index keys are bad identity — insert a row and every key renumbers — and irrelevant here,
+  // because the referee never compares a key across renders. Worth pinning: index keys are
+  // common enough that a referee that choked on them would be useless on real apps.
+  it('works on index keys, which are useless for identity but fine as a referee signal', () => {
+    const q = render(
+      <ul>
+        {ROWS.map((r, i) => (
+          <li key={i}>
+            <button type="button">{r.name}</button>
+          </li>
+        ))}
+      </ul>,
+    );
+    const buttons = q('button');
+    expect(classifyPair(buttons[0] as Element, buttons[1] as Element).verdict).toBe(
+      'repeated-siblings',
+    );
+  });
+});
+
+describe('groupByRepeat', () => {
+  it('collapses one list into a single logical element', () => {
+    const q = render(<Table />);
+    const { groups, undecidedPairs } = groupByRepeat(q('button'));
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toHaveLength(3);
+    expect(undecidedPairs).toBe(0);
+  });
+
+  // Six colliding buttons, two logical elements. A raw collision count would report this as
+  // five collisions; the honest answer is one false merge between two groups.
+  it('reports two groups when two separate tables share a fingerprint', () => {
+    const q = render(
+      <div>
+        <div id="admins">
+          <Table />
+        </div>
+        <div id="members">
+          <Table />
+        </div>
+      </div>,
+    );
+    const { groups } = groupByRepeat(q('button'));
+    expect(q('button')).toHaveLength(6);
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g.length).sort()).toEqual([3, 3]);
+  });
+
+  // Undecided must not merge. Merging on a signal that said nothing would suppress false
+  // merges, which is precisely the failure the spike is trying to make visible.
+  it('counts undecided pairs instead of merging them away', () => {
+    const q = render(
+      <div>
+        <button type="button">Save</button>
+        <button type="button">Save</button>
+      </div>,
+    );
+    const { groups, undecidedPairs } = groupByRepeat(q('button'));
+    expect(groups).toHaveLength(2);
+    expect(undecidedPairs).toBe(1);
+  });
+});
