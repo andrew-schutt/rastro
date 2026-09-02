@@ -94,7 +94,15 @@ click → capture (stable fingerprint) → OTel Event → OTLP → collector →
 
 - **Stable element identity.** Rastro derives a fingerprint for each element from
   its React component ancestry + role + accessible name, so "Save Profile" is the
-  same node across sessions and small refactors. This is the hard part; see the plan.
+  same node across sessions and small refactors. With the build plugin installed the
+  ancestry is qualified by the file that defines it — `App>Card@src/billing/Card.tsx` —
+  so two components that merely share a *name* stay separate. This is the hard part; see
+  the plan.
+
+  > ⚠️ **Identity is stated, not yet measured.** Every claim above describes what the
+  > fingerprint is built to do; how often it actually mis-identifies an element on a real
+  > app is unknown, and [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) §3.2 exists to
+  > find out. Treat the numbers this tool produces accordingly until it has run.
 
   > ⚠️ **In production, install the build plugin.** Identity is anchored on the React
   > component chain, and a production build renames `SaveButton` to `t` — so unrelated

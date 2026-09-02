@@ -138,13 +138,16 @@ works). Delete it to start clean.
   `data-rastro-component` and `data-rastro-source-file` onto every host element at build time,
   as string literals a minifier cannot touch. Next.js is unsupported (it compiles with SWC);
   that port is the open half of §17 #4.
-- **`rastro-core/fingerprint.ts` — `attributeChain` + `documentIsAnnotated`.** The consumer.
+- **`rastro-core/fingerprint.ts` — `attributeChain` + `documentIsAnnotated` + the source-file
+  qualifier.** The consumer.
   Walks the DOM for `data-rastro-component` instead of the fiber tree, collapsing consecutive
   repeats (the plugin stamps every host element) and applying `NOISE` identically, so the two
   strategies produce comparable chains. The strategy is chosen **once per document**, lazily,
   never per element — per-element tiering would let one page mix both and produce chains that
   are not comparable within a single session. The fiber walk remains the fallback for apps
-  installed without the build step.
+  installed without the build step. The same walk also takes `data-rastro-source-file` from
+  the element contributing the innermost chain entry, which becomes the fingerprint's `@<file>`
+  qualifier and the `ux.source_file` part (conventions 0.3).
 
 ### Stubbed — real signatures, naive bodies, TODOs naming the work
 
@@ -205,6 +208,13 @@ Driven against a real headless Chrome with genuine mouse and keyboard input, on 
   hesitation, which is exactly what §13.1 exists to surface
 - four sessions aggregating into an 11-node flow graph, with a 6.5s median on the
   `SettingsForm input → form` edge and a 0.75 drop-off on the form
+- the source-file qualifier through a **minified production build** (`vite preview`, real mouse
+  and keyboard over CDP): `App>Nav@src/Nav.tsx|button:button|"/users/42/settings"` and
+  `App>SettingsForm@src/App.tsx|form` off the same page — so the file tracks the innermost
+  component across a module boundary rather than the entry point. `ux.source_file` matches the
+  qualifier inside the fingerprint, paths are repo-relative, records claim `0.3`, and a
+  `data-telemetry-id` override still emits no parts at all. `Nav` was split out of `App.tsx`
+  for this: a single-file demo cannot tell "the defining file" from "the only file".
 - three frustrated sessions producing `rage_click` on `id:save-profile` (max 5 clicks) and
   `high_abandonment` on `App>SettingsForm|form` (4 sessions, 100%), ranked in that order by
   sessions affected
@@ -216,6 +226,64 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 ---
 
 ## Decisions worth knowing about
+
+**The source file is in the identity, and the reason is NOT stability.** The fingerprint is
+now `<chain>[@<file>]|<role>|"<name>"` wherever the build plugin annotated the document.
+
+The tempting justification is rename-proofness, and it is wrong. Renaming a component changes
+the chain, so `App>SettingsForm|form` becomes `App>ProfileForm@src/SettingsForm.tsx|form` —
+still a new identity. The file does not stabilise anything it is concatenated into.
+
+What it actually buys is **collision reduction**: a `Card` in `billing/` and a `Card` in
+`settings/` produced one identity and now produce two. That matters because of the asymmetry
+`IDENTITY-RESOLUTION.md` sets out — a false split is loud and repairable, a false merge is
+silent and corrupts every number computed from it. The file trades a class of merges for a
+class of splits, deliberately.
+
+Its *stability* value is real but belongs to the part, not the composite: a file survives the
+rename that mints a new fingerprint, which is exactly the anchor the resolution layer needs to
+match old to new. Sentry's `data-sentry-source-file` exists for that reason
+([`PRIOR-ART.md`](PRIOR-ART.md)).
+
+**The conventions forced the two to travel together.** The parts invariant says an emitter MUST
+emit exactly the parts that composed the fingerprint *and nothing more*, with a privacy
+rationale: a part that composed the identity is already on the wire inside it, so emitting it
+adds queryability rather than exposure. A source path that did **not** compose the identity
+would be new exposure. So emitting the file as a diagnostic-only attribute was not available
+under the spec as written — either it is in the identity and the anchor comes free, or there is
+no anchor. That constraint decided the shape more than the arguments for it did.
+
+**What it costs, written down rather than discovered later:**
+
+- **Moving or renaming a file re-identifies everything defined in it.** A churn input that did
+  not exist before.
+- **Adding the build plugin to an app now changes every identity it already had data for.**
+  Before this, an annotated document and a dev-mode fiber walk produced the same string, so
+  installing the plugin was free. It no longer is. `fingerprint.test.ts` asserted that parity
+  and passed only because its fixture omitted the file attribute — which the real plugin always
+  stamps. The test now asserts what is true: the *chains* agree, the composed fingerprints do
+  not.
+- **The file is the innermost contributor's, never an outer one.** One file per chain entry
+  would put an edit anywhere up the tree into the identity of everything beneath it, which is
+  the churn `MAX_CHAIN_DEPTH` exists to bound.
+- **It is not redacted**, unlike the accessible name. A repo-relative path is authored by a
+  developer, never by a user, and the default 4-digit text rule would mangle `Card2024.tsx`
+  while protecting nobody. The conventions make repo-relative a MUST for the matching reason:
+  an absolute path leaks the build machine's filesystem.
+
+**None of this is measured.** Whether the merges it prevents outnumber the splits it causes is
+exactly what [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2 runs — and with-file and
+without-file are now two strategies over one corpus rather than an argument.
+
+**Conventions 0.3 is the first non-additive change to stored data.** The Required *set* did not
+move, but the format of a Required attribute did, so 0.2 and 0.3 records do not join on
+`ux.fingerprint`. `UX_CONVENTION_VERSION` moves to `'0.3'`, which also closes the gap where the
+code claimed `0.1`. The emitter still gates the parts behind the provider's `optIn` — the 0.2
+behaviour it never adopted — which is conformant, since Recommended attributes may be omitted,
+and still a deviation worth knowing about.
+
+Done now rather than later on §3.3's reasoning: nobody depends on `0.0.1` and no production data
+exists to migrate. This is the cheapest this change will ever be.
 
 **The build plugin deviates from §4.3's sketch in two ways.** §4.3 describes "a Babel/SWC
 plugin that injects `displayName` and source location `(file:line)`". Neither is what shipped.
@@ -394,6 +462,11 @@ Verified: replaying a batch stores nothing new.
   `fingerprint.dom.test.tsx` and `babel-plugin/src/minification.test.ts`.
 - **i18n and copy edits cause false splits.** Same button, new text, new fingerprint. §4.2.1
   accepts this cost knowingly: dropping the name would merge the forty buttons saying "Save".
+- **Moving a file causes false splits too, since conventions 0.3.** Same trade as above, same
+  reasoning, new input: the fingerprint's `@<file>` qualifier means a file move or rename
+  re-identifies everything defined in it. Accepted to stop same-named components in different
+  files from merging, which is the silent failure. Unmeasured — §3.2 runs with-file and
+  without-file as separate strategies.
 - **`data-telemetry-id` matches an ANCESTOR.** Putting one on a container collapses every
   element inside it into the container's identity. That is per §4.2.1 and it is a useful
   escape hatch, but it is a foot-gun on a `<form>` or a layout wrapper.
