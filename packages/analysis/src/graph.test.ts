@@ -288,6 +288,14 @@ describe('labelFor', () => {
     expect(labelFor('App>SettingsForm|input:email')).toBe('SettingsForm input:email');
   });
 
+  // The source-file qualifier is part of the identity (§4.2.1), never part of the label — a
+  // path inside a box on screen is noise. This is the exact shape a build-annotated demo run
+  // produces for an unnamed element, so it is what the flow graph renders today.
+  it('drops the source-file qualifier from the innermost component', () => {
+    expect(labelFor('App>SettingsForm@src/App.tsx|form')).toBe('SettingsForm form');
+    expect(labelFor('App>Card@src/billing/Card.tsx|input:email')).toBe('Card input:email');
+  });
+
   it('falls back to the role alone when the chain is unknown', () => {
     expect(labelFor('unknown|button')).toBe('button');
   });

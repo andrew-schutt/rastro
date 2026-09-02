@@ -136,45 +136,103 @@ export interface RepeatGrouping {
   groups: Element[][];
   /** Pairs the key signal could not rule on. These want a second referee, or a human. */
   undecidedPairs: number;
+  /**
+   * Pairs of items in one list holding different numbers of colliding elements, so position
+   * cannot line them up — a control rendered conditionally inside a repeated row. Counted
+   * apart from `undecidedPairs`: the key was there, it was the alignment that failed.
+   */
+  unalignedPairs: number;
+}
+
+/** Document order, so the grouping does not depend on the order the caller passed elements. */
+function inDocumentOrder(a: Element, b: Element): number {
+  if (a === b) return 0;
+  return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) === 0 ? 1 : -1;
 }
 
 /**
  * Cluster elements sharing a fingerprint into the distinct things they actually are.
  *
- * Union over the `repeated-siblings` relation only. An `undecided` pair deliberately does NOT
- * merge — merging on a signal that said nothing would quietly suppress false merges, which is
- * the failure this whole exercise is trying to see. It is counted instead, so the harness can
- * report how much of its answer rests on evidence.
+ * ⚠ NOT a union over the `repeated-siblings` relation. That relation is not transitive, and
+ * unioning over it erases the `same-list-item` verdict in precisely the case this exists to
+ * catch. Three rows of two identical buttons: `classifyPair` correctly calls row 1's two
+ * buttons distinct, but row 1's LEFT button and row 2's RIGHT button are two items of one
+ * list, so a union drags all six into a single group and reports zero false merges. The honest
+ * answer is two groups, one false merge. Under-reporting is the failure direction the whole
+ * exercise is built to avoid, so the relation is not what the clustering runs on.
+ *
+ * Repeats are matched by POSITION instead: two elements are repeats when they sit in different
+ * items of the same list, at the same index among the colliding elements their item holds.
+ * Grouping on a composite key rather than merging pairwise is what makes this structural —
+ * two elements of one item hold different indices, so no other pair can drag them together.
+ *
+ * Two escapes are counted rather than guessed at. An `undecided` pair does not merge: merging
+ * on a signal that said nothing would suppress false merges. Neither do items that disagree on
+ * how many colliding elements they hold — index lines up two-against-two, but against a row
+ * rendering only one of the pair it is a coin flip, and a coin flip is not a measurement.
  */
 export function groupByRepeat(elements: readonly Element[]): RepeatGrouping {
-  const parent = elements.map((_, i) => i);
+  const sites = elements.map((element) => repeatSiteOf(element));
 
-  const find = (i: number): number => {
-    let root = i;
-    while (parent[root] !== root) root = parent[root] as number;
-    return root;
-  };
+  // Each element's index within its own list item, and how many the item holds. Both are
+  // properties of the collision set, not of the page: the question is only ever "which of this
+  // item's colliding elements is this one", so elements wearing other fingerprints are absent
+  // by construction and cannot shift a position.
+  const ordinal = new Array<number>(elements.length).fill(0);
+  const itemSize = new Array<number>(elements.length).fill(0);
+  const byItem = new Map<object, number[]>();
+
+  for (let i = 0; i < elements.length; i += 1) {
+    const site = sites[i];
+    if (site === null || site === undefined) continue;
+    const members = byItem.get(site.item) ?? [];
+    members.push(i);
+    byItem.set(site.item, members);
+  }
+
+  for (const members of byItem.values()) {
+    members.sort((a, b) => inDocumentOrder(elements[a] as Element, elements[b] as Element));
+    members.forEach((index, position) => {
+      ordinal[index] = position;
+      itemSize[index] = members.length;
+    });
+  }
 
   let undecidedPairs = 0;
+  let unalignedPairs = 0;
 
   for (let i = 0; i < elements.length; i += 1) {
     for (let j = i + 1; j < elements.length; j += 1) {
       const { verdict } = classifyPair(elements[i] as Element, elements[j] as Element);
       if (verdict === 'undecided') undecidedPairs += 1;
-      if (verdict !== 'repeated-siblings') continue;
-      const rootA = find(i);
-      const rootB = find(j);
-      if (rootA !== rootB) parent[rootA] = rootB;
+      if (verdict === 'repeated-siblings' && itemSize[i] !== itemSize[j]) unalignedPairs += 1;
     }
   }
 
-  const byRoot = new Map<number, Element[]>();
+  const groups: Element[][] = [];
+  const byPosition = new Map<object, Map<string, Element[]>>();
+
   for (let i = 0; i < elements.length; i += 1) {
-    const root = find(i);
-    const group = byRoot.get(root) ?? [];
-    group.push(elements[i] as Element);
-    byRoot.set(root, group);
+    const site = sites[i];
+    const element = elements[i] as Element;
+
+    // Outside any keyed list there is no evidence of repetition, and silence is not evidence.
+    if (site === null || site === undefined) {
+      groups.push([element]);
+      continue;
+    }
+
+    // The item's size rides in the key so an item this cannot align with its neighbours groups
+    // apart rather than being guessed into one of their positions.
+    const slot = `${itemSize[i]}:${ordinal[i]}`;
+    const inList = byPosition.get(site.list) ?? new Map<string, Element[]>();
+    const group = inList.get(slot) ?? [];
+    group.push(element);
+    inList.set(slot, group);
+    byPosition.set(site.list, inList);
   }
 
-  return { groups: [...byRoot.values()], undecidedPairs };
+  for (const inList of byPosition.values()) groups.push(...inList.values());
+
+  return { groups, undecidedPairs, unalignedPairs };
 }

@@ -247,14 +247,37 @@ would move the exact number the spike exists to establish, so they are counted s
 inspected. `groupByRepeat` will not merge on an undecided pair for the same reason: merging on
 a signal that said nothing suppresses false merges, which are the failure being measured.
 
+**`repeated-siblings` is not transitive, and clustering by union-find silently erased the
+answer.** The first `groupByRepeat` unioned every pair the referee called repeats. Given three
+rows of two identical buttons, `classifyPair` correctly calls row 1's pair `distinct` — but row
+1's LEFT button and row 2's RIGHT button are two items of one list, so the union dragged all six
+into one group and reported **zero** false merges where the honest answer is two groups and one
+false merge. The referee's best verdict was thrown away by the thing consuming it, in the
+under-reporting direction, and the tests missed it because they only ever exercised that case
+through `classifyPair`.
+
+Clustering is positional now: two elements are repeats when they sit in different items of the
+same list at the same index among the colliding elements their item holds. Grouping on that
+composite key rather than merging pairwise is what makes it structural — two elements of one
+item hold different indices, so no other pair can drag them together. A second escape gets
+counted rather than guessed: when two items of one list hold *different* numbers of colliding
+elements — a control rendered conditionally inside a repeated row — index says nothing about
+which one a lone button is, so those pairs land in `unalignedPairs` and do not merge.
+
+That leaves `classifyPair` coarser than the grouping, deliberately. A pairwise verdict cannot
+see a position, so it still calls row 1's Edit and row 2's Delete `repeated-siblings`; the
+composite key is where that gets refined. The verdicts remain the per-bucket reporting §3.2
+asks for, not the clustering rule.
+
 **`scripts/identity-spike` is a workspace package, not a loose script.** It renders real React
 to read real fibers, so it needs the same typecheck/lint/test rig as the SDK — this is code the
 spike's numbers depend on entirely. `pnpm-workspace.yaml` gains the one path rather than a
 `scripts/*` glob, so nothing else under `scripts/` is swept in.
 
-All twelve of its tests were checked by mutation: walking to the outermost keyed ancestor
-instead of the nearest, excusing two controls in one row as siblings, and merging undecided
-pairs each fail exactly one test.
+All fourteen of its tests were checked by mutation: walking to the outermost keyed ancestor
+instead of the nearest, excusing two controls in one row as siblings, merging undecided pairs,
+collapsing a whole list into one group, and dropping the item size from the position key each
+fail exactly one test — except the list collapse, which fails two.
 
 **The source file is in the identity, and the reason is NOT stability.** The fingerprint is
 now `<chain>[@<file>]|<role>|"<name>"` wherever the build plugin annotated the document.
@@ -299,6 +322,17 @@ no anchor. That constraint decided the shape more than the arguments for it did.
   developer, never by a user, and the default 4-digit text rule would mangle `Card2024.tsx`
   while protecting nobody. The conventions make repo-relative a MUST for the matching reason:
   an absolute path leaks the build machine's filesystem.
+
+**The path is relative to the project ROOT, not the process's `cwd`.** The plugin originally
+relativized against `state.cwd`, which Babel defaults to `process.cwd()`. That was cosmetic
+while the attribute was only an attribute; the moment it entered the fingerprint it meant the
+launch directory chose the identity. The same `Nav.tsx` stamped `examples/demo-app/src/Nav.tsx`
+built from the repo root and `src/Nav.tsx` built from the package — so CI and a developer's
+machine would produce two disjoint identity sets for byte-identical code, a churn input with
+nothing behind it. `state.file.opts.root` is what a bundler sets (`@vitejs/plugin-react` passes
+Vite's project root and never sets `cwd`) and what the attribute has always meant; Babel
+defaults it to `cwd` when nothing sets it, so a plain single-package build is unaffected.
+Pinned by a test that gives Babel a `root` and a *different* `cwd`.
 
 **None of this is measured.** Whether the merges it prevents outnumber the splits it causes is
 exactly what [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2 runs — and with-file and

@@ -40,9 +40,32 @@ array perfectly happily — it only warns — so "no key" does not prove "no loo
 the hand-inspected bucket, and counting them either way would move the exact number the spike
 exists to establish.
 
+### Grouping is positional, because the verdict is not transitive
+
 `groupByRepeat` clusters a fingerprint's colliding elements into the distinct things they
-actually are. More than one group is a false merge, and `undecidedPairs` says how much of that
-answer rests on evidence rather than silence.
+actually are. More than one group is a false merge.
+
+It does **not** union over `repeated-siblings`, which was the first attempt and was wrong.
+Three rows of two identical buttons: the table above correctly calls row 1's pair `distinct`,
+but row 1's LEFT button and row 2's RIGHT button are two items of one list — so a union drags
+all six together and reports zero false merges where the honest answer is two groups and one.
+Under-reporting is the failure direction this whole exercise exists to avoid.
+
+So repeats are matched by position: **two elements are repeats when they sit in different items
+of the same list, at the same index among the colliding elements their item holds.** Grouping
+on that composite key instead of merging pairwise is what makes it structural — two elements of
+one item hold different indices, so no other pair can drag them together.
+
+Two escapes are counted rather than guessed at:
+
+| Count | What it means |
+|---|---|
+| `undecidedPairs` | The key said nothing, so the pair did not merge. How much of the answer rests on evidence rather than silence. |
+| `unalignedPairs` | Two items of one list hold different numbers of colliding elements — a control rendered conditionally inside a repeated row — so index cannot line them up. The pair does not merge. |
+
+`classifyPair` stays coarser than the grouping on purpose: a pairwise verdict cannot see a
+position, so it still calls row 1's Edit and row 2's Delete `repeated-siblings`. The verdicts
+are the per-bucket reporting §3.2 asks for; the composite key is the clustering rule.
 
 ### Why a key is a good referee and a terrible identity
 

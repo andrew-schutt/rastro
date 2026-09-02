@@ -177,9 +177,16 @@ export default function rastroComponentAnnotate(babel: {
         path.node.attributes.push(attribute(componentAttribute, component));
 
         if (includeSourceFile && !hasAttribute(path.node, sourceFileAttribute)) {
-          const root = state.cwd;
+          // The PROJECT root, not the process's cwd. This path is part of the fingerprint, so
+          // relativizing against wherever the build was launched from would mint a different
+          // identity for every element depending on the directory — CI running from a monorepo
+          // root and a developer running from the package would produce two disjoint identity
+          // sets for identical code, churn with no signal behind it. Bundlers set `root`
+          // (Vite passes its project root straight through); Babel defaults it to `cwd` when
+          // nothing does, which is the old behaviour for a plain single-package build.
+          const root = state.file.opts.root ?? state.cwd;
           const file =
-            root !== undefined && root !== '' ? relative(root, filename) : filename;
+            root !== undefined && root !== null && root !== '' ? relative(root, filename) : filename;
           path.node.attributes.push(attribute(sourceFileAttribute, file));
         }
       },
