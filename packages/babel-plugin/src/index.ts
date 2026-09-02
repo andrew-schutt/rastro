@@ -17,7 +17,7 @@
 //       <SaveButton />         ──▶     → walking up from the button yields
 //     </form>;                           ["SaveButton", "SettingsForm"]
 //   }                                    → SettingsForm>SaveButton
-import { relative } from 'node:path';
+import { relative, sep } from 'node:path';
 import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import type * as BabelTypes from '@babel/types';
 
@@ -41,6 +41,60 @@ export interface RastroPluginOptions {
   sourceFileAttribute?: string;
   /** Emit the source-file attribute at all. Default `true`. */
   includeSourceFile?: boolean;
+  /**
+   * The directory source paths are relativized against. Defaults to Babel's `root`, which
+   * itself falls back to the process's cwd.
+   *
+   * Set it wherever the build can be launched from more than one directory, because that
+   * default is only as pinned as the toolchain makes it. Vite pins it in practice — its root
+   * is where `index.html` is resolved from, so a build launched elsewhere fails outright
+   * rather than stamping a different path — but a plain Babel, babel-loader, or Next build has
+   * no such anchor, and there `root` follows cwd and the stamped path follows with it: one
+   * identity set per directory somebody happened to run the build from.
+   */
+  root?: string;
+}
+
+/**
+ * The source path as it gets stamped: repo-relative with POSIX separators, or null when the
+ * file does not sit under the root at all.
+ *
+ * Both halves are identity correctness, not tidiness. `relative()` returns the host's
+ * separators, so an unnormalized Windows build stamps `src\Nav.tsx` where CI stamps
+ * `src/Nav.tsx` — two disjoint identity sets for one line of source, which is the churn this
+ * whole path exists to prevent. And a file outside the root comes back as `../../shared/x.tsx`
+ * (relative to the launch directory again) or, across Windows drives, as an absolute path,
+ * which `SEMANTIC-CONVENTIONS.md` forbids outright: it leaks the build machine's filesystem
+ * into telemetry. Stamping nothing costs that element its source-file qualifier and leaves it
+ * with the plain component chain, which is what an unannotated build already produces.
+ */
+export function sourceFilePath(root: string | undefined | null, filename: string): string | null {
+  if (root === undefined || root === null || root === '') return null;
+  return toStampedPath(relative(root, filename));
+}
+
+/** A POSIX path from the filesystem root, or a Windows one from a drive. Neither is stampable. */
+const ABSOLUTE = /^([a-zA-Z]:)?\//;
+
+/**
+ * One `relative()` result, in the form it gets stamped — or null if it must not be.
+ *
+ * Split from `sourceFilePath` so each rejection is testable on any platform: `relative()` on
+ * Linux cannot produce a backslash or a drive letter, so a guard written against the host's
+ * own output would ship untested and CI is Linux-only.
+ *
+ * `separator` is the host's, and the conversion is conditioned on it rather than replacing
+ * every backslash outright, because a backslash is a legal character in a POSIX filename and
+ * rewriting it there would invent a directory that does not exist.
+ */
+export function toStampedPath(relativePath: string, separator: string = sep): string | null {
+  const posixPath = separator === '\\' ? relativePath.split('\\').join('/') : relativePath;
+
+  if (posixPath === '') return null;
+  if (posixPath === '..' || posixPath.startsWith('../')) return null;
+  if (ABSOLUTE.test(posixPath)) return null;
+
+  return posixPath;
 }
 
 interface RastroPluginPass extends PluginPass {
@@ -166,6 +220,7 @@ export default function rastroComponentAnnotate(babel: {
           componentAttribute = COMPONENT_ATTRIBUTE,
           sourceFileAttribute = SOURCE_FILE_ATTRIBUTE,
           includeSourceFile = true,
+          root: configuredRoot,
         } = state.opts;
 
         if (hasAttribute(path.node, componentAttribute)) return;
@@ -181,13 +236,13 @@ export default function rastroComponentAnnotate(babel: {
           // relativizing against wherever the build was launched from would mint a different
           // identity for every element depending on the directory — CI running from a monorepo
           // root and a developer running from the package would produce two disjoint identity
-          // sets for identical code, churn with no signal behind it. Bundlers set `root`
-          // (Vite passes its project root straight through); Babel defaults it to `cwd` when
-          // nothing does, which is the old behaviour for a plain single-package build.
-          const root = state.file.opts.root ?? state.cwd;
-          const file =
-            root !== undefined && root !== null && root !== '' ? relative(root, filename) : filename;
-          path.node.attributes.push(attribute(sourceFileAttribute, file));
+          // sets for identical code, churn with no signal behind it.
+          //
+          // The `root` option first, because Babel's own `root` is only pinned to the extent
+          // the toolchain pins it — it defaults to `cwd`, and outside Vite (where the root has
+          // to be wherever `index.html` is) nothing anchors it to the project.
+          const file = sourceFilePath(configuredRoot ?? state.file.opts.root ?? state.cwd, filename);
+          if (file !== null) path.node.attributes.push(attribute(sourceFileAttribute, file));
         }
       },
     },

@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import rastroComponentAnnotate, {
   COMPONENT_ATTRIBUTE,
   SOURCE_FILE_ATTRIBUTE,
+  sourceFilePath,
+  toStampedPath,
   type RastroPluginOptions,
 } from './index.js';
 
@@ -145,5 +147,69 @@ describe('rastro-component-annotate', () => {
   it('emits the name as a string literal, which is what survives minification', () => {
     const out = transform(`function SettingsForm() { return <form />; }`);
     expect(out).toMatch(/"SettingsForm"/);
+  });
+
+  // Babel's `root` defaults to cwd, and outside Vite nothing anchors it to the project — a
+  // babel-loader or Next build relativizes against wherever it was launched. The option is
+  // where that guarantee can be made without depending on the toolchain.
+  it('lets the root be pinned explicitly, over the one Babel was given', () => {
+    const out = transformSync(`function SettingsForm() { return <form />; }`, {
+      filename: '/repo/packages/app/src/SettingsForm.tsx',
+      root: '/repo',
+      cwd: '/repo',
+      babelrc: false,
+      configFile: false,
+      parserOpts: { plugins: ['jsx', 'typescript'] },
+      plugins: [[rastroComponentAnnotate, { root: '/repo/packages/app' }]],
+    })?.code;
+    expect(out).toContain(`${SOURCE_FILE_ATTRIBUTE}="src/SettingsForm.tsx"`);
+  });
+});
+
+// The path is part of the fingerprint, so every way it can vary between two builds of one
+// source tree is an identity split. These are the ways.
+describe('sourceFilePath', () => {
+  it('is repo-relative', () => {
+    expect(sourceFilePath('/repo/app', '/repo/app/src/Nav.tsx')).toBe('src/Nav.tsx');
+  });
+
+  it('stamps nothing for a file outside the root, rather than a launch-relative path', () => {
+    expect(sourceFilePath('/repo/app', '/repo/shared/Nav.tsx')).toBeNull();
+  });
+
+  it('stamps nothing when there is no root to relativize against', () => {
+    expect(sourceFilePath('', '/repo/app/src/Nav.tsx')).toBeNull();
+    expect(sourceFilePath(undefined, '/repo/app/src/Nav.tsx')).toBeNull();
+  });
+});
+
+// Driven with a `\` separator, which is the only way to reach the Windows behaviour: CI runs
+// on Linux, where `relative()` cannot produce any of these shapes.
+describe('toStampedPath', () => {
+  // The one standing between a Windows contributor and a second identity set for byte-
+  // identical code: `App>Nav@src\Nav.tsx` and `App>Nav@src/Nav.tsx` share nothing.
+  it('normalises Windows separators', () => {
+    expect(toStampedPath('src\\ui\\Nav.tsx', '\\')).toBe('src/ui/Nav.tsx');
+  });
+
+  it('leaves a POSIX filename containing a backslash alone', () => {
+    expect(toStampedPath('src/od\\d.tsx', '/')).toBe('src/od\\d.tsx');
+  });
+
+  it('refuses a path that escapes the root, which is launch-relative again', () => {
+    expect(toStampedPath('../shared/Nav.tsx', '/')).toBeNull();
+    expect(toStampedPath('..\\shared\\Nav.tsx', '\\')).toBeNull();
+    expect(toStampedPath('..', '/')).toBeNull();
+  });
+
+  // SEMANTIC-CONVENTIONS.md: MUST NOT carry an absolute filesystem path. `relative()` returns
+  // one when the file is on another Windows drive, and it would land in telemetry as-is.
+  it('refuses an absolute path, which would leak the build machine into telemetry', () => {
+    expect(toStampedPath('D:\\other\\src\\Nav.tsx', '\\')).toBeNull();
+    expect(toStampedPath('/other/src/Nav.tsx', '/')).toBeNull();
+  });
+
+  it('keeps a path that merely starts with a dot, which is an ordinary directory', () => {
+    expect(toStampedPath('.storybook/Nav.tsx', '/')).toBe('.storybook/Nav.tsx');
   });
 });
