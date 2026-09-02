@@ -15,6 +15,8 @@ Setup, the dev loop, and what is implemented vs. stubbed live in
 | [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md) | The `ux.*` attribute and event spec. A contract others instrument against — versioned independently of the SDK. |
 | [`docs/NOTES.md`](docs/NOTES.md) | The accurate record: what is implemented vs. stubbed, every deviation from the design and why, and the known holes. |
 | [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) | The current body of work and its sequencing. |
+| [`docs/IDENTITY-RESOLUTION.md`](docs/IDENTITY-RESOLUTION.md) | Design for surviving fingerprint drift across deploys. Unbuilt; folds into `DESIGN.md` at its next revision. |
+| [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) | Field survey: what is genuinely novel here and what is not. A dated snapshot — re-check before leaning on it. |
 
 **The docs are the contract.** Deviate from them when they are wrong — several deviations are
 already on the record — but say so, and say why, in `NOTES.md`. A silent deviation is the

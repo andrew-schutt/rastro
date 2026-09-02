@@ -233,7 +233,17 @@ any real sense. W3C accname, which §4.2.1 says it is approximating, restricts n
 content to specific roles; this is that rule, tag-shaped. Author-supplied labels
 (`aria-label`, `title`, `alt`) are still honoured on any element.
 
-**The Opt-In attributes are off by default.** The conventions mark `ux.component_chain`,
+**The fingerprint parts became Recommended in conventions 0.2.** `ux.component_chain`,
+`ux.role` and `ux.accessible_name` were Opt-In; they are now Recommended and default-on, under
+a new invariant — emit exactly the parts that composed the fingerprint, and nothing more. The
+reasoning that unblocked it: those values are *already* on the wire, concatenated inside the
+Required `ux.fingerprint`, so emitting them separately adds queryability rather than exposure.
+The paragraph below describes the 0.1 behaviour and is kept because it is why the parts were
+gated in the first place; the invariant is what retires that concern rather than trading it
+off. What is NOT yet implemented is the emitter change itself — the provider still requires
+`optIn`. See [`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md) for what the parts are for.
+
+**The Opt-In attributes are off by default (conventions 0.1 behaviour, still what the code does).** The conventions mark `ux.component_chain`,
 `ux.role`, and `ux.accessible_name` as "captured only when explicitly enabled", so the
 provider takes an `optIn` prop and emits nothing extra without it. The demo turns on
 `componentChain` and `role`, and leaves `accessibleName` off — it is redacted, but it is the

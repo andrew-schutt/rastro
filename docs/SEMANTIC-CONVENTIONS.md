@@ -1,6 +1,6 @@
 # Rastro Semantic Conventions
 
-**Version:** 0.1 · **Stability:** Development (expect breaking changes before 1.0)
+**Version:** 0.2 · **Stability:** Development (expect breaking changes before 1.0)
 
 This document defines how Rastro represents UX-behavioral telemetry on top of
 OpenTelemetry. It is the contract any instrumentation — first-party SDK or otherwise —
@@ -67,15 +67,15 @@ reinvent them.
 | `ux.interaction.method` | Recommended | enum | How the interaction occurred: `mouse` \| `keyboard` \| `touch`. Powers accessibility/ergonomics signals. |
 | `ux.active_ms` | Recommended | int | Visibility-adjusted dwell **before** this event, in ms. MUST exclude time while `document.hidden` was true. |
 | `ux.from_path` | Opt-In | string | On `ux.route_change`, the previous `url.path` (tokenized). |
-| `ux.component_chain` | Opt-In | string[] | Component ancestry, outermost → innermost. Debugging aid for fingerprint drift. |
-| `ux.role` | Opt-In | string | Element role/tag (`button`, `input:email`, `a`). A queryable slice of the fingerprint. |
-| `ux.accessible_name` | Opt-In | string | Element label. MUST be redacted before emit; MUST NOT contain raw user content. |
+| `ux.component_chain` | Recommended | string[] | Component ancestry, outermost → innermost. Emitted when it composed the fingerprint. |
+| `ux.role` | Recommended | string | Element role/tag (`button`, `input:email`, `a`). A queryable slice of the fingerprint. |
+| `ux.accessible_name` | Recommended | string | Element label. Emitted **only when it composed the fingerprint**. MUST be redacted before emit; MUST NOT contain raw user content. |
 
 ## Resource attributes (defined by Rastro)
 
 | Attribute | Level | Type | Meaning |
 |---|---|---|---|
-| `ux.convention.version` | Recommended | string (resource) | Version of *this* spec the record conforms to (e.g. `"0.1"`). Lets the analysis layer handle mixed-version data across migrations. |
+| `ux.convention.version` | Recommended | string (resource) | Version of *this* spec the record conforms to (e.g. `"0.2"`). Lets the analysis layer handle mixed-version data across migrations. |
 
 ## Fingerprint format
 
@@ -94,6 +94,26 @@ element (or an ancestor) overrides derivation entirely and yields `id:<value>`.
 
 Consumers MUST treat the fingerprint as an opaque string for joining; they SHOULD NOT
 parse it for meaning (use `ux.role` / `ux.component_chain` for that).
+
+### Fingerprint parts
+
+`ux.component_chain`, `ux.role`, and `ux.accessible_name` are the fingerprint's constituent
+parts, emitted alongside it so consumers can query them without parsing the composite.
+
+**Emitters MUST emit exactly the parts that composed the fingerprint, and nothing more.** A
+part the fingerprint dropped — an accessible name omitted under the name-from-content rule, a
+chain that degraded to `unknown` — MUST NOT be emitted separately. An element whose
+fingerprint came from a `data-telemetry-id` override MUST emit no parts at all, since none
+contributed.
+
+This invariant is what makes the parts privacy-neutral: every value they carry is already on
+the wire inside the Required `ux.fingerprint`, so emitting them adds queryability, not
+exposure. It is also what keeps them trustworthy for identity resolution — a part that did not
+contribute to an identity cannot explain why that identity changed.
+
+They are Recommended rather than Required because no flow, funnel, or friction metric depends
+on them; they exist for identity resolution and drift diagnosis (see
+[`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md)), which degrades gracefully without them.
 
 ---
 
@@ -159,6 +179,13 @@ exporter):
   Timestamps are for display and latency only.
 - A new `session.id` is assigned after inactivity or an explicit session reset. The
   exact idle threshold is an implementation choice and is out of scope for this spec.
+
+## Change history
+
+**0.2** — `ux.component_chain`, `ux.role`, and `ux.accessible_name` move from Opt-In to
+Recommended, under the parts invariant above. Additive for consumers: the Required set is
+unchanged and nothing that conformed to 0.1 stops conforming. It does change what a
+conforming emitter sends by default, which is why the version moves.
 
 ## Versioning and stability
 

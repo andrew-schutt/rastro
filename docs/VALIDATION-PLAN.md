@@ -125,13 +125,25 @@ commit** and the README's biggest caveat stops being an adjective: *"on app X, 4
 interactive elements collide in dev and 61% collide in prod."* That single comparison is what
 decides whether §4.3's build-time plugin is the next thing built.
 
-**b) Per-deploy churn.** Walk ~10 real commits over ~a month. What fraction of fingerprints
-vanish and reappear per deploy? Needs no oracle. If it is 30%, month-over-month comparison is
-impossible and the composite fingerprint needs redesign before anything downstream matters.
+**b) Per-deploy churn, split by whether the component was edited.** Walk ~10 real commits over
+~a month. Which fingerprints vanish and reappear per deploy — and crucially, did the commit
+*touch* that component? Churn on edited components is expected and largely benign; §4.2.1
+knowingly accepts that copy edits and i18n cause splits. Churn on **untouched** components is
+the real signal: it means something is propagating that we do not understand, most likely the
+depth-4 chain cap letting an edit several levels up silently re-identify everything beneath it.
 
 **c) False split, with a weak oracle.** For elements whose route + role + accessible name are
 unchanged across a commit pair, did the fingerprint change? That isolates component-chain
 churn, which is the part §4.2.1 calls the primary stabilizer.
+
+**d) Detectability of drift.** For each churned fingerprint in the corpus, could a rule using
+version boundary + `url.path` + `ux.role` + graph neighbours have flagged it and proposed the
+correct match? This is the trigger for [`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md), and
+it reframes what the spike is really asking. With a resolution layer, identity does not have
+to be *stable* — it has to be **detectably unstable and cheaply repairable**. Drift you can
+see and confirm costs one prompt; drift you cannot see corrupts every number silently. If
+proposals are mostly right, that design is viable. If they are mostly wrong, the prompt becomes
+noise a developer learns to dismiss, and the answer is §4.3's source-location anchor instead.
 
 **One design wrinkle to settle before writing the harness.** Two identical buttons in a
 rendered list *correctly* share a fingerprint — that is a right merge, not a false one, and
@@ -143,12 +155,43 @@ repeated siblings," or the collision number is meaningless. Settle that definiti
 ≥2 real apps and ≥10 commits. Use apps we do not control — OSS React products with real
 history work fine.
 
-**How we know it worked:** the numbers force a decision. **Pre-commit to the thresholds before
-seeing them**, or we will rationalize whatever comes out. Proposed: dev collision < 5%, churn
-< 10% per deploy.
+**How we know it worked — three rules, pre-committed before any number is seen.**
 
-**If dev collision or churn is bad:** stop here. That is the §19 existence condition failing,
-and the fix is fingerprint redesign, not more product.
+There is deliberately no percentage bar here. Nobody publishes false-merge rates — Heap,
+PostHog, FullStory and Contentsquare all do this same fingerprinting and none report how often
+it is wrong — so an absolute threshold has no referent, and inventing one launders a guess as a
+standard. A raw rate is also the wrong shape: a collision on a never-touched element costs
+nothing, while one on the primary CTA corrupts every headline number. The rules below are
+comparative or absolute-zero, so none of them needs a number pulled from nowhere.
+
+1. **The composite must beat every alternative it was chosen over.** Run the corpus through
+   four strategies: role + accessible name only (no fiber walk); a **CSS selector path**, which
+   is what PostHog, Heap and FullStory actually use and therefore the incumbent approach this
+   whole design is a bet against; a **build-plugin DOM-attribute chain** (see
+   [`PRIOR-ART.md`](PRIOR-ART.md)); and the composite as built.
+
+   The fiber walk reads React's private internals with no public API and no mitigation — it has
+   to earn that exposure. The selector baseline is the one that decides whether the project has
+   a reason to exist. The build-plugin baseline is the harder question: if walking the **DOM**
+   for `data-*-component` attributes matches or beats the fiber walk, then §4.2.1's biggest
+   liability is being carried for convenience rather than capability, and the honest answer is
+   to make the build plugin the primary strategy and the fiber walk the zero-config fallback.
+2. **Churn on untouched components must be zero.** Not low — zero. One instance means a
+   mechanism we do not understand, so each is investigated individually rather than tolerated
+   as a rate.
+3. **Zero collisions among the flow that matters.** Traffic cannot be weighted offline, so
+   proxy it: hand-pick the ~20 elements of one real flow — the same picking §3.5 needs anyway —
+   and require no collisions among them. Those are the elements every number in a Phase 0
+   deliverable is computed from.
+
+**Not a gate:** the dev-vs-prod collision comparison is an input, not a pass/fail. It prices
+what §4.3's build plugin buys, and combines with the plugin's still-unknown cost (§17 #4) into
+a build/don't-build decision. The absolute rate is still worth computing and publishing as
+disclosure — "on app X, N% of interactive elements share an identity in a production build" is
+a far stronger README line than today's adjectival caveat.
+
+**If rule 1 or 2 fails:** stop here. That is the §19 existence condition failing, and the fix
+is fingerprint redesign, not more product.
 
 ---
 
@@ -256,6 +299,7 @@ record, not an oversight.
 | Build-time plugin (§4.3) | **Conditionally deferred, not dismissed.** It becomes the immediate next work if the prod collision number from 3.2 is bad *and* Phase 0 comes back positive. Building it before Phase 0's answer is building the fix for a tool that may not exist. |
 | Per-router `RouteAdapter`s (§4.6) | Build the one the Phase 0 host app needs. One adapter chosen by evidence, not four on spec. |
 | Full §4.9 allow/deny model | Deny-list only, per 3.4. The general model waits for a real app's requirements. |
+| Identity resolution — the alias layer (`IDENTITY-RESOLUTION.md`) | **Deferred with an explicit trigger, not dismissed.** Designed, unbuilt. Its go/no-go is measurement (d) above: if drift proves detectable, build it after Phase 0 returns positive. It changes what `buildGraph` keys on, adds persisted state to the collector, and needs a review surface in the dashboard — too much to build on speculation, too load-bearing to leave undesigned. |
 | rrweb session replay (§12, §14) | §12 calls it the real answer to causation. Phase 0 is exactly the experiment that shows whether §13.1's timeline is a sufficient substitute — run it before paying rrweb's complexity and privacy cost. |
 | Browser-level E2E in CI | Real, but moves neither gate. The CDP driving already exists as scripts; keep it manual for now. |
 
