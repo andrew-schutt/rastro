@@ -81,6 +81,30 @@ describe('buildEvent', () => {
     expect(event.attributes['ux.accessible_name']).toBe(`Delete account for ${REDACTED}`);
   });
 
+  it('carries the source file through unredacted, unlike the accessible name', () => {
+    const event = buildEvent(state(), {
+      eventName: 'ux.click',
+      fingerprint: 'App>Card@src/billing/Card2024.tsx|button|"Edit"',
+      route: '/',
+      sourceFile: 'src/billing/Card2024.tsx',
+    });
+
+    // A repo-relative path is authored by a developer, never by a user, and it is already on
+    // the wire inside the Required fingerprint. Redacting it would mangle `Card2024` on the
+    // default 4-digit rule while protecting nobody.
+    expect(event.attributes['ux.source_file']).toBe('src/billing/Card2024.tsx');
+  });
+
+  it('omits ux.source_file entirely when there is no file to report', () => {
+    const event = buildEvent(state(), {
+      eventName: 'ux.click',
+      fingerprint: 'App|button|"Edit"',
+      route: '/',
+    });
+
+    expect('ux.source_file' in event.attributes).toBe(false);
+  });
+
   it('carries custom attributes alongside the Required set', () => {
     const event = buildEvent(state(), {
       eventName: 'checkout.completed',
