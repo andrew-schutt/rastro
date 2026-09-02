@@ -51,7 +51,10 @@ export function labelFor(fingerprint: string): string {
   }
 
   // No name (an input, say). The innermost component plus the role is the next best thing.
-  const innermost = chain.split('>').at(-1) ?? '';
+  // The chain's last segment carries the optional `@<source file>` qualifier, which is there
+  // to separate `billing/Card.tsx` from `settings/Card.tsx` in the IDENTITY. In a label it is
+  // just a path taking up a box, so only the component name is shown.
+  const innermost = (chain.split('>').at(-1) ?? '').split('@')[0] ?? '';
   if (innermost !== '' && innermost !== 'unknown') return `${innermost} ${role}`.trim();
   if (role !== '') return role;
 
