@@ -164,12 +164,18 @@ standard. A raw rate is also the wrong shape: a collision on a never-touched ele
 nothing, while one on the primary CTA corrupts every headline number. The rules below are
 comparative or absolute-zero, so none of them needs a number pulled from nowhere.
 
-1. **The composite must beat both baselines it was chosen over.** Run the corpus through three
-   strategies: role + accessible name only (no fiber walk), a CSS selector path, and the
-   composite. The fiber walk reads React's private internals with no public API and no
-   mitigation — it has to earn that exposure. If the composite is not materially better than
-   the no-fiber baseline on collisions *and* better than the selector baseline on churn, then
-   §4.2.1's design is unjustified, which is worth knowing far more than a score is.
+1. **The composite must beat every alternative it was chosen over.** Run the corpus through
+   four strategies: role + accessible name only (no fiber walk); a **CSS selector path**, which
+   is what PostHog, Heap and FullStory actually use and therefore the incumbent approach this
+   whole design is a bet against; a **build-plugin DOM-attribute chain** (see
+   [`PRIOR-ART.md`](PRIOR-ART.md)); and the composite as built.
+
+   The fiber walk reads React's private internals with no public API and no mitigation — it has
+   to earn that exposure. The selector baseline is the one that decides whether the project has
+   a reason to exist. The build-plugin baseline is the harder question: if walking the **DOM**
+   for `data-*-component` attributes matches or beats the fiber walk, then §4.2.1's biggest
+   liability is being carried for convenience rather than capability, and the honest answer is
+   to make the build plugin the primary strategy and the fiber walk the zero-config fallback.
 2. **Churn on untouched components must be zero.** Not low — zero. One instance means a
    mechanism we do not understand, so each is investigated individually rather than tolerated
    as a rate.
