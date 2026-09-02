@@ -35,6 +35,23 @@ describe('rastro-component-annotate', () => {
     expect(out).toContain(`${SOURCE_FILE_ATTRIBUTE}="src/SettingsForm.tsx"`);
   });
 
+  // The path is part of the fingerprint, so a build launched from the monorepo root and one
+  // launched from the package directory must not mint two identity sets for the same source.
+  // Vite hands Babel a `root` and no `cwd`; this pins that `root` is what wins.
+  it('relativizes against the project root, NOT the directory the build ran in', () => {
+    const out =
+      transformSync(`function SettingsForm() { return <form />; }`, {
+        filename: '/repo/packages/app/src/SettingsForm.tsx',
+        root: '/repo/packages/app',
+        cwd: '/repo',
+        babelrc: false,
+        configFile: false,
+        parserOpts: { plugins: ['jsx', 'typescript'] },
+        plugins: [rastroComponentAnnotate],
+      })?.code ?? '';
+    expect(out).toContain(`${SOURCE_FILE_ATTRIBUTE}="src/SettingsForm.tsx"`);
+  });
+
   it('annotates every host element in the component, not just the root', () => {
     const out = transform(
       `function SettingsForm() { return <form><input /><span /></form>; }`,
