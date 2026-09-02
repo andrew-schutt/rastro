@@ -257,27 +257,56 @@ under-reporting direction, and the tests missed it because they only ever exerci
 through `classifyPair`.
 
 Clustering is positional now: two elements are repeats when they sit in different items of the
-same list at the same index among the colliding elements their item holds. Grouping on that
-composite key rather than merging pairwise is what makes it structural — two elements of one
-item hold different indices, so no other pair can drag them together. A second escape gets
-counted rather than guessed: when two items of one list hold *different* numbers of colliding
-elements — a control rendered conditionally inside a repeated row — index says nothing about
-which one a lone button is, so those pairs land in `unalignedPairs` and do not merge.
+same list at the same position. Grouping on that composite key rather than merging pairwise is
+what makes it structural — two elements of one item hold different positions, so no other pair
+can drag them together.
+
+**The position is the JSX slot (`fiber.index`), not an index among the colliding elements, and
+the first version of it under-reported.** Counting a row's colliding elements and lining the
+counts up merges a row holding `[X, Act]` with one holding `[Act, Y]` — both two-element rows,
+so the size guard stays quiet and `X` merges with `Act` while `Act` merges with `Y`. Three
+logical elements reported as two, with every escape counter silent: the under-reporting
+direction again, and the size guard was only ever a proxy for the question.
+
+`fiber.index` answers the question directly, because it is the element's position in the
+children array React reconciled and a branch that rendered nothing still occupies its slot.
+`{canEdit ? <button/> : null}<button/>` puts the second button at slot 1 in every row whether
+or not the first rendered — so the slots separate `[X, Act]` from `[Act, Y]`, and a row that
+renders only one of a pair now lands in the right column instead of being declined as
+unalignable. That last case used to be an escape (`unalignedPairs`) and is now simply decided.
+
+What remains counted is `slotSeparatedPairs`: pairs the key called repeats and the slot held
+apart. It is not an escape — in a two-control list most cross pairs land there as a matter of
+course — but it bounds the one way the slot can be wrong, which is a control rendered from two
+JSX sites (`cond ? <button>Save</button> : <button>Save</button>`) being one logical element
+that the slots split.
+
+**The count is a range now, because a key does not prove a loop.** React stamps keys on
+hand-written static siblings too, so `<section key="left">…<section key="right">` is two items
+of one parent that no signal in the module distinguishes from two rows of a `.map()` — their
+buttons merge, and a single number would report that as a clean right merge. `groupByRepeat`
+returns `distinctElements: { atLeast, atMost }`: `atLeast` is `groups.length`, `atMost` assumes
+no key is a loop and counts every element separately. The width says how much of the answer is
+resting on `key`. This is the §3.2 shape — a rule pre-committed with its assumption visible,
+rather than a point estimate with the assumption inside it.
 
 That leaves `classifyPair` coarser than the grouping, deliberately. A pairwise verdict cannot
-see a position, so it still calls row 1's Edit and row 2's Delete `repeated-siblings`; the
-composite key is where that gets refined. The verdicts remain the per-bucket reporting §3.2
-asks for, not the clustering rule.
+see a slot, so it still calls row 1's Edit and row 2's Delete `repeated-siblings`; the slot is
+where that gets refined. The verdicts remain the per-bucket reporting §3.2 asks for, not the
+clustering rule. Both now read from sites resolved **once**: `classifySites` takes the resolved
+pair, so the n² verdicts and the slots come from one snapshot of the fiber tree rather than
+from a second walk that a re-render could land on a different tree.
 
 **`scripts/identity-spike` is a workspace package, not a loose script.** It renders real React
 to read real fibers, so it needs the same typecheck/lint/test rig as the SDK — this is code the
 spike's numbers depend on entirely. `pnpm-workspace.yaml` gains the one path rather than a
 `scripts/*` glob, so nothing else under `scripts/` is swept in.
 
-All fourteen of its tests were checked by mutation: walking to the outermost keyed ancestor
-instead of the nearest, excusing two controls in one row as siblings, merging undecided pairs,
-collapsing a whole list into one group, and dropping the item size from the position key each
-fail exactly one test — except the list collapse, which fails two.
+All eighteen of its tests were checked by mutation. Walking to the outermost keyed ancestor
+instead of the nearest, excusing two controls in one row as siblings, and merging undecided
+pairs each fail exactly one test; collapsing a whole list into one group fails two. On the slot
+rewrite: ignoring `fiber.index` fails four, not stopping the slot walk at the item fiber fails
+eight, and collapsing `atMost` onto `atLeast` fails the two range tests.
 
 **The source file is in the identity, and the reason is NOT stability.** The fingerprint is
 now `<chain>[@<file>]|<role>|"<name>"` wherever the build plugin annotated the document.
@@ -334,6 +363,28 @@ Vite's project root and never sets `cwd`) and what the attribute has always mean
 defaults it to `cwd` when nothing sets it, so a plain single-package build is unaffected.
 Pinned by a test that gives Babel a `root` and a *different* `cwd`.
 
+**How pinned that root is depends on the toolchain, so there is a `root` option too.** Babel's
+`root` falls back to `cwd`, and the first version of this note implied the bundler always
+rescues that. Vite does, but incidentally: its root is where `index.html` is resolved from, so
+a build launched from the wrong directory *fails* rather than stamping a different path —
+checked by running one, which errors in Rollup rather than emitting
+`examples/demo-app/src/Nav.tsx`. Nothing anchors a plain Babel, babel-loader, or Next build the
+same way, and that is where the launch directory still picks the identity. `RastroPluginOptions.root`
+takes precedence over both, and the demo config pins it — belt and braces there, since Vite
+already holds, but it is the pattern the §17 #4 Next port needs and the identity should not
+rest on an invariant belonging to something else.
+
+**Two things the path must never be, both enforced by dropping the attribute rather than
+stamping it.** `relative()` returns the host's separators, so an un-normalised Windows build
+stamps `src\Nav.tsx` where CI stamps `src/Nav.tsx` — byte-identical source, two disjoint
+identity sets, which is the exact failure the root fix was for and it survived that fix. And a
+file outside the root comes back as `../../shared/x.tsx` (launch-relative again) or, across
+Windows drives, absolute — which the conventions forbid outright. `toStampedPath` normalises
+the first and refuses the second, leaving that element with the plain chain an unannotated
+build would give it. It is split from `sourceFilePath` and takes the separator as a parameter
+because CI is Linux-only: `relative()` there cannot produce a backslash or a drive letter, so
+a guard written against the host's own output would ship untested.
+
 **None of this is measured.** Whether the merges it prevents outnumber the splits it causes is
 exactly what [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2 runs — and with-file and
 without-file are now two strategies over one corpus rather than an argument.
@@ -382,9 +433,9 @@ problem instead of containing it, and nothing in this package crosses into the S
 incompatible node type systems in the same file.
 
 **`UxEvent` is a superset of §19.2.** The plan's snippet predates SEMANTIC-CONVENTIONS.md and
-omits five attributes the spec defines: `ux.from_path`, `ux.component_chain`, `ux.role`,
-`ux.accessible_name`, and the `ux.convention.version` resource attribute. They are added as
-optional members, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
+omits six attributes the spec defines: `ux.from_path`, `ux.component_chain`, `ux.role`,
+`ux.accessible_name`, `ux.source_file`, and the `ux.convention.version` resource attribute.
+They are added as optional members, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
 nothing that conformed before stops conforming.
 
 **`Step` / `Session` / `FlowGraph` live in `rastro-core/shapes.ts`, not in `rastro-analysis`.**
@@ -446,6 +497,22 @@ the wire and arguably belongs on `FlowNode` — worth settling before the shape 
 distinction relied on: nothing it produces feeds a metric or a join. `FlowNode.id` stays the
 whole fingerprint and everything is keyed on that; `labelFor` only decides what text sits
 inside a box, and falls back to the raw fingerprint on anything unfamiliar.
+
+That fallback is the reason the source-file qualifier is stripped by a pattern anchored on a
+source extension and not at the first `@`. Only a build-annotated chain carries an `@<file>`;
+on the fiber-walk path the segment is a raw `displayName`, which is arbitrary developer- or
+library-supplied text, and cutting `Connect(@app/Widget)` at the `@` labelled the node
+`Connect(` — the promise of degrading to something unfamiliar rather than truncating it, broken
+in the one case it exists for.
+
+**Two components of one name still render one label, and that is left alone.** The whole point
+of the qualifier is that `billing/Card.tsx` and `settings/Card.tsx` are different identities,
+yet an unnamed element in each renders as `Card input:email` in both boxes. The distinction is
+recoverable only by hovering (`FlowGraph.tsx` puts the fingerprint in `title`). Putting a path
+back in the box was considered and rejected when the qualifier was added — it is noise on every
+node to disambiguate a minority — and making the label depend on which *other* nodes are on
+screen would mean one fingerprint labelled two ways in two views. Worth revisiting only with a
+real corpus showing how often it actually happens.
 
 **Two friction signals, where §19.4 step 6 says exactly one.** A deliberate call, not an
 oversight. §10's own advice is to under-invest in inventing signals and over-invest in

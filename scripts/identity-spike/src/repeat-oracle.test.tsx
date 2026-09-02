@@ -260,12 +260,14 @@ describe('groupByRepeat', () => {
         ))}
       </ul>,
     );
-    const { groups, undecidedPairs, unalignedPairs } = groupByRepeat(q('button'));
+    const { groups, undecidedPairs, slotSeparatedPairs } = groupByRepeat(q('button'));
     expect(q('button')).toHaveLength(6);
     expect(groups).toHaveLength(2);
     expect(groups.map((g) => g.length)).toEqual([3, 3]);
     expect(undecidedPairs).toBe(0);
-    expect(unalignedPairs).toBe(0);
+    // Three row pairs × the two cross-column pairs each: the ordinary shape of a two-control
+    // list, and the reason this count is reported rather than alarmed on.
+    expect(slotSeparatedPairs).toBe(6);
     // Each group is one column, never a mix: grouping by position is what guarantees it.
     for (const group of groups) {
       const parents = new Set(group.map((el) => el.parentElement));
@@ -273,10 +275,10 @@ describe('groupByRepeat', () => {
     }
   });
 
-  // A row that renders only one of the pair. Position lines up two-against-two but says
-  // nothing about which of the two a lone button is, so the referee declines and says so
-  // rather than merging it into whichever column it happens to sit nearest.
-  it('refuses to align rows that hold different numbers of colliding elements', () => {
+  // A row that renders only one of the pair. Counting a row's colliding elements could not
+  // tell which of the two a lone button was; the JSX slot can, because the branch that
+  // rendered nothing still holds its index. The lone button belongs to the FIRST column.
+  it('aligns a row missing a control by its JSX slot, not by counting the row', () => {
     const q = render(
       <ul>
         {ROWS.map((r, i) => (
@@ -287,12 +289,86 @@ describe('groupByRepeat', () => {
         ))}
       </ul>,
     );
-    const { groups, undecidedPairs, unalignedPairs } = groupByRepeat(q('button'));
+    const { groups, undecidedPairs, slotSeparatedPairs } = groupByRepeat(q('button'));
     expect(q('button')).toHaveLength(5);
-    // Two aligned columns of two, plus the lone button standing on its own.
-    expect(groups.map((g) => g.length).sort()).toEqual([1, 2, 2]);
+    expect(groups.map((g) => g.length).sort()).toEqual([2, 3]);
     expect(undecidedPairs).toBe(0);
-    // The lone button against each of the four in the two full rows.
-    expect(unalignedPairs).toBe(4);
+    // The two cross-column pairs between the full rows, plus the lone button against the
+    // second-column button of each full row.
+    expect(slotSeparatedPairs).toBe(4);
+  });
+
+  // The mirror, and the reason the slot is read from the fiber rather than from the DOM: the
+  // trailing control is the one that goes missing, so every row's LEADING button sits at DOM
+  // index 0 and only the reconciler's hole says which column the lone one belongs to.
+  it('aligns a row missing its LAST control, where DOM position cannot tell', () => {
+    const q = render(
+      <ul>
+        {ROWS.map((r, i) => (
+          <li key={r.id}>
+            {i < 2 ? <button type="button">Act</button> : null}
+            <button type="button">Act</button>
+          </li>
+        ))}
+      </ul>,
+    );
+    const { groups, slotSeparatedPairs } = groupByRepeat(q('button'));
+    expect(q('button')).toHaveLength(5);
+    // Three in the second column — including row 3's, which is the only button it rendered.
+    expect(groups.map((g) => g.length).sort()).toEqual([2, 3]);
+    // Mirrors the previous case: two cross pairs between the full rows, and the lone button
+    // against the FIRST-column button of each.
+    expect(slotSeparatedPairs).toBe(4);
+  });
+
+  // THE second regression. Two rows holding the SAME NUMBER of colliding elements, drawn from
+  // different JSX sites: `[X, Act]` against `[Act, Y]`. Aligning on a count merges X with Act
+  // and Act with Y — three logical elements reported as two, with every escape counter silent,
+  // which is the under-reporting direction the module exists to avoid. The slots are 0, 1, 2,
+  // so only the middle pair merges.
+  it('keeps equal-sized rows apart when a conditional shifts which controls they hold', () => {
+    const q = render(
+      <ul>
+        {[0, 1].map((i) => (
+          <li key={i}>
+            {i === 0 ? <button type="button">Act</button> : null}
+            <button type="button">Act</button>
+            {i === 1 ? <button type="button">Act</button> : null}
+          </li>
+        ))}
+      </ul>,
+    );
+    const { groups, distinctElements, slotSeparatedPairs } = groupByRepeat(q('button'));
+    expect(q('button')).toHaveLength(4);
+    expect(groups.map((g) => g.length).sort()).toEqual([1, 1, 2]);
+    expect(distinctElements.atLeast).toBe(3);
+    // X against Act and Y, Act against Y: key-repeats the slots held apart.
+    expect(slotSeparatedPairs).toBe(3);
+  });
+
+  // A key is not a loop. React stamps one on hand-written static siblings too, and nothing
+  // here can tell those from two rows of a `.map()` — so the merge happens, and the RANGE is
+  // what keeps it honest. Reporting `atLeast` alone would call this a clean right merge.
+  it('reports a range, because a key does not prove a loop', () => {
+    const q = render(
+      <div>
+        <section key="left">
+          <button type="button">Go</button>
+        </section>
+        <section key="right">
+          <button type="button">Go</button>
+        </section>
+      </div>,
+    );
+    const { groups, distinctElements } = groupByRepeat(q('button'));
+    expect(groups).toHaveLength(1);
+    expect(distinctElements).toEqual({ atLeast: 1, atMost: 2 });
+  });
+
+  // The range's other end: three rows of one genuine loop are one logical element, and the
+  // width says the whole collapse rests on the key.
+  it('widens the range by exactly what the key merged', () => {
+    const q = render(<Table />);
+    expect(groupByRepeat(q('button')).distinctElements).toEqual({ atLeast: 1, atMost: 3 });
   });
 });

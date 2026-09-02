@@ -23,6 +23,17 @@ export interface BuildGraphOptions {
 const EDGE_KEY_SEPARATOR = '\u0000';
 
 /**
+ * The `@<source file>` a build-annotated chain ends with, and only that.
+ *
+ * Anchored on a source extension rather than on the `@` alone, because `@` is legal in the
+ * text this runs on: a `displayName` is arbitrary developer- or library-supplied, and cutting
+ * `Connect(@app/Widget)` at the first `@` leaves the label `Connect(`. `labelFor` promises the
+ * raw fingerprint whenever the shape is unfamiliar, so an unrecognised suffix has to survive
+ * rather than be trimmed into something that merely looks like a name.
+ */
+const SOURCE_FILE_QUALIFIER = /@[^@|>]*\.[jt]sx?$/;
+
+/**
  * A short, human-readable label for a node. **Display only.**
  *
  * ⚠ This parses the fingerprint, and the conventions say consumers SHOULD treat it as opaque
@@ -54,7 +65,7 @@ export function labelFor(fingerprint: string): string {
   // The chain's last segment carries the optional `@<source file>` qualifier, which is there
   // to separate `billing/Card.tsx` from `settings/Card.tsx` in the IDENTITY. In a label it is
   // just a path taking up a box, so only the component name is shown.
-  const innermost = (chain.split('>').at(-1) ?? '').split('@')[0] ?? '';
+  const innermost = (chain.split('>').at(-1) ?? '').replace(SOURCE_FILE_QUALIFIER, '');
   if (innermost !== '' && innermost !== 'unknown') return `${innermost} ${role}`.trim();
   if (role !== '') return role;
 

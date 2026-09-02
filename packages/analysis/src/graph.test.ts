@@ -296,6 +296,16 @@ describe('labelFor', () => {
     expect(labelFor('App>Card@src/billing/Card.tsx|input:email')).toBe('Card input:email');
   });
 
+  // Only a source path is a qualifier. On the fiber-walk path there is no `@<file>` at all and
+  // the segment is a raw `displayName`, which is arbitrary developer- or library-supplied text
+  // — cutting at the first `@` turned `Connect(@app/Widget)` into the label `Connect(`.
+  it('keeps an @ that is part of the component name, not a source path', () => {
+    expect(labelFor('App>Connect(@app/Widget)|input:email')).toBe(
+      'Connect(@app/Widget) input:email',
+    );
+    expect(labelFor('App>Card@v2|input:email')).toBe('Card@v2 input:email');
+  });
+
   it('falls back to the role alone when the chain is unknown', () => {
     expect(labelFor('unknown|button')).toBe('button');
   });

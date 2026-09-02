@@ -27,6 +27,11 @@ import { getFiber } from 'rastro-core';
 interface KeyedFiber {
   key?: string | null;
   return?: KeyedFiber | null;
+  /**
+   * Position in the children array React reconciled. Load-bearing for alignment — see
+   * `slotWithinItem` for why a hole in that array is the signal and not a nuisance.
+   */
+  index?: number;
 }
 
 /** Where an element sits inside a rendered list, if it sits inside one at all. */
@@ -100,10 +105,18 @@ export interface CollisionVerdict {
  */
 export function classifyPair(a: Element, b: Element): CollisionVerdict {
   if (a === b) return { verdict: 'distinct', reason: 'same-element' };
+  return classifySites(repeatSiteOf(a), repeatSiteOf(b));
+}
 
-  const siteA = repeatSiteOf(a);
-  const siteB = repeatSiteOf(b);
-
+/**
+ * The verdict, given both sites already resolved.
+ *
+ * Split out so `groupByRepeat` can rule on n² pairs from the sites it resolved once, rather
+ * than re-walking two fiber chains per pair. That is not only the cheaper shape but the
+ * safer one: React double-buffers, so a second walk can land on a different tree than the
+ * one the positions came from, and the two halves of one verdict would then disagree.
+ */
+function classifySites(siteA: RepeatSite | null, siteB: RepeatSite | null): CollisionVerdict {
   if (siteA === null && siteB === null) {
     return { verdict: 'undecided', reason: 'no-keyed-ancestor' };
   }
@@ -134,20 +147,59 @@ export interface RepeatGrouping {
    * false merge: that many distinct things wearing one identity.
    */
   groups: Element[][];
-  /** Pairs the key signal could not rule on. These want a second referee, or a human. */
+  /**
+   * How many distinct logical elements wear this fingerprint, as a RANGE.
+   *
+   * `atLeast` is `groups.length`: what the key evidence says, merging everything it can. But
+   * a key does not prove a loop — React stamps one on hand-written static siblings too, and
+   * `<section key="left">…<section key="right">` is two items of one parent that no signal
+   * here separates. So `atMost` assumes no key is a loop and counts every element as its own
+   * thing. The true count is inside, and the WIDTH is the disclosure: it says how much of the
+   * answer is resting on `key` rather than on something proven, which a single number would
+   * launder away. §3.2 asks for a pre-committed rule, not a point estimate with a hidden
+   * assumption inside it.
+   */
+  distinctElements: { atLeast: number; atMost: number };
+  /** Element pairs the key signal could not rule on. These want a second referee, or a human. */
   undecidedPairs: number;
   /**
-   * Pairs of items in one list holding different numbers of colliding elements, so position
-   * cannot line them up — a control rendered conditionally inside a repeated row. Counted
-   * apart from `undecidedPairs`: the key was there, it was the alignment that failed.
+   * Element pairs the key called repeats and the JSX slot then held apart.
+   *
+   * NOT an escape hatch — these are decided, and in a list of two controls most cross pairs
+   * land here as a matter of course. It is reported because it is where the slot signal is
+   * doing the work, and therefore where the one way it can be wrong shows up: a control
+   * rendered from two JSX sites (`cond ? <button>Save</button> : <button>Save</button>`) is
+   * one logical element that the slots split, and this count bounds how much of the answer
+   * could be inflated that way.
    */
-  unalignedPairs: number;
+  slotSeparatedPairs: number;
 }
 
-/** Document order, so the grouping does not depend on the order the caller passed elements. */
-function inDocumentOrder(a: Element, b: Element): number {
-  if (a === b) return 0;
-  return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) === 0 ? 1 : -1;
+/**
+ * Where an element sits INSIDE its list item: the chain of child positions from the item down
+ * to the element, as `"1.0.2"`.
+ *
+ * This is the JSX SITE, not a DOM position, and the difference is the whole point. React sets
+ * `fiber.index` from the position in the children array it reconciled, and a branch that
+ * rendered nothing still occupies its slot — `{canEdit ? <button/> : null}<button/>` puts the
+ * second button at index 1 in every row, whether or not the first one rendered. So two items
+ * of one loop produce the same chain even when they hold different numbers of elements, and
+ * two different JSX sites produce different chains even when the rendered DOM is identical.
+ *
+ * Null when the item is not an ancestor of the element's fiber, which the caller treats as no
+ * evidence rather than as a position.
+ */
+function slotWithinItem(element: Element, item: object): string | null {
+  let fiber: KeyedFiber | null = getFiber(element);
+  const steps: number[] = [];
+
+  while (fiber !== null && fiber !== undefined) {
+    if ((fiber as object) === item) return steps.reverse().join('.');
+    steps.push(fiber.index ?? 0);
+    fiber = fiber.return ?? null;
+  }
+
+  return null;
 }
 
 /**
@@ -161,78 +213,76 @@ function inDocumentOrder(a: Element, b: Element): number {
  * answer is two groups, one false merge. Under-reporting is the failure direction the whole
  * exercise is built to avoid, so the relation is not what the clustering runs on.
  *
- * Repeats are matched by POSITION instead: two elements are repeats when they sit in different
- * items of the same list, at the same index among the colliding elements their item holds.
+ * Repeats are matched by SLOT instead: two elements are repeats when they sit in different
+ * items of the same list, at the same JSX position within their item (`slotWithinItem`).
  * Grouping on a composite key rather than merging pairwise is what makes this structural —
- * two elements of one item hold different indices, so no other pair can drag them together.
+ * two elements of one item hold different slots, so no other pair can drag them together.
  *
- * Two escapes are counted rather than guessed at. An `undecided` pair does not merge: merging
- * on a signal that said nothing would suppress false merges. Neither do items that disagree on
- * how many colliding elements they hold — index lines up two-against-two, but against a row
- * rendering only one of the pair it is a coin flip, and a coin flip is not a measurement.
+ * The slot is what the item RENDERED, not what it contains: counting a row's colliding
+ * elements and lining the counts up would merge a row holding `[X, Act]` with one holding
+ * `[Act, Y]`, both being two-element rows, and no counter would fire. The slot separates them
+ * because `X`, `Act` and `Y` are three JSX sites at three indices.
+ *
+ * An `undecided` pair does not merge: merging on a signal that said nothing would suppress
+ * false merges, which are the failure being measured. Nor do elements whose slots disagree —
+ * the key called them repeats, the position did not, and a coin flip between two signals is
+ * not a measurement.
+ *
+ * ⚠ What this still cannot see: whether a key means a LOOP at all. React stamps keys on
+ * hand-written static siblings too, and two of those are two items of one parent that no
+ * signal here distinguishes from two rows of a `.map()`. `distinctElements` carries that as a
+ * range rather than pretending the merge was proven.
  */
 export function groupByRepeat(elements: readonly Element[]): RepeatGrouping {
+  // Resolved once. Every verdict and every slot below reads from these, so the whole function
+  // rules on ONE snapshot of the fiber tree (see `classifySites`).
   const sites = elements.map((element) => repeatSiteOf(element));
-
-  // Each element's index within its own list item, and how many the item holds. Both are
-  // properties of the collision set, not of the page: the question is only ever "which of this
-  // item's colliding elements is this one", so elements wearing other fingerprints are absent
-  // by construction and cannot shift a position.
-  const ordinal = new Array<number>(elements.length).fill(0);
-  const itemSize = new Array<number>(elements.length).fill(0);
-  const byItem = new Map<object, number[]>();
-
-  for (let i = 0; i < elements.length; i += 1) {
-    const site = sites[i];
-    if (site === null || site === undefined) continue;
-    const members = byItem.get(site.item) ?? [];
-    members.push(i);
-    byItem.set(site.item, members);
-  }
-
-  for (const members of byItem.values()) {
-    members.sort((a, b) => inDocumentOrder(elements[a] as Element, elements[b] as Element));
-    members.forEach((index, position) => {
-      ordinal[index] = position;
-      itemSize[index] = members.length;
-    });
-  }
+  const slots = sites.map((site, i) =>
+    site === null ? null : slotWithinItem(elements[i] as Element, site.item),
+  );
 
   let undecidedPairs = 0;
-  let unalignedPairs = 0;
+  let slotSeparatedPairs = 0;
 
   for (let i = 0; i < elements.length; i += 1) {
     for (let j = i + 1; j < elements.length; j += 1) {
-      const { verdict } = classifyPair(elements[i] as Element, elements[j] as Element);
+      const { verdict } = classifySites(sites[i] ?? null, sites[j] ?? null);
       if (verdict === 'undecided') undecidedPairs += 1;
-      if (verdict === 'repeated-siblings' && itemSize[i] !== itemSize[j]) unalignedPairs += 1;
+      // A key-repeat pair that the slots hold apart. Counted here rather than inferred from
+      // the groups, because two elements can land in different groups for either reason.
+      if (verdict === 'repeated-siblings' && slots[i] !== slots[j]) slotSeparatedPairs += 1;
     }
   }
 
   const groups: Element[][] = [];
-  const byPosition = new Map<object, Map<string, Element[]>>();
+  const bySlot = new Map<object, Map<string, Element[]>>();
 
   for (let i = 0; i < elements.length; i += 1) {
     const site = sites[i];
+    const slot = slots[i];
     const element = elements[i] as Element;
 
     // Outside any keyed list there is no evidence of repetition, and silence is not evidence.
-    if (site === null || site === undefined) {
+    // Same for an item that is not an ancestor of its own element, which should not happen and
+    // is not worth guessing about if it does.
+    if (site === null || site === undefined || slot === null || slot === undefined) {
       groups.push([element]);
       continue;
     }
 
-    // The item's size rides in the key so an item this cannot align with its neighbours groups
-    // apart rather than being guessed into one of their positions.
-    const slot = `${itemSize[i]}:${ordinal[i]}`;
-    const inList = byPosition.get(site.list) ?? new Map<string, Element[]>();
+    const inList = bySlot.get(site.list) ?? new Map<string, Element[]>();
     const group = inList.get(slot) ?? [];
     group.push(element);
     inList.set(slot, group);
-    byPosition.set(site.list, inList);
+    bySlot.set(site.list, inList);
   }
 
-  for (const inList of byPosition.values()) groups.push(...inList.values());
+  for (const inList of bySlot.values()) groups.push(...inList.values());
 
-  return { groups, undecidedPairs, unalignedPairs };
+  return {
+    groups,
+    distinctElements: { atLeast: groups.length, atMost: elements.length },
+    undecidedPairs,
+    slotSeparatedPairs,
+  };
 }
