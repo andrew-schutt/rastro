@@ -243,4 +243,56 @@ describe('groupByRepeat', () => {
     expect(groups).toHaveLength(2);
     expect(undecidedPairs).toBe(1);
   });
+
+  // THE regression. `classifyPair` gets this right pairwise, but the relation it returns is
+  // not transitive: row 1's left button and row 2's RIGHT button are two items of one list,
+  // so any union-find drags all six into one group and reports a clean bill of health. The
+  // honest answer is two logical elements — one false merge — and it must survive being
+  // checked through `groupByRepeat`, not only through `classifyPair`.
+  it('keeps two controls per row apart despite the repeats between the rows', () => {
+    const q = render(
+      <ul>
+        {ROWS.map((r) => (
+          <li key={r.id}>
+            <button type="button">Act</button>
+            <button type="button">Act</button>
+          </li>
+        ))}
+      </ul>,
+    );
+    const { groups, undecidedPairs, unalignedPairs } = groupByRepeat(q('button'));
+    expect(q('button')).toHaveLength(6);
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g.length)).toEqual([3, 3]);
+    expect(undecidedPairs).toBe(0);
+    expect(unalignedPairs).toBe(0);
+    // Each group is one column, never a mix: grouping by position is what guarantees it.
+    for (const group of groups) {
+      const parents = new Set(group.map((el) => el.parentElement));
+      expect(parents.size).toBe(group.length);
+    }
+  });
+
+  // A row that renders only one of the pair. Position lines up two-against-two but says
+  // nothing about which of the two a lone button is, so the referee declines and says so
+  // rather than merging it into whichever column it happens to sit nearest.
+  it('refuses to align rows that hold different numbers of colliding elements', () => {
+    const q = render(
+      <ul>
+        {ROWS.map((r, i) => (
+          <li key={r.id}>
+            <button type="button">Act</button>
+            {i < 2 ? <button type="button">Act</button> : null}
+          </li>
+        ))}
+      </ul>,
+    );
+    const { groups, undecidedPairs, unalignedPairs } = groupByRepeat(q('button'));
+    expect(q('button')).toHaveLength(5);
+    // Two aligned columns of two, plus the lone button standing on its own.
+    expect(groups.map((g) => g.length).sort()).toEqual([1, 2, 2]);
+    expect(undecidedPairs).toBe(0);
+    // The lone button against each of the four in the two full rows.
+    expect(unalignedPairs).toBe(4);
+  });
 });
