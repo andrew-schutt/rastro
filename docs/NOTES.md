@@ -433,9 +433,9 @@ problem instead of containing it, and nothing in this package crosses into the S
 incompatible node type systems in the same file.
 
 **`UxEvent` is a superset of §19.2.** The plan's snippet predates SEMANTIC-CONVENTIONS.md and
-omits five attributes the spec defines: `ux.from_path`, `ux.component_chain`, `ux.role`,
-`ux.accessible_name`, and the `ux.convention.version` resource attribute. They are added as
-optional members, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
+omits six attributes the spec defines: `ux.from_path`, `ux.component_chain`, `ux.role`,
+`ux.accessible_name`, `ux.source_file`, and the `ux.convention.version` resource attribute.
+They are added as optional members, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
 nothing that conformed before stops conforming.
 
 **`Step` / `Session` / `FlowGraph` live in `rastro-core/shapes.ts`, not in `rastro-analysis`.**
@@ -497,6 +497,22 @@ the wire and arguably belongs on `FlowNode` — worth settling before the shape 
 distinction relied on: nothing it produces feeds a metric or a join. `FlowNode.id` stays the
 whole fingerprint and everything is keyed on that; `labelFor` only decides what text sits
 inside a box, and falls back to the raw fingerprint on anything unfamiliar.
+
+That fallback is the reason the source-file qualifier is stripped by a pattern anchored on a
+source extension and not at the first `@`. Only a build-annotated chain carries an `@<file>`;
+on the fiber-walk path the segment is a raw `displayName`, which is arbitrary developer- or
+library-supplied text, and cutting `Connect(@app/Widget)` at the `@` labelled the node
+`Connect(` — the promise of degrading to something unfamiliar rather than truncating it, broken
+in the one case it exists for.
+
+**Two components of one name still render one label, and that is left alone.** The whole point
+of the qualifier is that `billing/Card.tsx` and `settings/Card.tsx` are different identities,
+yet an unnamed element in each renders as `Card input:email` in both boxes. The distinction is
+recoverable only by hovering (`FlowGraph.tsx` puts the fingerprint in `title`). Putting a path
+back in the box was considered and rejected when the qualifier was added — it is noise on every
+node to disambiguate a minority — and making the label depend on which *other* nodes are on
+screen would mean one fingerprint labelled two ways in two views. Worth revisiting only with a
+real corpus showing how often it actually happens.
 
 **Two friction signals, where §19.4 step 6 says exactly one.** A deliberate call, not an
 oversight. §10's own advice is to under-invest in inventing signals and over-invest in

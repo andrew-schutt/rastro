@@ -7,7 +7,7 @@
 // every analysis query.
 //
 // ⚠ DEVIATION FROM §19.2 (see docs/NOTES.md): the snippet in the plan predates
-// docs/SEMANTIC-CONVENTIONS.md and omits five attributes the spec defines. They are added below,
+// docs/SEMANTIC-CONVENTIONS.md and omits six attributes the spec defines. They are added below,
 // all optional, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
 // this is a superset — nothing that conformed to §19.2 stops conforming.
 export interface UxEvent {
