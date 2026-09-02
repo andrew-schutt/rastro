@@ -134,6 +134,11 @@ works). Delete it to start clean.
   (§13.1): steps on a cumulative-`ux.active_ms` axis, colour-coded by event kind, route
   changes highlighted where context moves, and `ux.interaction.method` per step. Its
   arithmetic lives in `timeline.ts`, pure and unit-tested, so the component only renders.
+- **`babel-plugin-rastro`** — §4.3's build-time plugin, for Babel. Stamps
+  `data-rastro-component` and `data-rastro-source-file` onto every host element at build time,
+  as string literals a minifier cannot touch. **Nothing consumes it yet** — `attributeChain`
+  in `rastro-core` is the next piece, and until it lands the attributes are inert markup.
+  Next.js is unsupported (it compiles with SWC); that port is the open half of §17 #4.
 
 ### Stubbed — real signatures, naive bodies, TODOs naming the work
 
@@ -205,6 +210,39 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 ---
 
 ## Decisions worth knowing about
+
+**The build plugin deviates from §4.3's sketch in two ways.** §4.3 describes "a Babel/SWC
+plugin that injects `displayName` and source location `(file:line)`". Neither is what shipped.
+
+*It writes DOM attributes, not `displayName`.* Injecting `displayName` would make the runtime
+fiber walk minification-proof while leaving it a fiber walk — still reading React's private
+internals, still React-only. Writing attributes lets identity be derived from the DOM instead,
+which removes the internals dependency entirely and would work for any framework with its own
+annotator. §4.3's own framing ("the actual way to get `<Action>`-level meaning without asking
+developers to wrap every element") is better served by the attribute, since that is also what
+`data-telemetry-id` already reads.
+
+*It records the file, not `file:line`.* A line number changes every time anything above it is
+edited, so `file:line` would churn on almost every commit — the opposite of a stable anchor.
+The file alone is what survives a rename, which is the property that made source location
+worth capturing.
+
+**Host elements only, never component elements.** An attribute on `<SaveButton />` becomes a
+*prop*: a component that does not spread props onto a DOM node drops it silently, and one that
+spreads onto a non-DOM target can warn or break. Host-only is also sufficient — every
+component that renders anything eventually renders a host element, so DOM nesting reproduces
+the chain without ever touching a component's props.
+
+**`babel-plugin-rastro` breaks the `rastro-*` naming on purpose.** Babel resolves the
+shorthand `plugins: ["rastro"]` to `babel-plugin-rastro`; matching the ecosystem convention is
+worth more than matching the sibling packages.
+
+**`exactOptionalPropertyTypes` is off in `packages/babel-plugin` alone.** Babel's published
+node types declare optional properties without `| undefined`, so every call into
+`@babel/types` is rejected under the repo-wide flag. Casting at each boundary would spread the
+problem instead of containing it, and nothing in this package crosses into the SDK.
+`@babel/types` is also pinned to `^7` to match `@types/babel__core` — a v8 resolution puts two
+incompatible node type systems in the same file.
 
 **`UxEvent` is a superset of §19.2.** The plan's snippet predates SEMANTIC-CONVENTIONS.md and
 omits five attributes the spec defines: `ux.from_path`, `ux.component_chain`, `ux.role`,

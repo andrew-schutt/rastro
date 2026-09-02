@@ -1,0 +1,11 @@
+{
+  // The same settings as tsconfig.json, but WITH the test files. tsconfig.json excludes them
+  // so they stay out of dist, and Vitest transpiles without type-checking — so without this
+  // config the suites are never type-checked at all, and a fixture that stops matching the
+  // `UxEvent` contract fails at runtime or not at all. `typecheck` runs this one, since it
+  // covers source and tests in a single pass.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src"],
+  "exclude": []
+}
