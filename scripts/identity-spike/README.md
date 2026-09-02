@@ -51,21 +51,43 @@ but row 1's LEFT button and row 2's RIGHT button are two items of one list — s
 all six together and reports zero false merges where the honest answer is two groups and one.
 Under-reporting is the failure direction this whole exercise exists to avoid.
 
-So repeats are matched by position: **two elements are repeats when they sit in different items
-of the same list, at the same index among the colliding elements their item holds.** Grouping
-on that composite key instead of merging pairwise is what makes it structural — two elements of
-one item hold different indices, so no other pair can drag them together.
+So repeats are matched by **JSX slot**: two elements are repeats when they sit in different
+items of the same list, at the same position in the children array React reconciled for their
+item. Grouping on that composite key instead of merging pairwise is what makes it structural —
+two elements of one item hold different slots, so no other pair can drag them together.
 
-Two escapes are counted rather than guessed at:
+The slot comes from `fiber.index`, not from the DOM, and that is what makes it a JSX *site*
+rather than a position. A branch that rendered nothing still occupies its index, so
+`{canEdit ? <button/> : null}<button/>` puts the second button at slot 1 in every row whether
+or not the first one rendered. Two consequences, both load-bearing:
+
+- A row that renders only one of a pair still lands in the right column. Counting a row's
+  colliding elements could not tell which one it was.
+- Two rows holding the same *number* of controls drawn from different JSX sites — `[X, Act]`
+  against `[Act, Y]` — do not merge. Aligning on a count merges `X` with `Act` and `Act` with
+  `Y`, reporting three logical elements as two with every counter silent, which is the
+  under-reporting direction this exercise exists to avoid.
 
 | Count | What it means |
 |---|---|
 | `undecidedPairs` | The key said nothing, so the pair did not merge. How much of the answer rests on evidence rather than silence. |
-| `unalignedPairs` | Two items of one list hold different numbers of colliding elements — a control rendered conditionally inside a repeated row — so index cannot line them up. The pair does not merge. |
+| `slotSeparatedPairs` | The key called them repeats and the slot held them apart. Not an escape — in a two-control list most cross pairs land here — but it bounds the one way the slot can be wrong: a control rendered from two JSX sites (`cond ? <button>Save</button> : <button>Save</button>`) is one logical element that the slots split. |
+
+### The number is a range, because a key is not a loop
+
+`distinctElements` reports `{ atLeast, atMost }` rather than a count. `atLeast` is
+`groups.length` — what the key evidence says once everything mergeable is merged. `atMost`
+assumes no key means a loop at all and counts every element separately.
+
+The gap is not padding. React stamps a key on hand-written static siblings too, and
+`<section key="left">…</section><section key="right">…</section>` is two items of one parent
+that nothing here distinguishes from two rows of a `.map()` — their buttons merge, and
+`atLeast` alone would call that a clean right merge. The width of the range says how much of
+the answer is resting on `key`, which a single number would launder away.
 
 `classifyPair` stays coarser than the grouping on purpose: a pairwise verdict cannot see a
-position, so it still calls row 1's Edit and row 2's Delete `repeated-siblings`. The verdicts
-are the per-bucket reporting §3.2 asks for; the composite key is the clustering rule.
+slot, so it still calls row 1's Edit and row 2's Delete `repeated-siblings`. The verdicts are
+the per-bucket reporting §3.2 asks for; the slot is the clustering rule.
 
 ### Why a key is a good referee and a terrible identity
 
