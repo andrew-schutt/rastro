@@ -116,6 +116,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
         version: 5.2.0(vite@7.3.6(@types/node@22.20.1))
+      babel-plugin-rastro:
+        specifier: workspace:*
+        version: link:../../packages/babel-plugin
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

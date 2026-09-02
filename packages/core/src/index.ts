@@ -27,7 +27,10 @@ export type {
 
 export {
   accName,
+  attributeChain,
+  COMPONENT_ATTRIBUTE,
   componentChain,
+  documentIsAnnotated,
   defaultFingerprintStrategy,
   describeElement,
   FIBER_PREFIXES,
@@ -38,6 +41,7 @@ export {
   NOISE,
   norm,
   OVERRIDE_ATTRIBUTE,
+  resetAnnotationProbe,
   roleOf,
   UNKNOWN_CHAIN,
 } from './fingerprint.js';

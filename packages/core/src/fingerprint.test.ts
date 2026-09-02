@@ -7,11 +7,15 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  COMPONENT_ATTRIBUTE,
   MAX_NAME_LENGTH,
   NOISE,
   UNKNOWN_CHAIN,
   accName,
+  attributeChain,
   describeElement,
+  documentIsAnnotated,
+  resetAnnotationProbe,
   fingerprint,
   getFiber,
   norm,
@@ -271,4 +275,144 @@ describe('NOISE', () => {
       expect(NOISE.test(name)).toBe(false);
     },
   );
+});
+
+describe('attributeChain', () => {
+  /** Build a nesting of host elements, each stamped like the plugin would stamp it. */
+  function stamped(...owners: (string | null)[]): Element {
+    let parent: Element = document.body;
+    let leaf: Element = document.body;
+    for (const owner of owners) {
+      const node = document.createElement('div');
+      if (owner !== null) node.setAttribute(COMPONENT_ATTRIBUTE, owner);
+      parent.appendChild(node);
+      parent = node;
+      leaf = node;
+    }
+    return leaf;
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    resetAnnotationProbe(document);
+  });
+
+  it('reads the ancestry from the DOM, outermost first', () => {
+    expect(attributeChain(stamped('App', 'SettingsForm', 'SaveButton'))).toEqual([
+      'App',
+      'SettingsForm',
+      'SaveButton',
+    ]);
+  });
+
+  // The plugin stamps EVERY host element, so a component that renders nested markup repeats.
+  // Without this the chain would read App>SettingsForm>SettingsForm>SettingsForm.
+  it('collapses consecutive repeats, which the plugin necessarily produces', () => {
+    expect(
+      attributeChain(stamped('App', 'SettingsForm', 'SettingsForm', 'SettingsForm')),
+    ).toEqual(['App', 'SettingsForm']);
+  });
+
+  it('collapses repeats even across a filtered wrapper', () => {
+    expect(attributeChain(stamped('SettingsForm', 'ThemeProvider', 'SettingsForm'))).toEqual([
+      'SettingsForm',
+    ]);
+  });
+
+  it('applies NOISE exactly as the fiber walk does', () => {
+    expect(attributeChain(stamped('App', 'AuthProvider', 'SettingsForm'))).toEqual([
+      'App',
+      'SettingsForm',
+    ]);
+  });
+
+  it('keeps the nearest components when the ancestry is deeper than the cap', () => {
+    const leaf = stamped('Root', 'A', 'B', 'C', 'D', 'E');
+    expect(attributeChain(leaf)).toEqual(['B', 'C', 'D', 'E']);
+  });
+
+  it('skips unstamped elements rather than breaking the chain', () => {
+    expect(attributeChain(stamped('App', null, 'SaveButton'))).toEqual(['App', 'SaveButton']);
+  });
+
+  it('is empty when nothing is annotated', () => {
+    expect(attributeChain(stamped(null, null))).toEqual([]);
+  });
+});
+
+describe('documentIsAnnotated', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    resetAnnotationProbe(document);
+  });
+
+  it('is false for a document the plugin never touched', () => {
+    document.body.innerHTML = '<button>Save</button>';
+    expect(documentIsAnnotated(document)).toBe(false);
+  });
+
+  it('is true as soon as one element carries the attribute', () => {
+    document.body.innerHTML = `<div ${COMPONENT_ATTRIBUTE}="App"><button>Save</button></div>`;
+    expect(documentIsAnnotated(document)).toBe(true);
+  });
+
+  // The decision is per document, not per element: a portaled modal outside the annotated
+  // subtree must NOT silently fall back to the fiber walk, or one page yields two kinds of
+  // chain that cannot be compared with each other.
+  it('commits the whole document, so an unannotated subtree does not switch strategy', () => {
+    document.body.innerHTML =
+      `<div ${COMPONENT_ATTRIBUTE}="App"></div><div id="portal"><button>Save</button></div>`;
+    expect(documentIsAnnotated(document)).toBe(true);
+
+    const orphan = document.querySelector('#portal button');
+    expect(orphan).not.toBeNull();
+    // No annotated ancestor: the chain degrades to `unknown` rather than reverting to fiber.
+    expect(describeElement(orphan as Element).fingerprint).toBe(`${UNKNOWN_CHAIN}|button|"Save"`);
+  });
+
+  it('caches, so the strategy cannot change mid-session', () => {
+    document.body.innerHTML = '<button>Save</button>';
+    expect(documentIsAnnotated(document)).toBe(false);
+
+    document.body.innerHTML = `<div ${COMPONENT_ATTRIBUTE}="App"></div>`;
+    expect(documentIsAnnotated(document)).toBe(false); // still the first answer
+  });
+});
+
+describe('the two strategies agree where they can', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    resetAnnotationProbe(document);
+  });
+
+  // Parity is the point: an app that adds the build plugin should not re-identify every
+  // element it already had data for. This asserts it for the shape both strategies can see.
+  it('produces the same fingerprint an equivalent fiber chain would', () => {
+    document.body.innerHTML = `
+      <div ${COMPONENT_ATTRIBUTE}="App">
+        <form ${COMPONENT_ATTRIBUTE}="SettingsForm">
+          <button ${COMPONENT_ATTRIBUTE}="SaveButton">Save Profile</button>
+        </form>
+      </div>`;
+    const button = document.querySelector('button');
+    expect(button).not.toBeNull();
+
+    const fromAttributes = describeElement(button as Element).fingerprint;
+    expect(fromAttributes).toBe('App>SettingsForm>SaveButton|button|"Save Profile"');
+
+    // Same string the fiber walk yields for the same component ancestry (see
+    // packages/react/src/fingerprint.dom.test.tsx, which renders it through React).
+    expect(fromAttributes).toBe(
+      [['App', 'SettingsForm', 'SaveButton'].join('>'), 'button', '"Save Profile"'].join('|'),
+    );
+  });
+
+  it('still honours data-telemetry-id above either strategy', () => {
+    document.body.innerHTML = `
+      <div data-telemetry-id="checkout" ${COMPONENT_ATTRIBUTE}="App">
+        <button ${COMPONENT_ATTRIBUTE}="SaveButton">Save</button>
+      </div>`;
+    const button = document.querySelector('button');
+    expect(describeElement(button as Element).fingerprint).toBe('id:checkout');
+  });
 });
