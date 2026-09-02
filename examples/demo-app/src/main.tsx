@@ -21,7 +21,10 @@ createRoot(container).render(
       // re-collecting, and so drift is eyeballable while identity is being tuned.
       // `accessibleName` stays off — it is redacted, but it is the closest thing to page
       // content that leaves the browser.
-      optIn={{ componentChain: true, role: true }}
+      // `sourceFile` is on because this app HAS the build plugin, so the file composes its
+      // fingerprints — and the parts invariant means what composed the identity is what
+      // explains a later drift in it.
+      optIn={{ componentChain: true, role: true, sourceFile: true }}
     >
       <App />
     </RastroProvider>
