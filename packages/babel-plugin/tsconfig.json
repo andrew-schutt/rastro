@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // A build-time tool: runs in Node, never in a browser. No DOM.
+    "lib": ["ES2022"],
+    "types": ["node"],
+
+    // Relaxed for this package only. Babel's published node types declare optional properties
+    // without `| undefined`, so every call into @babel/types is rejected under the repo-wide
+    // flag. The alternative is casting at every boundary, which spreads the problem instead of
+    // containing it — this is a build-time tool talking to a third-party type surface we do
+    // not control, and nothing here crosses into the SDK.
+    "exactOptionalPropertyTypes": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

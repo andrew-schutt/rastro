@@ -1,0 +1,53 @@
+{
+  "name": "babel-plugin-rastro",
+  "version": "0.0.1",
+  "description": "Build-time component annotation for Rastro: stable element identity that survives minification.",
+  "license": "MIT",
+  "author": "Andrew Schutt <me@andrew-schutt.com>",
+  "homepage": "https://github.com/andrew-schutt/rastro/tree/main/packages/babel-plugin#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrew-schutt/rastro.git",
+    "directory": "packages/babel-plugin"
+  },
+  "bugs": "https://github.com/andrew-schutt/rastro/issues",
+  "keywords": [
+    "babel-plugin",
+    "rastro",
+    "react",
+    "telemetry",
+    "autocapture",
+    "minification"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.0.0 || ^8.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/types": "^7.29.8",
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^22.15.3",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
