@@ -136,9 +136,15 @@ works). Delete it to start clean.
   arithmetic lives in `timeline.ts`, pure and unit-tested, so the component only renders.
 - **`babel-plugin-rastro`** — §4.3's build-time plugin, for Babel. Stamps
   `data-rastro-component` and `data-rastro-source-file` onto every host element at build time,
-  as string literals a minifier cannot touch. **Nothing consumes it yet** — `attributeChain`
-  in `rastro-core` is the next piece, and until it lands the attributes are inert markup.
-  Next.js is unsupported (it compiles with SWC); that port is the open half of §17 #4.
+  as string literals a minifier cannot touch. Next.js is unsupported (it compiles with SWC);
+  that port is the open half of §17 #4.
+- **`rastro-core/fingerprint.ts` — `attributeChain` + `documentIsAnnotated`.** The consumer.
+  Walks the DOM for `data-rastro-component` instead of the fiber tree, collapsing consecutive
+  repeats (the plugin stamps every host element) and applying `NOISE` identically, so the two
+  strategies produce comparable chains. The strategy is chosen **once per document**, lazily,
+  never per element — per-element tiering would let one page mix both and produce chains that
+  are not comparable within a single session. The fiber walk remains the fallback for apps
+  installed without the build step.
 
 ### Stubbed — real signatures, naive bodies, TODOs naming the work
 
@@ -377,12 +383,15 @@ Verified: replaying a batch stores nothing new.
   `sendBeaconOtlp()` exists but is unused, because the one-method `Exporter` interface has no
   way to express "deliver this during teardown". Resolving that is the real §4.4 work, and
   until it is done the abandonment and exit signals are the ones most likely to vanish.
-- **Minified production builds destroy fingerprints.** Without the §4.3 build-time plugin,
-  `fn.name` becomes `t`, `a`, `e`, and minifiers reuse those per-module — so unrelated
-  components genuinely collapse into one identity. **This is the single most important
-  limitation of the tool**, it is a mass false *merge* rather than a visible failure, and it
-  means v1 is reliable only in dev, or in prod with the plugin. Asserted in
-  `fingerprint.dom.test.tsx` so it stays visible.
+- **Minified production builds destroy fingerprints — unless `babel-plugin-rastro` is
+  installed.** Without it `fn.name` becomes `t`, `a`, `e`, minifiers reuse those per-module,
+  and unrelated components collapse into one identity: a mass false *merge* rather than a
+  visible failure. With it, identity comes from build-time DOM attributes instead of the fiber
+  tree and the problem is gone. Measured on the demo app's own minified bundle: `App>Nav|…`
+  with the plugin, `vr>Tr>br|…` without — the same chain for every nav button.
+  **The remaining exposure is Next.js**, which compiles with SWC and has no plugin yet, and
+  any app that installs the SDK without its build step. Asserted in
+  `fingerprint.dom.test.tsx` and `babel-plugin/src/minification.test.ts`.
 - **i18n and copy edits cause false splits.** Same button, new text, new fingerprint. §4.2.1
   accepts this cost knowingly: dropping the name would merge the forty buttons saying "Save".
 - **`data-telemetry-id` matches an ANCESTOR.** Putting one on a container collapses every

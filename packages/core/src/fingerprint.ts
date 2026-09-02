@@ -11,6 +11,15 @@ import { defaultRedactor } from './redact.js';
 /** The `data-telemetry-id` escape hatch: an explicit override always wins (§4.2.1). */
 export const OVERRIDE_ATTRIBUTE = 'data-telemetry-id';
 
+/**
+ * Where `babel-plugin-rastro` stamps the owning component (§4.3).
+ *
+ * ⚠ This string is duplicated in the plugin, which keeps it dependency-free rather than
+ * importing `rastro-core` into a build-time tool. The two MUST agree; `core` owns the name
+ * because the attribute is part of the identity contract, not of any one toolchain.
+ */
+export const COMPONENT_ATTRIBUTE = 'data-rastro-component';
+
 /** Emitted for the component chain when it cannot be derived. Degrades, never poisons. */
 export const UNKNOWN_CHAIN = 'unknown';
 
@@ -155,6 +164,75 @@ export function componentChain(fiber: FiberLike | null, max: number = MAX_CHAIN_
 }
 
 /**
+ * DOM → component ancestry, outermost → innermost, from build-time attributes.
+ *
+ * The same shape as `componentChain` over a different tree. The plugin stamps the owning
+ * component onto every host element as a string literal, so this survives minification —
+ * which the fiber walk cannot, and which is the whole reason it exists (§4.3).
+ *
+ * Two rules keep it comparable with the fiber walk rather than merely similar:
+ *
+ * - **Consecutive duplicates collapse.** The plugin stamps EVERY host element, so a
+ *   `<form><div><input>` all rendered by `SettingsForm` carries the name three times, where
+ *   the fiber walk sees the component once.
+ * - **NOISE applies identically.** A `ThemeProvider` that renders a `<div>` gets stamped like
+ *   anything else, and would otherwise land in the chain the fiber walk deliberately omits.
+ *
+ * Known, irreducible divergences from the fiber walk, all documented in docs/PRIOR-ART.md:
+ * portaled content loses its ancestry (DOM nesting does not cross a portal, `.return` does),
+ * components that render no host element of their own are invisible, and `node_modules`
+ * components are never annotated.
+ */
+export function attributeChain(element: Element, max: number = MAX_CHAIN_DEPTH): string[] {
+  const names: string[] = [];
+  let current: Element | null = element;
+
+  while (current !== null && names.length < max) {
+    const name = current.getAttribute(COMPONENT_ATTRIBUTE);
+    if (
+      name !== null &&
+      name !== '' &&
+      !NOISE.test(name) &&
+      name !== names[names.length - 1] // the plugin stamps every host element; collapse repeats
+    ) {
+      names.push(name);
+    }
+    current = current.parentElement;
+  }
+
+  return names.reverse(); // outermost → innermost
+}
+
+/** One decision per document, so a page can never mix identity strategies. */
+const annotatedDocuments = new WeakMap<Document, boolean>();
+
+/**
+ * Is this document annotated by the build plugin?
+ *
+ * Resolved once per document and cached. Deliberately NOT per element: tiering per element
+ * would let one page mix strategies — a portaled modal falling back to the fiber walk while
+ * its siblings use attributes — and produce chains that are not comparable to each other
+ * within a single session. That is exactly the silent churn the identity work exists to
+ * prevent, and manufacturing it in our own code would be worse than the problem.
+ *
+ * Probed lazily rather than at startup, because at startup the app has not rendered yet and
+ * every document would look unannotated. By the time an interaction happens, it has.
+ */
+export function documentIsAnnotated(document: Document): boolean {
+  const cached = annotatedDocuments.get(document);
+  if (cached !== undefined) return cached;
+
+  const found = document.querySelector(`[${COMPONENT_ATTRIBUTE}]`) !== null;
+  annotatedDocuments.set(document, found);
+  return found;
+}
+
+/** Forget the cached probe. For tests, which reuse one jsdom document across cases. */
+export function resetAnnotationProbe(document: Document): void {
+  annotatedDocuments.delete(document);
+}
+
+/**
  * Role-ish descriptor: tag name plus the disambiguating attribute.
  *
  * Cheap, stable, and no accessible-name algorithm needed. Rarely changes, and when it does
@@ -261,7 +339,12 @@ export function describeElement(
     return { fingerprint: `id:${override}`, componentChain: [], role };
   }
 
-  const chain = componentChain(getFiber(element));
+  // Build-time attributes when the app has the plugin, the fiber walk when it does not.
+  // Not a per-element fallback — see `documentIsAnnotated`. The fiber walk is what an app
+  // gets when Rastro is installed without its build step, and it is only reliable in dev.
+  const chain = documentIsAnnotated(element.ownerDocument)
+    ? attributeChain(element)
+    : componentChain(getFiber(element));
   const name = accName(element, redactor);
 
   // Each missing signal drops out rather than poisoning the whole thing.

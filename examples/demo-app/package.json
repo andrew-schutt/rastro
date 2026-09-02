@@ -12,14 +12,15 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "rastro-react": "workspace:*",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "rastro-react": "workspace:*"
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",
+    "babel-plugin-rastro": "workspace:*",
     "typescript": "^5.9.2",
     "vite": "^7.1.0",
     "vitest": "^3.2.4"

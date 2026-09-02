@@ -36,11 +36,11 @@ de-risking gates are still open** — Phase 0 (Wizard of Oz) has never been run,
 fingerprint has never been measured. That asymmetry is the whole point of
 `docs/VALIDATION-PLAN.md`: the discipline right now is *validate, don't build outward*.
 
-In flight: identity is moving from the runtime React fiber walk to build-time DOM attributes,
-so it survives minification. PR #4 adds `babel-plugin-rastro`. The consumer —
-`attributeChain` in `rastro-core` — is next, and two questions are open: whether the fiber
-walk stays as a zero-config fallback or is deleted, and whether strategy is chosen once per
-document rather than per element.
+Identity now derives from build-time DOM attributes stamped by `babel-plugin-rastro`, so it
+survives minification; the React fiber walk remains the fallback for apps installed without
+the build step, and is reliable only in dev. Strategy is chosen once per document, never per
+element. **Next.js is the open gap** — it compiles with SWC, and that port is the open half
+of §17 #4.
 
 ## Traps that are written nowhere else
 
