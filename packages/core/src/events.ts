@@ -67,7 +67,7 @@ export function isReservedAttribute(key: string): boolean {
  * Rides on the resource as `ux.convention.version` so the analysis layer can handle
  * mixed-version data across migrations.
  */
-export const UX_CONVENTION_VERSION = '0.1';
+export const UX_CONVENTION_VERSION = '0.3';
 
 /**
  * The Required set from the semantic conventions: every conforming record MUST carry these

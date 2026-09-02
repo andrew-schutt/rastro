@@ -11,40 +11,7 @@
 import { useEffect, useState, type ReactElement } from 'react';
 import { useTelemetry } from 'rastro-react';
 
-/** Routes with a dynamic segment, so path tokenization is visible in the dashboard. */
-const ROUTES = ['/', '/users/42/settings', '/orders/10482'] as const;
-
-function Nav(): ReactElement {
-  const [path, setPath] = useState(location.pathname);
-
-  // A hand-rolled router: pushState with no reload, which is exactly what the
-  // historyRouteAdapter patches. A real app would use React Router here.
-  useEffect(() => {
-    const onPopState = (): void => setPath(location.pathname);
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  const go = (to: string): void => {
-    history.pushState({}, '', to);
-    setPath(to);
-  };
-
-  return (
-    <nav>
-      {ROUTES.map((route) => (
-        <button
-          key={route}
-          type="button"
-          onClick={() => go(route)}
-          aria-current={route === path ? 'page' : undefined}
-        >
-          {route}
-        </button>
-      ))}
-    </nav>
-  );
-}
+import { Nav } from './Nav.js';
 
 function SettingsForm(): ReactElement {
   const [saved, setSaved] = useState(false);

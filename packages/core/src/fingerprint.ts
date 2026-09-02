@@ -20,6 +20,27 @@ export const OVERRIDE_ATTRIBUTE = 'data-telemetry-id';
  */
 export const COMPONENT_ATTRIBUTE = 'data-rastro-component';
 
+/**
+ * Where `babel-plugin-rastro` stamps the file a host element's JSX lives in.
+ *
+ * It composes the fingerprint alongside the chain, and the reason is collision reduction,
+ * not stability: two components that happen to share a NAME — a `Card` in `billing/` and a
+ * `Card` in `settings/` — produce the same chain and merge into one identity. Merges are the
+ * silent failure (docs/IDENTITY-RESOLUTION.md), so separating them is worth what it costs.
+ *
+ * ⚠ What it does NOT buy is rename-proofness. Renaming a component changes the chain and
+ * mints a new identity regardless of this. What survives that refactor is the file, which is
+ * why it is emitted as a part too: it is the anchor identity resolution matches an old
+ * fingerprint to a new one with. Independently arrived at by Sentry's
+ * `data-sentry-source-file` (docs/PRIOR-ART.md).
+ *
+ * The cost, stated plainly: moving or renaming a FILE now mints new identities for everything
+ * defined in it. That is a false split — loud and repairable — traded for fewer false merges,
+ * which are neither. The trade is measured, not assumed: docs/VALIDATION-PLAN.md §3.2 runs
+ * with-file and without-file as separate strategies over the same corpus.
+ */
+export const SOURCE_FILE_ATTRIBUTE = 'data-rastro-source-file';
+
 /** Emitted for the component chain when it cannot be derived. Degrades, never poisons. */
 export const UNKNOWN_CHAIN = 'unknown';
 
@@ -184,7 +205,29 @@ export function componentChain(fiber: FiberLike | null, max: number = MAX_CHAIN_
  * components are never annotated.
  */
 export function attributeChain(element: Element, max: number = MAX_CHAIN_DEPTH): string[] {
+  return walkAttributes(element, max).componentChain;
+}
+
+/** What one walk of the build-time attributes yields. */
+interface AttributeWalk {
+  /** Component ancestry, outermost → innermost. */
+  componentChain: string[];
+  /** The file defining the INNERMOST chain entry. Absent when the chain is empty. */
+  sourceFile?: string;
+}
+
+/**
+ * The single walk behind both `attributeChain` and `describeElement`.
+ *
+ * The source file is taken from the element that contributed the innermost chain entry —
+ * the same element, in the same pass, so the pair can never disagree about which component
+ * it describes. Not one file per chain entry: the outer entries' files add churn (an edit
+ * anywhere up the tree would re-identify everything below) for information the innermost
+ * one already carries.
+ */
+function walkAttributes(element: Element, max: number = MAX_CHAIN_DEPTH): AttributeWalk {
   const names: string[] = [];
+  let sourceFile: string | null = null;
   let current: Element | null = element;
 
   while (current !== null && names.length < max) {
@@ -195,12 +238,17 @@ export function attributeChain(element: Element, max: number = MAX_CHAIN_DEPTH):
       !NOISE.test(name) &&
       name !== names[names.length - 1] // the plugin stamps every host element; collapse repeats
     ) {
+      // First push is the innermost component — take its file, and only its file.
+      if (names.length === 0) sourceFile = current.getAttribute(SOURCE_FILE_ATTRIBUTE);
       names.push(name);
     }
     current = current.parentElement;
   }
 
-  return names.reverse(); // outermost → innermost
+  return {
+    componentChain: names.reverse(), // outermost → innermost
+    ...(sourceFile === null || sourceFile === '' ? {} : { sourceFile }),
+  };
 }
 
 /** One decision per document, so a page can never mix identity strategies. */
@@ -305,6 +353,11 @@ export interface ElementDescription {
   role: string;
   /** `ux.accessible_name`, already redacted. Absent when the element has no label. */
   accessibleName?: string;
+  /**
+   * `ux.source_file`: the file defining the innermost component in the chain. Present only
+   * when the build plugin annotated the document — the fiber walk cannot know it.
+   */
+  sourceFile?: string;
 }
 
 /**
@@ -342,13 +395,19 @@ export function describeElement(
   // Build-time attributes when the app has the plugin, the fiber walk when it does not.
   // Not a per-element fallback — see `documentIsAnnotated`. The fiber walk is what an app
   // gets when Rastro is installed without its build step, and it is only reliable in dev.
-  const chain = documentIsAnnotated(element.ownerDocument)
-    ? attributeChain(element)
-    : componentChain(getFiber(element));
+  const walk: AttributeWalk = documentIsAnnotated(element.ownerDocument)
+    ? walkAttributes(element)
+    : { componentChain: componentChain(getFiber(element)) };
+  const chain = walk.componentChain;
+  const file = walk.sourceFile;
   const name = accName(element, redactor);
 
-  // Each missing signal drops out rather than poisoning the whole thing.
-  const parts = [chain.length > 0 ? chain.join('>') : UNKNOWN_CHAIN, role];
+  // Each missing signal drops out rather than poisoning the whole thing. The file rides on
+  // the chain segment because it qualifies the chain's innermost entry — `Card` means one
+  // thing in `billing/Card.tsx` and another in `settings/Card.tsx` — and because keeping it
+  // there leaves the optional accessible name as the trailing segment it has always been.
+  const chainPart = chain.length > 0 ? chain.join('>') : UNKNOWN_CHAIN;
+  const parts = [file === undefined ? chainPart : `${chainPart}@${file}`, role];
   if (name !== undefined) parts.push(`"${name}"`);
 
   return {
@@ -356,6 +415,7 @@ export function describeElement(
     componentChain: chain,
     role,
     ...(name === undefined ? {} : { accessibleName: name }),
+    ...(file === undefined ? {} : { sourceFile: file }),
   };
 }
 
@@ -363,8 +423,9 @@ export function describeElement(
  * Stable element identity.
  *
  * Format (§4.2.1, and the conventions' "Fingerprint format"):
- *   `<component chain>|<role>|"<accessible name>"`
- *   e.g. `Settings>ProfileForm>SaveButton|button|"Save Profile"`
+ *   `<component chain>[@<source file>]|<role>|"<accessible name>"`
+ *   e.g. `Settings>ProfileForm>SaveButton@src/ProfileForm.tsx|button|"Save Profile"`
+ * The `@<source file>` segment is present only in a document the build plugin annotated.
  * An explicit `data-telemetry-id` yields `id:<value>` and skips derivation.
  *
  * Known v1 failure modes, stated plainly because both are measurable rather than theoretical:

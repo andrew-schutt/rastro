@@ -43,6 +43,7 @@ export {
   OVERRIDE_ATTRIBUTE,
   resetAnnotationProbe,
   roleOf,
+  SOURCE_FILE_ATTRIBUTE,
   UNKNOWN_CHAIN,
 } from './fingerprint.js';
 export type { ElementDescription } from './fingerprint.js';

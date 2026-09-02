@@ -72,6 +72,8 @@ export interface BuildEventInput {
   fromPath?: string;
   /** `ux.component_chain`, outermost → innermost. */
   componentChain?: string[];
+  /** `ux.source_file`: the file defining the innermost component in the chain. */
+  sourceFile?: string;
   /** Custom attributes from `track(name, props)`. Already sanitized by `sanitizeProps`. */
   attributes?: Record<string, AttributeValue>;
 }
@@ -160,6 +162,9 @@ export function buildEvent(
       ...(input.accessibleName === undefined
         ? {}
         : { 'ux.accessible_name': redactor.redact(input.accessibleName) }),
+      // Not redacted: a repo-relative source path is authored by the developer, never by a
+      // user, and it is already on the wire inside the Required `ux.fingerprint`.
+      ...(input.sourceFile === undefined ? {} : { 'ux.source_file': input.sourceFile }),
       ...(input.fromPath === undefined
         ? {}
         : { 'ux.from_path': redactor.tokenizePath(input.fromPath) }),
@@ -239,9 +244,12 @@ export function interactionMethodOf(
 }
 
 /**
- * The conventions mark `ux.component_chain`, `ux.role`, and `ux.accessible_name` **Opt-In**:
- * "captured only when explicitly enabled". So they are off by default, and this is the
- * switch.
+ * The conventions' fingerprint parts, behind a switch.
+ *
+ * ⚠ The spec moved these from Opt-In to Recommended in 0.2 and the emitter has not followed
+ * — they are still off by default here. That is a deviation, recorded in docs/NOTES.md, and
+ * it is conformant: Recommended attributes may be omitted. `ux.source_file` (0.3) is added
+ * on the same footing rather than defaulting on ahead of its siblings.
  *
  * §4.2.1 recommends turning `componentChain` on while tuning fingerprints — it is what lets
  * you re-derive identities later without re-collecting, and it is the debugging aid for
@@ -252,13 +260,18 @@ export interface OptInAttributes {
   componentChain?: boolean;
   role?: boolean;
   accessibleName?: boolean;
+  /**
+   * `ux.source_file`. Only ever available in a document the build plugin annotated; in any
+   * other app this switch does nothing, because there is no file to report.
+   */
+  sourceFile?: boolean;
 }
 
 /** Pick out whichever Opt-In attributes are enabled, from an already-derived description. */
 function optInFrom(
   described: ElementDescription,
   optIn: OptInAttributes,
-): Pick<BuildEventInput, 'componentChain' | 'role' | 'accessibleName'> {
+): Pick<BuildEventInput, 'componentChain' | 'role' | 'accessibleName' | 'sourceFile'> {
   return {
     ...(optIn.componentChain === true && described.componentChain.length > 0
       ? { componentChain: described.componentChain }
@@ -266,6 +279,9 @@ function optInFrom(
     ...(optIn.role === true ? { role: described.role } : {}),
     ...(optIn.accessibleName === true && described.accessibleName !== undefined
       ? { accessibleName: described.accessibleName }
+      : {}),
+    ...(optIn.sourceFile === true && described.sourceFile !== undefined
+      ? { sourceFile: described.sourceFile }
       : {}),
   };
 }

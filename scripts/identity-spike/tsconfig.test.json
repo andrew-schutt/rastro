@@ -1,0 +1,7 @@
+{
+  // Same settings, WITH the test files — see packages/react/tsconfig.test.json for why the
+  // split exists. `typecheck` runs this one.
+  "extends": "./tsconfig.json",
+  "include": ["src"],
+  "exclude": []
+}
