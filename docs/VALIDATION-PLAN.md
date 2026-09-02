@@ -151,8 +151,26 @@ rendered list *correctly* share a fingerprint — that is a right merge, not a f
 distinguish "collides with a semantically distinct element" from "collides with its own
 repeated siblings," or the collision number is meaningless. Settle that definition first.
 
+**Half of it is now settled and built:** `scripts/identity-spike/repeat-oracle.ts` rules on a
+pair using React's `key`, since React stamps every array child's fiber with the developer's
+key. Two elements are repeats of one another exactly when they hang off two *different* keyed
+items of the *same* list — which also, correctly, calls two controls inside one row distinct
+rather than excusing them as "a list". A key is a terrible identity (unique only among
+siblings, and `key={i}` renumbers on every insert) and a good referee, because the referee
+compares elements within one page at one commit and persists nothing.
+
+It returns **`undecided`** where the key signal has nothing to say — React renders an unkeyed
+array happily, so "no key" does not prove "no loop" — and `undecided` never collapses into
+either other verdict. That is the hand-inspected bucket, and it is reported as its own number
+so the rate can say how much of it rests on evidence.
+
+**Still open:** the per-JSX-site oracle (a deterministic build-time key, harness-only, never
+shipped in the identity) as the second referee for pairs the key cannot rule on, and the
+shared-design-system case where every button in an app comes from one JSX site.
+
 **Done:** `scripts/identity-spike/`, plus a written report carrying all three numbers across
-≥2 real apps and ≥10 commits. Use apps we do not control — OSS React products with real
+≥2 real apps and ≥10 commits. *(Started: the package exists, with the collision referee in
+it.)* Use apps we do not control — OSS React products with real
 history work fine.
 
 **How we know it worked — three rules, pre-committed before any number is seen.**
@@ -330,7 +348,10 @@ record, not an oversight.
 - **New: the collision metric has no agreed definition.** A repeated list item sharing a
   fingerprint is correct behavior, so "collision rate" is undefined until the
   semantic-distinctness rule is fixed. This is the wrinkle in 3.2 and it is a genuine open
-  question about §4.2.1's decision to exclude position hints.
+  question about §4.2.1's decision to exclude position hints. **Partly closed:** the React-key
+  referee in `scripts/identity-spike/` decides the keyed cases and explicitly declines the
+  rest, so what remains open is narrower — unkeyed lists, and elements sharing one JSX site
+  through a design-system component.
 
 **Untouched, and correctly downstream of both gates**
 

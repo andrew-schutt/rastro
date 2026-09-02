@@ -227,6 +227,35 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 
 ## Decisions worth knowing about
 
+**The collision referee uses React's `key`, which is the opposite of an identity.** §3.2
+cannot produce a collision number until something decides whether two elements sharing a
+fingerprint are a right merge (50 rows of one list) or a false one (two separately-written
+buttons). `scripts/identity-spike/repeat-oracle.ts` rules on that: React stamps every array
+child's fiber with the developer's key, so two elements are repeats of one another exactly
+when they hang off two *different* keyed items of the *same* list.
+
+The same rule correctly calls two controls **inside one row** distinct rather than excusing
+them as "a list", which is the case a purely structural DOM heuristic gets wrong.
+
+`key` was rejected as an identity input for good reasons — unique only among siblings, and
+`key={i}` renumbers every item when one is inserted — and none of them apply to a referee that
+compares elements within one page at one commit and persists nothing. Transience is free here.
+
+**`undecided` is a verdict, and it never collapses.** React renders an unkeyed array happily,
+warning only, so "no key" does not prove "no loop". Folding those pairs into either answer
+would move the exact number the spike exists to establish, so they are counted separately and
+inspected. `groupByRepeat` will not merge on an undecided pair for the same reason: merging on
+a signal that said nothing suppresses false merges, which are the failure being measured.
+
+**`scripts/identity-spike` is a workspace package, not a loose script.** It renders real React
+to read real fibers, so it needs the same typecheck/lint/test rig as the SDK — this is code the
+spike's numbers depend on entirely. `pnpm-workspace.yaml` gains the one path rather than a
+`scripts/*` glob, so nothing else under `scripts/` is swept in.
+
+All twelve of its tests were checked by mutation: walking to the outermost keyed ancestor
+instead of the nearest, excusing two controls in one row as siblings, and merging undecided
+pairs each fail exactly one test.
+
 **The source file is in the identity, and the reason is NOT stability.** The fingerprint is
 now `<chain>[@<file>]|<role>|"<name>"` wherever the build plugin annotated the document.
 
