@@ -31,8 +31,7 @@ code, NOTES is right. Trust it over your own reading of the design, and over ass
 
 ## State, as of 2026-10-29
 
-**Paused since 2026-09-02** — no commits in between. Nothing is half-finished: the tree is
-clean, every branch is merged, `v0.0.1` is tagged.
+**Paused since 2026-09-02.**
 
 The walking skeleton is complete and spans design Phases 1–5 in thin form. **Both of §16's
 de-risking gates are still open** — Phase 0 (Wizard of Oz) has never been run, and the
