@@ -22,7 +22,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "babel-plugin-rastro": "workspace:*",
     "typescript": "^5.9.2",
-    "vite": "^7.1.0",
+    "vite": "^7.3.7",
     "vitest": "^4.1.11"
   }
 }
