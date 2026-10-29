@@ -17,7 +17,7 @@
     "rastro-analysis": "workspace:*",
     "rastro-core": "workspace:*",
     "better-sqlite3": "^12.2.0",
-    "fastify": "^5.12.5"
+    "fastify": "^5.12.6"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
