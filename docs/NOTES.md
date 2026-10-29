@@ -159,7 +159,7 @@ works). Delete it to start clean.
 
 ### Tests
 
-`pnpm -r test` → **284 passing, 1 `todo`**.
+`pnpm -r test` → **358 passing, 1 `todo`**, on Vitest 4.
 
 Coverage sits in two deliberate layers.
 
