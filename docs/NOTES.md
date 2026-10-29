@@ -159,7 +159,8 @@ works). Delete it to start clean.
 
 ### Tests
 
-`pnpm -r test` → **284 passing, 1 `todo`**.
+`pnpm -r test` reports the count. None is kept here: a number that only a command can
+check goes stale the first time someone adds a test without editing this file.
 
 Coverage sits in two deliberate layers.
 
@@ -302,7 +303,8 @@ to read real fibers, so it needs the same typecheck/lint/test rig as the SDK —
 spike's numbers depend on entirely. `pnpm-workspace.yaml` gains the one path rather than a
 `scripts/*` glob, so nothing else under `scripts/` is swept in.
 
-All eighteen of its tests were checked by mutation. Walking to the outermost keyed ancestor
+All eighteen of its tests at the time of writing were checked by mutation.
+Walking to the outermost keyed ancestor
 instead of the nearest, excusing two controls in one row as siblings, and merging undecided
 pairs each fail exactly one test; collapsing a whole list into one group fails two. On the slot
 rewrite: ignoring `fiber.index` fails four, not stopping the slot walk at the item fiber fails

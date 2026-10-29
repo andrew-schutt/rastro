@@ -29,12 +29,18 @@ emitted as OpenTelemetry Events. Open source, pre-alpha, one maintainer.
 intended; NOTES records what shipped, every deviation and why. Where they disagree about the
 code, NOTES is right. Trust it over your own reading of the design, and over assumptions.
 
-## State, as of 2026-09-02
+## State, as of 2026-10-29
+
+**Paused since 2026-09-02.**
 
 The walking skeleton is complete and spans design Phases 1–5 in thin form. **Both of §16's
 de-risking gates are still open** — Phase 0 (Wizard of Oz) has never been run, and the
 fingerprint has never been measured. That asymmetry is the whole point of
 `docs/VALIDATION-PLAN.md`: the discipline right now is *validate, don't build outward*.
+
+**§3.1's own three-week trigger has fired, and the finding is recorded against it.** Read that
+before planning anything: it is why the restart point is §3.2 — which never needed anyone's
+permission — and not §3.1.
 
 Identity now derives from build-time DOM attributes stamped by `babel-plugin-rastro`, so it
 survives minification; the React fiber walk remains the fallback for apps installed without

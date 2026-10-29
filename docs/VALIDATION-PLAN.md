@@ -110,6 +110,30 @@ gate; a gate that cannot be run is a real result about the project's position, n
 to substitute the demo app. **Running Phase 0 on `examples/demo-app` proves nothing** — we
 already know what our own app does.
 
+**FINDING — recorded 2026-10-29, the window having elapsed.** No host was recruited. The work
+stopped on 2026-09-02, which is the last commit of any kind, and nothing in this repository
+records an attempt at recruiting one. So the finding is not *"we looked and found nobody"* but
+the weaker and more awkward **"the search was never run."** Only the second is supported by
+anything here, and the difference matters: a declined ask would say something about the
+offer, while an unmade one says something about the project.
+
+What it says about the project's position, which is what §16 asked for: the gate needs another
+person's hour, and the three weeks were not spent buying one. That is the risk §16 was
+actually pointing at. Not that the output would fail to convince a designer — that no designer
+would be in the room to be convinced. A gate that depends on someone else's time is the one a
+solo pre-alpha defers indefinitely without ever deciding to, which is why §16 put it in week
+two and why this document put it first with the longest lead time.
+
+The paragraph above still holds: this licenses nothing on `examples/demo-app`.
+
+**If an ask was made offline, it belongs here** — who was asked, and what they said. That is a
+materially stronger finding than this one and it would change §3.1's next move.
+
+**What it changes in the sequence: nothing about §3.2**, which needs nobody's permission and
+was never blocked on this. §1.3's asymmetry is now evidenced rather than predicted — the
+expensive gate stalled on access and the cheap one is still unstarted. Restart at §3.2.
+Re-open §3.1 only with a named person already attached to it.
+
 ---
 
 ### 3.2 — The identity spike, run offline · ~1 week · needs nobody's permission
