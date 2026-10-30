@@ -32,6 +32,12 @@ Following OpenTelemetry's own levels:
   (idle, tab close), which client code cannot reliably observe, so a session-span would
   never receive `span.end()`. Single-session inspection is reconstructed from the event
   stream (sort by `ux.seq`), not from a trace.
+- **Flows are not spans either, because they are discovered, not declared.** Opening a span
+  requires the emitter to know, at runtime, that a unit of work is starting. Rastro's
+  premise is the opposite: flows are reconstructed from the event stream after the fact,
+  including paths nobody thought to instrument. A span tree at capture time would encode the
+  developer's model of the flow — the very thing the analysis exists to check. Flow
+  boundaries are an *output* of analysis, so they cannot be an input to capture.
 
 ## Attribute naming
 
