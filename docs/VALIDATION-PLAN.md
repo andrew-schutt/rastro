@@ -166,8 +166,13 @@ correct match? This is the trigger for [`IDENTITY-RESOLUTION.md`](IDENTITY-RESOL
 it reframes what the spike is really asking. With a resolution layer, identity does not have
 to be *stable* — it has to be **detectably unstable and cheaply repairable**. Drift you can
 see and confirm costs one prompt; drift you cannot see corrupts every number silently. If
-proposals are mostly right, that design is viable. If they are mostly wrong, the prompt becomes
-noise a developer learns to dismiss, and the answer is §4.3's source-location anchor instead.
+proposals are wrong too often, the prompt becomes noise a developer learns to dismiss, and the
+answer is §4.3's source-location anchor instead. "Too often" is rule 4 below, not an adjective.
+
+Two of those signals do not exist offline. Graph neighbours and volume are computed from
+traffic, and the corpus has none, so the offline form of (d) runs on what a commit does carry:
+version boundary, route, role, and the stored parts. Rule 4 says what that can and cannot
+decide.
 
 **One design wrinkle to settle before writing the harness.** Two identical buttons in a
 rendered list *correctly* share a fingerprint — that is a right merge, not a false one, and
@@ -197,7 +202,7 @@ shared-design-system case where every button in an app comes from one JSX site.
 it.)* Use apps we do not control — OSS React products with real
 history work fine.
 
-**How we know it worked — three rules, pre-committed before any number is seen.**
+**How we know it worked — four rules, pre-committed before any number is seen.**
 
 There is deliberately no percentage bar here. Nobody publishes false-merge rates — Heap,
 PostHog, FullStory and Contentsquare all do this same fingerprinting and none report how often
@@ -225,6 +230,49 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
    proxy it: hand-pick the ~20 elements of one real flow — the same picking §3.5 needs anyway —
    and require no collisions among them. Those are the elements every number in a Phase 0
    deliverable is computed from.
+4. **Drift proposals must beat the cheaper ways of making them.** The resolution layer adds
+   persisted state to the collector and a review surface to the dashboard. It earns that only
+   if its proposals are better than ones nobody has to build.
+
+   *Ground truth first, and blind.* For every fingerprint present at one commit and absent at
+   the next, read the diff and label it before any proposer runs: **continued as** a named new
+   fingerprint, **removed**, **replaced** — a redesign serving the same purpose, which
+   `IDENTITY-RESOLUTION.md` says must *not* merge — or **unclear**. Each label carries the line
+   of the diff that justifies it. `unclear` is its own bucket and never folds into another, for
+   the same reason the referee's `undecided` does not.
+
+   *Three proposers, each fixed in `scripts/identity-spike/` before it sees the corpus.* Each
+   proposes exactly one candidate or abstains; a tie is an abstention, never a pick.
+   - **naive** — the new fingerprint with the same route and role;
+   - **anchor** — the new fingerprint with the same source file and role, which is §4.3's
+     alternative to the whole resolution layer;
+   - **resolution** — the `IDENTITY-RESOLUTION.md` rule in its offline form: version boundary,
+     route, role, and the stored parts, file included.
+
+   *Scoring.* A proposal is **correct** when it names the labelled continuation, and **wrong**
+   otherwise — including any proposal on a fingerprint labelled removed or replaced.
+   Abstentions and `unclear` labels are reported, not scored.
+
+   *The rule.* Resolution passes only if it **dominates** both others: more correct proposals
+   than each, and no more wrong ones. Domination is the comparison because it needs no exchange
+   rate between a miss and a wrong proposal, which is a number nobody has.
+   - **Resolution dominates both:** the design is viable, and its build trigger stands as §5
+     sets it.
+   - **Anchor matches or beats it:** the context signals add nothing the file did not. The
+     answer is §4.3's anchor, and `IDENTITY-RESOLUTION.md` records that.
+   - **Naive matches or beats it:** neither the file nor the other parts carry anything
+     offline. The decision waits for traffic.
+   - **Neither dominates nor loses outright:** report the trade. It does not license building.
+   - **No fingerprint labelled `continued`:** (d) is unanswered, not passed. Low churn is good
+     news for rule 2, and says nothing about whether drift is repairable.
+
+   *What it cannot say.* A pass is provisional: neighbours and volume are untested until
+   Phase 0 traffic exists, and so is whether a person confirms correctly. A fail leaves the
+   traffic signals untested too, but it does not license building on the hope that they rescue
+   it — the decision waits for traffic.
+
+   Rule 4 is not an existence condition. Failing it changes which repair gets built, not
+   whether the project continues.
 
 **Not a gate:** the dev-vs-prod collision comparison is an input, not a pass/fail. It prices
 what §4.3's build plugin buys, and combines with the plugin's still-unknown cost (§17 #4) into
