@@ -187,8 +187,9 @@ reinventing:
 Deferred behind both gates. Its trigger is the detectability measurement in
 [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2: for each churned fingerprint in the spike's
 corpus, could a rule using version boundary + route + role + neighbours have flagged it and
-proposed the correct match? If proposals are mostly right, this design is viable. If they are
-mostly wrong, the prompt becomes noise a developer learns to dismiss, and the answer is the
+proposed the correct match? The pass rule is that section's rule 4: this design's proposals
+must dominate both a naive route-and-role match and a source-file match. If the file match is
+as good, the prompt is noise a developer learns to dismiss for no gain, and the answer is the
 build-time plugin's source-location anchor (§4.3) instead — a rename does not move a file, so
 source location survives what the component name does not.
 
