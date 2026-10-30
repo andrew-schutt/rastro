@@ -124,6 +124,40 @@ identity spike first than the plan currently makes, and a reason it must measure
 PostHog-style CSS-selector baseline specifically — that is the incumbent approach the entire
 design is a bet against.
 
+### The incumbents can repair a false merge, and Rastro cannot
+
+*Added October 2026.* The docs present the trade as stability against fragility, which
+undersells what the selector approach buys. **The incumbents decide identity at query time;
+Rastro decides it at capture time.** That moves where a mistake can be repaired.
+
+PostHog stores the clicked element's DOM ancestry with its attributes (`elements_chain`), and an
+Action is a definition over that raw data — text, URL and CSS selector, ANDed. Actions are
+retroactive: they apply to events already collected. So a definition that lumps two buttons
+together is a definition that is too loose, and tightening it re-splits history. Heap's
+retroactive event definitions rest on the same property. Both failures are repairable by hand:
+a split by widening the definition, a merge by narrowing it.
+
+Rastro's event carries the fingerprint and exactly the parts that composed it, by the
+conventions' parts invariant. When two elements produce one fingerprint, every event from
+either is identical in every field, so no later query can separate them. A false merge is
+**permanent**, not merely silent. [`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md) repairs
+splits only, and has nothing to offer here.
+
+What the incumbents do *not* do is detect a collision for you, or publish how often one
+happens. PostHog's guidance is prevention — stable `data-*` attributes — and its toolbar docs
+describe no warning when a selector matches several elements.
+
+Two consequences:
+
+- **The trade is stability against recoverability, not stability against fragility.** Rastro
+  is stable, compact and privacy-bounded, and unrecoverable on a merge. The incumbents are
+  fragile and rich, and recoverable on both failures given a person's time. The parts
+  invariant is what buys the privacy bound, and it is also what makes the merge permanent.
+- **Rule 3 in [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2 — zero collisions among the flow
+  that matters — carries more weight here than it would for PostHog.** There, a collision on
+  the primary CTA is an afternoon of editing a definition. Here, it is every number ever
+  computed from that node. Prevention and offline measurement are the only defences there are.
+
 ---
 
 ## Sources
@@ -133,7 +167,8 @@ design is a bet against.
 - [OTel browser events semconv](https://opentelemetry.io/docs/specs/semconv/browser/browser-events/) ·
   [OTel session semconv](https://opentelemetry.io/docs/specs/semconv/general/session/)
 - [PostHog autocapture](https://posthog.com/docs/product-analytics/autocapture) ·
-  [PostHog Actions](https://posthog.com/docs/data/actions)
+  [PostHog Actions](https://posthog.com/docs/data/actions) ·
+  [PostHog toolbar](https://posthog.com/docs/toolbar)
 - [Heap — how autocapture actually works](https://www.heap.io/blog/how-autocapture-actually-works)
 - [FullStory — finding element selectors](https://help.fullstory.com/hc/en-us/articles/38368342628759-Guides-and-Surveys-Finding-Element-Selectors-on-Your-Website)
 - [Sentry — React component name capturing](https://docs.sentry.io/platforms/javascript/guides/react/features/component-names)
