@@ -1,0 +1,152 @@
+{
+  "scenario": "move-file",
+  "description": "Move SaveButton.tsx from ui/ to settings/. Only the file part can see a move.",
+  "strategies": {
+    "attribute+file": {
+      "changed": [
+        "save"
+      ],
+      "diff": {
+        "kept": [
+          "App>NavBar@src/NavBar.tsx|a|\"Help\"",
+          "App>NavBar@src/NavBar.tsx|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\"",
+          "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\"",
+          "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
+        ],
+        "vanished": [
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
+        ],
+        "appeared": [
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/settings/SaveButton.tsx|button:button|\"Save\""
+        ],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/settings/SaveButton.tsx|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        }
+      ]
+    },
+    "attribute": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "App>NavBar|a|\"Help\"",
+          "App>NavBar|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\"",
+          "App>SettingsPage>Row>Switch|switch|\"Dark mode\"",
+          "App>SettingsPage|a|\"Docs\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\"",
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "App>SettingsPage>Row>Switch|switch|\"Dark mode\""
+        }
+      ]
+    },
+    "fiber": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "App>NavBar|a|\"Help\"",
+          "App>NavBar|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\"",
+          "App>SettingsPage|a|\"Docs\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\"",
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\"",
+          "SettingsPage>PreferenceRow>Row>Switch|switch|\"Dark mode\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "SettingsPage>PreferenceRow>Row>Switch|switch|\"Dark mode\""
+        }
+      ]
+    }
+  }
+}

@@ -112,6 +112,12 @@ host element a component owns must ship stamped with that component. It runs in 
 pass that audit; a new authoring pattern the plugin has to handle gets a case there. See its
 README.
 
+**Fingerprint output is pinned by committed snapshots.**
+`scripts/identity-spike/continuity/` renders a small app before and after known edits and
+commits every resulting fingerprint. A PR that changes any fingerprint fails there until the
+snapshots are updated (`pnpm --filter identity-spike test -u`), and must say in its body what
+changed and why: a fingerprint change splits every stored identity it touches.
+
 Tests sit in two deliberate layers, and new code should land in the right one:
 
 - **Pure, no DOM** — the interesting logic, extracted so it tests without a browser at all
