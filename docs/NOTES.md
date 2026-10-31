@@ -423,6 +423,55 @@ spreads onto a non-DOM target can warn or break. Host-only is also sufficient �
 component that renders anything eventually renders a host element, so DOM nesting reproduces
 the chain without ever touching a component's props.
 
+**Both decisions above are reopened, on evidence from the first corpus app.** The sufficiency
+argument is wrong for design-system apps. A component that renders only *other components*
+(`<View>`, `<Button>`) writes no host element of its own; the host elements it causes are
+written in the primitive's file, so they are stamped with the primitive's name. DOM nesting then
+reproduces the design system's structure, not the app's.
+
+Seen in the §3.2 build check on Actual Budget (`actualbudget/actual@e82ea4d`, 2026-10-30), with
+`rastro-core`'s own `fingerprint()` run on four screens of the production build: most
+interactive elements' attribute chain is the single segment
+`View@packages/component-library/src/View.tsx`, and on the Budget screen none of 81 interactive
+elements carries a stamp of its own. Two causes stack — app components that compose primitives
+leave no stamp, and Actual's buttons are rendered by react-aria from `node_modules`, which is
+never annotated. What survives is mostly role + accessible name with `View` in front.
+
+The same elements walked through the fiber tree name the app's components
+(`Settings>Page>SettingsNav>SettingsNavLink`) — Actual ships with identifier mangling off, so the
+names survived. But the four chain slots fill with library internals as often as not:
+react-aria's published build exposes bundler-hashed names
+(`$05a50f7d78b03ad9$export$8c610744efcf8a1d`) that are not stable across a dependency upgrade,
+which is churn on untouched components — the thing rule 2 requires to be zero. And in an
+ordinary minified build the names are gone entirely, which is why the plugin exists.
+
+So neither shipped strategy is adequate on this app, and they fail in opposite ways: the
+attribute chain is stable and nearly empty; the fiber walk is informative and unstable. The
+candidate that keeps what each gets right — the plugin **marks first-party components** with
+build-time string literals, and the fiber walk counts **only marked components** — is the
+`displayName` design rejected above, refined to skip unmarked fibers. The two reasons it was
+rejected still stand as its costs, unrefuted: it reads React's private internals in production,
+not only as a dev fallback, and it is React-only. What changed is that the alternative those
+reasons favoured turned out to carry little identity in the kind of app most production React is.
+
+It is **not adopted.** It is pre-registered as a strategy in
+[`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2 rule 1, and becomes the default only if it wins
+there.
+
+**The prediction, written before the corpus is measured.** Not blind — the observation above was
+made on a sample of four screens before this was written — but committed before any rule is
+scored:
+
+- On Actual, the attribute chain with file will separate few elements that role + accessible
+  name alone does not. Most of what distinguishes its fingerprints is the name.
+- Rule 4's **anchor** proposer will be weak on Actual under the attribute chain, because the file
+  it anchors on is `View.tsx` for most elements.
+- The react-admin demo, chosen as the design-system case, will show the same degeneration at
+  least as strongly. If it does not, this note has misread why Actual degenerates.
+
+If the measured corpus contradicts any of these, that is recorded here against it, not quietly
+corrected.
+
 **`babel-plugin-rastro` breaks the `rastro-*` naming on purpose.** Babel resolves the
 shorthand `plugins: ["rastro"]` to `babel-plugin-rastro`; matching the ecosystem convention is
 worth more than matching the sibling packages.
