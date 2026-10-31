@@ -207,43 +207,60 @@ export default function rastroComponentAnnotate(babel: {
   const attribute = (name: string, value: string): BabelTypes.JSXAttribute =>
     t.jsxAttribute(t.jsxIdentifier(name), t.stringLiteral(value));
 
+  const stamp = (path: NodePath<BabelTypes.JSXOpeningElement>, state: RastroPluginPass): void => {
+    const filename = state.filename;
+    if (filename === undefined || !JSX_EXTENSIONS.test(filename)) return;
+    if (!isHostElement(path.node.name)) return;
+
+    const {
+      componentAttribute = COMPONENT_ATTRIBUTE,
+      sourceFileAttribute = SOURCE_FILE_ATTRIBUTE,
+      includeSourceFile = true,
+      root: configuredRoot,
+    } = state.opts;
+
+    if (hasAttribute(path.node, componentAttribute)) return;
+
+    const component = owningComponent(path);
+    if (component === null) return; // JSX outside any component — nothing meaningful to say
+
+    // Appended, so an explicit attribute or a later spread still wins by source order.
+    path.node.attributes.push(attribute(componentAttribute, component));
+
+    if (includeSourceFile && !hasAttribute(path.node, sourceFileAttribute)) {
+      // The PROJECT root, not the process's cwd. This path is part of the fingerprint, so
+      // relativizing against wherever the build was launched from would mint a different
+      // identity for every element depending on the directory — CI running from a monorepo
+      // root and a developer running from the package would produce two disjoint identity
+      // sets for identical code, churn with no signal behind it.
+      //
+      // The `root` option first, because Babel's own `root` is only pinned to the extent
+      // the toolchain pins it — it defaults to `cwd`, and outside Vite (where the root has
+      // to be wherever `index.html` is) nothing anchors it to the project.
+      const file = sourceFilePath(configuredRoot ?? state.file.opts.root ?? state.cwd, filename);
+      if (file !== null) path.node.attributes.push(attribute(sourceFileAttribute, file));
+    }
+  };
+
   return {
     name: 'rastro-component-annotate',
 
     visitor: {
-      JSXOpeningElement(path, state) {
-        const filename = state.filename;
-        if (filename === undefined || !JSX_EXTENSIONS.test(filename)) return;
-        if (!isHostElement(path.node.name)) return;
-
-        const {
-          componentAttribute = COMPONENT_ATTRIBUTE,
-          sourceFileAttribute = SOURCE_FILE_ATTRIBUTE,
-          includeSourceFile = true,
-          root: configuredRoot,
-        } = state.opts;
-
-        if (hasAttribute(path.node, componentAttribute)) return;
-
-        const component = owningComponent(path);
-        if (component === null) return; // JSX outside any component — nothing meaningful to say
-
-        // Appended, so an explicit attribute or a later spread still wins by source order.
-        path.node.attributes.push(attribute(componentAttribute, component));
-
-        if (includeSourceFile && !hasAttribute(path.node, sourceFileAttribute)) {
-          // The PROJECT root, not the process's cwd. This path is part of the fingerprint, so
-          // relativizing against wherever the build was launched from would mint a different
-          // identity for every element depending on the directory — CI running from a monorepo
-          // root and a developer running from the package would produce two disjoint identity
-          // sets for identical code, churn with no signal behind it.
-          //
-          // The `root` option first, because Babel's own `root` is only pinned to the extent
-          // the toolchain pins it — it defaults to `cwd`, and outside Vite (where the root has
-          // to be wherever `index.html` is) nothing anchors it to the project.
-          const file = sourceFilePath(configuredRoot ?? state.file.opts.root ?? state.cwd, filename);
-          if (file !== null) path.node.attributes.push(attribute(sourceFileAttribute, file));
-        }
+      // The whole file is stamped up front, in `Program.enter`, not element by element as the
+      // main traversal reaches each one. The owner is read off the source's lexical structure,
+      // so it has to be read before any other plugin rearranges that structure — and the React
+      // Compiler rewrites every function in its own `Program.enter`, hoisting `.map()`
+      // callbacks into top-level `_temp` functions. Visited per element, JSX inside those
+      // callbacks has already lost its capitalised ancestor and is silently left unstamped:
+      // exactly the list rows identity has the most trouble with.
+      //
+      // ⚠ This wins only if this plugin's `Program.enter` runs first. Babel runs plugins
+      // before presets and plugins in listed order, so list this plugin before the compiler
+      // (or pass the compiler as a preset). Listed after it, nothing here can recover.
+      Program: {
+        enter(program, state) {
+          program.traverse({ JSXOpeningElement: (path) => stamp(path, state) });
+        },
       },
     },
   };

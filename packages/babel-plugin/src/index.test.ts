@@ -1,6 +1,11 @@
 // packages/babel-plugin/src/index.test.ts
 // Transform in, transformed source out. Pure — no DOM, no React, no bundler.
-import { transformSync } from '@babel/core';
+import {
+  transformSync,
+  type PluginObj,
+  type TransformOptions,
+  type types as BabelTypes,
+} from '@babel/core';
 import { describe, expect, it } from 'vitest';
 import rastroComponentAnnotate, {
   COMPONENT_ATTRIBUTE,
@@ -163,6 +168,92 @@ describe('rastro-component-annotate', () => {
       plugins: [[rastroComponentAnnotate, { root: '/repo/packages/app' }]],
     })?.code;
     expect(out).toContain(`${SOURCE_FILE_ATTRIBUTE}="src/SettingsForm.tsx"`);
+  });
+});
+
+/**
+ * A stand-in for the React Compiler's one behaviour that matters here: in `Program.enter` it
+ * rewrites every function, hoisting a `.map()` callback out of its component into a top-level
+ * `_temp` function. JSX inside that callback no longer has a capitalised ancestor, so a plugin
+ * that stamps per element — visiting JSX after the compiler has run — finds no owner and
+ * silently stamps nothing. Found building Actual Budget (docs/VALIDATION-PLAN.md §3.2), where
+ * the date picker's `<option>`s and list rows lost their identity this way.
+ */
+function hoistingCompiler({ types: t }: { types: typeof BabelTypes }): PluginObj {
+  return {
+    name: 'stand-in-react-compiler',
+    visitor: {
+      Program: {
+        enter(program) {
+          program.traverse({
+            CallExpression(call) {
+              const callee = call.node.callee;
+              if (
+                callee.type !== 'MemberExpression' ||
+                callee.property.type !== 'Identifier' ||
+                callee.property.name !== 'map'
+              ) {
+                return;
+              }
+              const [callback] = call.get('arguments');
+              if (callback === undefined || !callback.isArrowFunctionExpression()) return;
+
+              const { params, body } = callback.node;
+              const block = t.isExpression(body)
+                ? t.blockStatement([t.returnStatement(body)])
+                : body;
+              const id = program.scope.generateUidIdentifier('temp');
+              program.pushContainer('body', t.functionDeclaration(id, params, block));
+              callback.replaceWith(t.identifier(id.name));
+            },
+          });
+        },
+      },
+    },
+  };
+}
+
+describe('alongside the React Compiler', () => {
+  const source = `function ColorPalette({ colors }) {
+    return <ul>{colors.map((c) => <li>{c}</li>)}</ul>;
+  }`;
+
+  const transformWith = (options: TransformOptions): string =>
+    transformSync(source, {
+      filename: '/repo/src/ColorPalette.tsx',
+      cwd: '/repo',
+      babelrc: false,
+      configFile: false,
+      parserOpts: { plugins: ['jsx', 'typescript'] },
+      ...options,
+    })?.code ?? '';
+
+  const stampedItem = new RegExp(`<li ${COMPONENT_ATTRIBUTE}="ColorPalette"`);
+
+  // The configuration the README documents and Actual ships: the compiler arrives as a preset,
+  // this plugin as a plugin, and Babel runs plugins' `Program.enter` before presets'.
+  it('stamps JSX before a compiler preset hoists it out of its component', () => {
+    const out = transformWith({
+      plugins: [rastroComponentAnnotate],
+      presets: [() => ({ plugins: [hoistingCompiler] })],
+    });
+    expect(out).toMatch(/function _temp/); // the stand-in really did hoist
+    expect(out).toMatch(stampedItem);
+  });
+
+  it('stamps JSX before a compiler plugin listed after it', () => {
+    const out = transformWith({ plugins: [rastroComponentAnnotate, hoistingCompiler] });
+    expect(out).toMatch(/function _temp/);
+    expect(out).toMatch(stampedItem);
+  });
+
+  // The limit of the fix, pinned so it cannot change unnoticed: a plugin that rewrites in
+  // `Program.enter` and is listed FIRST runs first, and nothing this plugin does can reorder
+  // that. The README says to list this plugin before the compiler.
+  it('cannot recover the owner when the compiler is listed before it', () => {
+    const out = transformWith({ plugins: [hoistingCompiler, rastroComponentAnnotate] });
+    expect(out).toMatch(/function _temp/);
+    expect(out).not.toMatch(stampedItem);
   });
 });
 

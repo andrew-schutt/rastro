@@ -72,6 +72,18 @@ export default defineConfig({
 { "plugins": ["babel-plugin-rastro"] }
 ```
 
+### With the React Compiler
+
+**List this plugin before the compiler**, or pass the compiler as a preset (Babel runs plugins
+before presets). The compiler rewrites every function as soon as it enters a file, hoisting
+`.map()` callbacks out of their component; this plugin reads each element's owner before that
+happens. Listed after the compiler, the JSX inside those callbacks is left unannotated, with no
+error.
+
+```json
+{ "plugins": ["babel-plugin-rastro", "babel-plugin-react-compiler"] }
+```
+
 **Next.js is not supported yet.** Next compiles with SWC, not Babel; enabling a Babel config
 opts the whole app out of SWC and costs build performance. An SWC port is the open question —
 see [`docs/DESIGN.md`](https://github.com/andrew-schutt/rastro/blob/main/docs/DESIGN.md) §4.3.
