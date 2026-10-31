@@ -55,16 +55,46 @@ pnpm add -D babel-plugin-rastro
 
 ### Vite
 
-`@vitejs/plugin-react` runs Babel, so it takes the plugin directly:
+How Babel plugins are passed depends on the major version of `@vitejs/plugin-react`, and **the
+wrong form fails silently**: the build succeeds and nothing is annotated.
+
+**plugin-react v6 (Vite 8)** dropped the `babel` option. Babel runs through
+[`@rolldown/plugin-babel`](https://npmx.dev/package/@rolldown/plugin-babel) instead:
+
+```bash
+pnpm add -D @rolldown/plugin-babel @babel/core
+```
+
+```ts
+import babel from '@rolldown/plugin-babel';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    babel({ plugins: [['babel-plugin-rastro', { root: import.meta.dirname }]] }),
+  ],
+});
+```
+
+Its defaults already cover your own `.jsx`/`.tsx` and skip `node_modules`. With the React
+Compiler, add `presets: [reactCompilerPreset()]` (exported by `@vitejs/plugin-react`) to the
+same `babel()` call. Presets run after plugins, which is the order this plugin needs (below).
+
+**plugin-react v5 (Vite 7 and earlier)** runs Babel itself and takes the plugin directly:
 
 ```ts
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [react({ babel: { plugins: ['babel-plugin-rastro'] } })],
+  plugins: [react({ babel: { plugins: [['babel-plugin-rastro', { root: import.meta.dirname }]] } })],
 });
 ```
+
+On v6 this second form type-errors and then builds with nothing annotated. Both forms are
+built and audited in CI by `examples/stamp-fixture` (v5) and `examples/stamp-fixture-vite8` (v6).
 
 ### Babel directly
 

@@ -28,6 +28,7 @@ export default tseslint.config(
           './apps/dashboard/tsconfig.json',
           './examples/demo-app/tsconfig.json',
           './examples/stamp-fixture/tsconfig.json',
+          './examples/stamp-fixture-vite8/tsconfig.json',
           './scripts/identity-spike/tsconfig.test.json',
         ],
         tsconfigRootDir: import.meta.dirname,
