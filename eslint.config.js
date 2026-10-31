@@ -9,7 +9,7 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/*.tsbuildinfo', 'docs/**'],
+    ignores: ['**/dist/**', '**/dist-misordered/**', '**/node_modules/**', '**/*.tsbuildinfo', 'docs/**'],
   },
 
   js.configs.recommended,
@@ -27,6 +27,7 @@ export default tseslint.config(
           './apps/collector/tsconfig.test.json',
           './apps/dashboard/tsconfig.json',
           './examples/demo-app/tsconfig.json',
+          './examples/stamp-fixture/tsconfig.json',
           './scripts/identity-spike/tsconfig.test.json',
         ],
         tsconfigRootDir: import.meta.dirname,

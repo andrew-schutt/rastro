@@ -104,6 +104,13 @@ Every one is a wiring or lifecycle failure invisible to a test that stubs the en
 **Assume anything unverified in a real browser is unverified**, and say in the PR what you
 drove and what you saw.
 
+**Stamping is checked on a built bundle, in CI.** `examples/stamp-fixture` builds a fixture app
+through `babel-plugin-rastro` and the React Compiler, then audits the production bundle: every
+host element a component owns must ship stamped with that component. It runs in the ordinary
+`build` and `test` steps. A PR that changes the plugin or how apps are built with it should
+pass that audit; a new authoring pattern the plugin has to handle gets a case there. See its
+README.
+
 Tests sit in two deliberate layers, and new code should land in the right one:
 
 - **Pure, no DOM** — the interesting logic, extracted so it tests without a browser at all
