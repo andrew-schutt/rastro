@@ -1,0 +1,31 @@
+{
+  "name": "stamp-fixture-vite8",
+  "version": "0.0.0",
+  "private": true,
+  "description": "examples/stamp-fixture's app, built with Vite 8 and plugin-react v6 through @rolldown/plugin-babel, and audited with the same suite.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --mode misordered",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@rolldown/plugin-babel": "^0.2.4",
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^22.20.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.2",
+    "babel-plugin-rastro": "workspace:*",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^4.1.12"
+  }
+}

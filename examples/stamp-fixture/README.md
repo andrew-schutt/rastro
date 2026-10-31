@@ -48,7 +48,9 @@ Corpus apps are third-party code with their own install scripts, so they are nev
 ## Adding a pattern
 
 Write it in `src/patterns.tsx`, render it from `src/main.tsx`, and add its owner to the
-coverage list in `audit/audit.test.ts`. Coverage is pinned, so a pattern that never reaches the
+coverage list in `audit/fixture-suite.ts`. That suite is shared with
+[`examples/stamp-fixture-vite8`](../stamp-fixture-vite8), which builds this same `src/` with
+Vite 8 and plugin-react v6, so one change covers both toolchains. Coverage is pinned, so a pattern that never reaches the
 bundle fails the test rather than passing vacuously.
 
 ## What it cannot tell you
