@@ -314,6 +314,11 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
    - **resolution** — the `IDENTITY-RESOLUTION.md` rule in its offline form: version boundary,
      route, role, and the stored parts, file included.
 
+   *Built 2026-10-31:* `scripts/identity-spike/src/drift-proposers.ts`, with the choices this
+   list leaves open (candidate pool, route matching, how `resolution` picks without weights)
+   settled there and in that package's README. Any change after a corpus number is seen makes
+   it a different proposer, reported separately.
+
    *Scoring.* A proposal is **correct** when it names the labelled continuation, and **wrong**
    otherwise — including any proposal on a fingerprint labelled removed or replaced.
    Abstentions and `unclear` labels are reported, not scored.
