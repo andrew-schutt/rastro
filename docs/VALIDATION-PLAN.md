@@ -261,9 +261,36 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
    stamping itself runs against a fixture app we write; that checks the plugin does what it
    claims, and says nothing about whether identity holds on real apps, which only this corpus
    can.
+
+   **How each corpus app is built — fixed before the runner exists.** Both build checks
+   (2026-10-30) found build settings that would quietly change every number:
+
+   - **Stamping and marking cover the app's own source only.** Libraries are left as an app
+     installing them from npm would get them — unannotated — even where the app's build
+     compiles them from source. The react-admin demo is the case: inside its monorepo, Vite
+     aliases every react-admin package to its `src/`, so an unscoped plugin would stamp the
+     library as if the app had written it. The harness scopes the plugin to `examples/demo/src`.
+     For Actual, whose components span several of its own workspace packages, "own source" is
+     every `packages/*/src` the app ships, since those are Actual's code, not a dependency's.
+   - **Strategy 3 is measured on a build with identifier mangling on.** Both corpus apps keep
+     function names in production — Actual sets `mangle: false`, the react-admin demo sets
+     `keepNames: true` — which most apps do not, and which is the single thing the unmarked fiber
+     walk depends on. Measured as shipped, strategy 3 would look far better than it would on a
+     typical app. Its rule 1 numbers come from a rebuild with mangling forced on; the as-shipped
+     numbers are reported beside them, not instead. The other five strategies do not read
+     function names at runtime and are measured as shipped.
 2. **Churn on untouched components must be zero.** Not low — zero. One instance means a
    mechanism we do not understand, so each is investigated individually rather than tolerated
    as a rate.
+
+   **"Untouched" is judged from the app developer's side, fixed before the runner exists.** An
+   element is *touched* by a commit when the diff changes the app's own source of any component
+   in that element's ancestry. A change confined to a library — including a react-admin package
+   in the demo's own monorepo, where most commits land — leaves the app untouched, because that
+   is what a dependency upgrade is to the people whose analytics would split. One exception,
+   the same one §4.2.1 accepts for copy edits wherever the copy lives: churn whose cause is a
+   change to the element's own role or accessible name is excused, with the diff line that
+   changed it. Any other library-driven churn counts against this rule.
 3. **Zero collisions among the flow that matters.** Traffic cannot be weighted offline, so
    proxy it: hand-pick the ~20 elements of one real flow — the same picking §3.5 needs anyway —
    and require no collisions among them. Those are the elements every number in a Phase 0
