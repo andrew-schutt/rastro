@@ -212,17 +212,55 @@ nothing, while one on the primary CTA corrupts every headline number. The rules 
 comparative or absolute-zero, so none of them needs a number pulled from nowhere.
 
 1. **The composite must beat every alternative it was chosen over.** Run the corpus through
-   four strategies: role + accessible name only (no fiber walk); a **CSS selector path**, which
-   is what PostHog, Heap and FullStory actually use and therefore the incumbent approach this
-   whole design is a bet against; a **build-plugin DOM-attribute chain** (see
-   [`PRIOR-ART.md`](PRIOR-ART.md)); and the composite as built.
+   six strategies, each composed with role + accessible name exactly as `fingerprint()` does:
+
+   | # | Strategy | Status |
+   |---|---|---|
+   | 1 | **role + accessible name** only | baseline |
+   | 2 | **CSS selector path** — what PostHog, Heap and FullStory use, and so the incumbent this whole design is a bet against | baseline |
+   | 3 | **fiber walk**, unmarked — every named component fiber | shipped, as the fallback for unannotated apps |
+   | 4 | **attribute chain**, no file | the build-plugin chain as first proposed ([`PRIOR-ART.md`](PRIOR-ART.md)) |
+   | 5 | **attribute chain + file** | shipped, the current default |
+   | 6 | **marked fiber walk** | pre-registered 2026-10-30, defined below |
+
+   **The marked fiber walk, fixed before it sees the corpus.** The build plugin marks every
+   component it would name — the same capitalised-binding rule it already uses, seeing through
+   `memo` and `forwardRef` — with its name and repo-relative file as string literals attached to
+   the component itself, so minification cannot touch them. The walk climbs the fiber tree from
+   the element as strategy 3 does, unwraps `memo`/`forwardRef` the same way, and **counts only
+   marked components**: library internals and anonymous wrappers are skipped, not truncated
+   into the chain. `NOISE` and `MAX_CHAIN_DEPTH` apply unchanged, and the file is the innermost
+   counted component's, as in strategy 5. Why it exists is in `NOTES.md`, under the reopened
+   attribute decision: on Actual, strategy 5 degenerates to `View` and strategy 3 fills with
+   unstable library names. Any change to this definition after a corpus number is seen makes it
+   a different strategy, reported separately.
+
+   **"Beat" is domination**, for the reason rule 4 gives — it needs no exchange rate between
+   kinds of error, which is a number nobody has. A strategy beats another when it is no worse on
+   any of (a) false merges, (b) churn on untouched components, and (c) false splits, and better
+   on at least one. False merges are counted with the collision referee, never raw.
 
    The fiber walk reads React's private internals with no public API and no mitigation — it has
-   to earn that exposure. The selector baseline is the one that decides whether the project has
-   a reason to exist. The build-plugin baseline is the harder question: if walking the **DOM**
-   for `data-*-component` attributes matches or beats the fiber walk, then §4.2.1's biggest
+   to earn that exposure, and strategy 6 reads them in production, not only as a fallback. The
+   selector baseline is the one that decides whether the project has a reason to exist. The
+   build-plugin baseline is the harder question: if walking the **DOM** for
+   `data-*-component` attributes matches or beats the fiber walk, then §4.2.1's biggest
    liability is being carried for convenience rather than capability, and the honest answer is
    to make the build plugin the primary strategy and the fiber walk the zero-config fallback.
+
+   **What decides the default.** Strategy 6 replaces 5 as the default only if it beats 5 *and*
+   passes rules 2 and 3 on its own. Beating 5 is not enough by itself, because its costs are not
+   errors and so are not in the comparison: React-only, and dependent on internals that degrade
+   silently and everywhere at once if React moves the fiber key. If 6 and 5 trade wins — neither
+   dominates — the default stays 5 and the trade is reported; it does not license building. If
+   neither 5 nor 6 beats strategy 1 on an app, the build plugin is carrying nothing there, and
+   that is the finding.
+
+   **Where the corpus runs.** Corpus apps are third-party code with their own install scripts,
+   so they are built by hand, locally, at pinned commits — never in CI. CI's guard on the
+   stamping itself runs against a fixture app we write; that checks the plugin does what it
+   claims, and says nothing about whether identity holds on real apps, which only this corpus
+   can.
 2. **Churn on untouched components must be zero.** Not low — zero. One instance means a
    mechanism we do not understand, so each is investigated individually rather than tolerated
    as a rate.
