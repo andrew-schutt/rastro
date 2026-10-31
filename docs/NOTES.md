@@ -472,6 +472,33 @@ scored:
 If the measured corpus contradicts any of these, that is recorded here against it, not quietly
 corrected.
 
+**The third prediction, checked on a sample: it holds, more strongly than predicted.** The
+react-admin demo's build check (`marmelab/react-admin@7845c81`, `examples/demo`, 2026-10-30)
+ran the same way as Actual's: `rastro-core`'s own functions on five screens of the production
+build. This is still a sample, not the measured corpus, so it settles nothing in §3.2.
+
+- Actual degenerated to the chain `View`. The demo mostly degenerates to **no chain at all**. On
+  the four list screens (Orders, Customers, Products, Reviews), 72–93% of interactive elements
+  have no stamp on themselves or any ancestor, so their fingerprint is role + accessible name
+  and nothing else. The demo's own source writes almost no host elements: the bundle audit
+  finds 63, every one correctly stamped. Everything else is MUI's or react-admin's.
+- The Dashboard shows the opposite failure. One `<div>` written in `Dashboard` wraps the whole
+  page, so 129 of its 151 interactive elements share the single chain `Dashboard`.
+- The unmarked fiber walk fills all four slots with MUI internals
+  (`Button>Button>ButtonBase`, `ListItemButton>ButtonBase>LinkWithRef`), and the demo's own
+  components never reach the window.
+
+One approximation of the marked fiber walk, labelled as such: filtering each element's full
+fiber ancestry to component names declared in the demo's source gave every interactive element
+on Orders and Products an app-only chain (`OrderList>TabbedDatagrid>Table>CustomerReferenceField`),
+with 12 distinct chains per screen. Matching by *name* cannot tell the demo's `Menu` or `Table`
+from a library component with the same name. Marking by identity exists to avoid exactly that,
+so this shows the information is there to recover, and nothing about how well strategy 6 will
+recover it.
+
+Two harness decisions this check forced are now fixed in §3.2: stamping is scoped to the app's
+own source, and strategy 3 is measured with mangling on.
+
 **`babel-plugin-rastro` breaks the `rastro-*` naming on purpose.** Babel resolves the
 shorthand `plugins: ["rastro"]` to `babel-plugin-rastro`; matching the ecosystem convention is
 worth more than matching the sibling packages.
