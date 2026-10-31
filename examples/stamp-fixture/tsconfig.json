@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // The app runs in a browser; the audit runs in Node over the built bundle.
+    "types": ["vite/client", "node"],
+    "jsx": "react-jsx",
+    // Lets `node audit/cli.ts` run the audit directly: Node's type stripping does not resolve
+    // `./audit.js` to `audit.ts`. Same arrangement as apps/collector.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src", "audit", "vite.config.ts"]
+}

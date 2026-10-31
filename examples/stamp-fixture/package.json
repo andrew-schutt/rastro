@@ -1,0 +1,33 @@
+{
+  "name": "stamp-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A fixture app of the authoring patterns babel-plugin-rastro must stamp, built with the React Compiler and audited in CI.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit && vite build && vite build --mode misordered",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "audit": "node audit/cli.ts"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/parser": "^7.29.8",
+    "@babel/types": "^7.29.8",
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "babel-plugin-rastro": "workspace:*",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12"
+  }
+}

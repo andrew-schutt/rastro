@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# examples/stamp-fixture's deliberately misordered build, the audit's canary.
+dist-misordered/
 *.tsbuildinfo
 *.sqlite
 *.sqlite-journal
