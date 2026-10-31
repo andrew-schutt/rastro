@@ -84,6 +84,14 @@ error.
 { "plugins": ["babel-plugin-rastro", "babel-plugin-react-compiler"] }
 ```
 
+⚠ **This contradicts React's own instruction**, which is that the compiler
+["must run first"](https://react.dev/learn/react-compiler/installation) so it sees the original
+source. This plugin is an exception because it only appends string-literal attributes to host
+elements, which changes nothing the compiler analyses. That was checked, not assumed: Actual
+Budget's production build memoizes the same 638 components (1,026 cache sites) with this plugin
+running first as without it. Anything that does more than add attributes should still follow
+React's rule.
+
 **Next.js is not supported yet.** Next compiles with SWC, not Babel; enabling a Babel config
 opts the whole app out of SWC and costs build performance. An SWC port is the open question —
 see [`docs/DESIGN.md`](https://github.com/andrew-schutt/rastro/blob/main/docs/DESIGN.md) §4.3.
