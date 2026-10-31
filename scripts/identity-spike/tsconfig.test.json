@@ -1,7 +1,12 @@
 {
   // Same settings, WITH the test files — see packages/react/tsconfig.test.json for why the
-  // split exists. `typecheck` runs this one.
+  // split exists. `typecheck` runs this one. It also covers continuity/, the smoke test's
+  // harness and base app, which run under Node and jsdom and are never part of src/.
   "extends": "./tsconfig.json",
-  "include": ["src"],
+  "compilerOptions": {
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["src", "continuity"],
   "exclude": []
 }

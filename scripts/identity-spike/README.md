@@ -100,11 +100,22 @@ The same transience that disqualifies keys from the fingerprint costs the refere
 | Keys unique only among siblings | fatal | fine — only siblings are ever compared |
 | Persisted | yes | never |
 
+### `continuity.ts` and `continuity/`: the diff, and its smoke test
+
+`snapshotDocument` records every interactive element's fingerprint on a rendered page, and
+`diffSnapshots` says what changed between two such records: kept, vanished, appeared, and
+count changes (the only trace a new merge leaves). Both are for the corpus runner.
+
+Before the runner trusts them with numbers nobody can check, [`continuity/`](continuity) runs
+them on an app whose answers we know: known edits, each with the fingerprint changes it must
+cause, under every strategy `rastro-core` has. Its outputs are committed snapshots, so it is
+also CI's guard against any PR changing a fingerprint unannounced. See its README.
+
 ## Still to build
 
 `repeat-oracle.ts` is one input to the referee, not the whole of it. §3.2's remaining pieces —
-the per-JSX-site oracle, the four-strategy comparison, the corpus runner, per-deploy churn —
-are not here yet.
+the per-JSX-site oracle, the six-strategy comparison, and the corpus runner that walks real
+commits — are not here yet.
 
 ## Running it
 
