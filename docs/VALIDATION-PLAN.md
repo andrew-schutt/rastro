@@ -146,8 +146,10 @@ increasing cost:
 interactive element, count distinct elements sharing a fingerprint. No history, no traffic, no
 ground truth, no labelling. Run it against **a dev build and a minified prod build of the same
 commit** and the README's biggest caveat stops being an adjective: *"on app X, 4% of
-interactive elements collide in dev and 61% collide in prod."* That single comparison is what
-decides whether §4.3's build-time plugin is the next thing built.
+interactive elements collide in dev and 61% collide in prod."* That single comparison was
+meant to decide whether §4.3's build-time plugin is the next thing built. The Babel plugin was
+built ahead of it (see §5), so the comparison now prices a plugin that exists, and decides
+whether its SWC port is worth building.
 
 **b) Per-deploy churn, split by whether the component was edited.** Walk ~10 real commits over
 ~a month. Which fingerprints vanish and reappear per deploy — and crucially, did the commit
@@ -198,8 +200,8 @@ shipped in the identity) as the second referee for pairs the key cannot rule on,
 shared-design-system case where every button in an app comes from one JSX site.
 
 **Done:** `scripts/identity-spike/`, plus a written report carrying all three numbers across
-≥2 real apps and ≥10 commits. *(Started: the package exists, with the collision referee in
-it.)* Use apps we do not control — OSS React products with real
+≥2 real apps and ≥10 commits. *(In progress. The package README's "Still to build" is the
+current list.)* Use apps we do not control — OSS React products with real
 history work fine.
 
 **How we know it worked — four rules, pre-committed before any number is seen.**
@@ -456,7 +458,7 @@ record, not an oversight.
 | Spaghetti-taming beyond `minEdgeCount` (§8) | Undecidable on ten demo nodes. Phase 0 produces the first real graph and will say whether loop collapsing or long-tail folding is the one that matters. |
 | `Impact × Confidence × Frequency` ranking (§11) | §11's own text: confidence is theatre before Phase 7. Frequency-only is the honest state. |
 | `Interpreter` / any AI (§1, §11) | By charter, after the analytics stand alone. Phase 0 is the test of whether they do. |
-| Build-time plugin (§4.3) | **Conditionally deferred, not dismissed.** It becomes the immediate next work if the prod collision number from 3.2 is bad *and* Phase 0 comes back positive. Building it before Phase 0's answer is building the fix for a tool that may not exist. |
+| Build-time plugin (§4.3) | **Conditionally deferred, not dismissed.** It becomes the immediate next work if the prod collision number from 3.2 is bad *and* Phase 0 comes back positive. Building it before Phase 0's answer is building the fix for a tool that may not exist. **Overtaken 2026-09-02:** the Babel plugin was built before either trigger fired, and its reason is not recorded in this repository. The row now governs the **SWC port** (Next.js), which stays deferred on the same trigger. |
 | Per-router `RouteAdapter`s (§4.6) | Build the one the Phase 0 host app needs. One adapter chosen by evidence, not four on spec. |
 | Full §4.9 allow/deny model | Deny-list only, per 3.4. The general model waits for a real app's requirements. |
 | Identity resolution — the alias layer (`IDENTITY-RESOLUTION.md`) | **Deferred with an explicit trigger, not dismissed.** Designed, unbuilt. Its go/no-go is measurement (d) above: if drift proves detectable, build it after Phase 0 returns positive. It changes what `buildGraph` keys on, adds persisted state to the collector, and needs a review surface in the dashboard — too much to build on speculation, too load-bearing to leave undesigned. |
@@ -478,7 +480,7 @@ record, not an oversight.
 **Informed but not settled**
 
 - **#4 Build-plugin burden** — the dev-vs-prod collision gap prices the *benefit* precisely.
-  The SWC/Babel *cost* stays open until one is written.
+  The Babel plugin now exists (§5). The SWC *cost* stays open until a port is written.
 - **#2 The automatic-capture line** — the Phase 0 host will say what reads as noise. One app,
   which is one data point rather than an answer.
 
