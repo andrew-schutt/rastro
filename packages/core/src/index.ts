@@ -36,6 +36,7 @@ export {
   FIBER_PREFIXES,
   fingerprint,
   getFiber,
+  INTERACTIVE_SELECTOR,
   MAX_CHAIN_DEPTH,
   MAX_NAME_LENGTH,
   NOISE,

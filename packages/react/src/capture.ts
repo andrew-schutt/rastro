@@ -5,8 +5,8 @@
 // emits the four interaction events the conventions define — ux.click, ux.route_change,
 // ux.form_submit, ux.form_abandon — each carrying visibility-adjusted dwell.
 //
-// What is still a placeholder is IDENTITY, not capture: `fingerprint()` is a stub until
-// step 3, so every element without a `data-telemetry-id` collapses to `unknown|<tag>`.
+// Which elements count as interactive is `INTERACTIVE_SELECTOR` in rastro-core, shared with
+// the identity spike so the two never measure different sets.
 import type {
   AttributeValue,
   ElementDescription,
@@ -15,6 +15,7 @@ import type {
   UxEvent,
 } from 'rastro-core';
 import {
+  INTERACTIVE_SELECTOR,
   SEVERITY_INFO,
   UX_CONVENTION_VERSION,
   defaultRedactor,
@@ -178,34 +179,6 @@ export function buildEvent(
     },
   };
 }
-
-/**
- * Selector for things a user meaningfully activates. A click that resolves to none of these
- * is inert background and is dropped — recording it would bury real interactions in noise.
- *
- * `[data-telemetry-id]` is included so an explicit opt-in always counts, even on a div.
- */
-const INTERACTIVE_SELECTOR = [
-  'a[href]',
-  'button',
-  'input',
-  'select',
-  'textarea',
-  'summary',
-  'label',
-  '[data-telemetry-id]',
-  '[role="button"]',
-  '[role="link"]',
-  '[role="tab"]',
-  '[role="menuitem"]',
-  '[role="menuitemcheckbox"]',
-  '[role="menuitemradio"]',
-  '[role="option"]',
-  '[role="checkbox"]',
-  '[role="radio"]',
-  '[role="switch"]',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
 
 /** The shape of a click event this needs, narrowed so the logic below is testable. */
 export interface InteractionSource {

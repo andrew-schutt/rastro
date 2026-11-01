@@ -12,6 +12,39 @@ import { defaultRedactor } from './redact.js';
 export const OVERRIDE_ATTRIBUTE = 'data-telemetry-id';
 
 /**
+ * Selector for things a user meaningfully activates: the elements that get an identity.
+ *
+ * Capture resolves every click to the nearest match and drops a click that resolves to none,
+ * since inert background would bury real interactions in noise. The identity spike counts
+ * the same set. It lives here, not in either consumer, because the two must agree: a spike
+ * counting a different set from the one capture emits would measure elements no event ever
+ * carries, and miss some that every event does.
+ *
+ * `[data-telemetry-id]` is included so an explicit opt-in always counts, even on a div.
+ */
+export const INTERACTIVE_SELECTOR = [
+  'a[href]',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'summary',
+  'label',
+  `[${OVERRIDE_ATTRIBUTE}]`,
+  '[role="button"]',
+  '[role="link"]',
+  '[role="tab"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]',
+  '[role="menuitemradio"]',
+  '[role="option"]',
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="switch"]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+/**
  * Where `babel-plugin-rastro` stamps the owning component (§4.3).
  *
  * ⚠ This string is duplicated in the plugin, which keeps it dependency-free rather than
