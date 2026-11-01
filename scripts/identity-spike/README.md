@@ -111,7 +111,46 @@ them on an app whose answers we know: known edits, each with the fingerprint cha
 cause, under every strategy `rastro-core` has. Its outputs are committed snapshots, so it is
 also CI's guard against any PR changing a fingerprint unannounced. See its README.
 
+### `drift-proposers.ts` — rule 4's three proposers, fixed before the corpus
+
+Rule 4 compares IDENTITY-RESOLUTION.md's drift proposals with two cheaper ones. The
+comparison is only honest if all three are fixed before any of them sees a corpus commit, so
+this file settles everything the plan leaves open. Each proposer takes one vanished
+fingerprint and the pool of new ones, and names exactly one candidate or abstains.
+
+| Proposer | Candidates | Picks |
+|---|---|---|
+| `naive` | same role, a shared route | the only one |
+| `anchor` | same role, same source file, any route | the only one; abstains without a file |
+| `resolution` | same role, a shared route | the one whose shared stored parts (chain, file, name) strictly contain every other candidate's, and share at least one |
+
+The choices it settles:
+
+- **The version boundary is the pool.** Subjects vanished at the commit pair, candidates
+  appeared at it. Fingerprints present at both are neither.
+- **A part matches only when both sides have it.** Two elements with no file or an empty
+  chain share an absence, not an identity. On the react-admin demo most chains are empty.
+- **`resolution` uses no weights.** Picking by containment of shared parts is domination
+  again, so it needs no exchange rate between a matching file and a matching name. Leaders
+  that share different parts are a tie.
+- **`resolution` declines a candidate that only route and role support.** Proposing on those
+  alone would make it `naive`, and a continuation that changed chain, file and name at once
+  looks the same as a replacement.
+- **Abstentions keep their reason** (`no-candidate`, `tie`, `no-evidence`, `no-file`),
+  because "nothing matched" and "could not choose" mean different things about a proposer.
+
+`score` tallies one proposer's run against the blind labels, and refuses an unlabelled
+subject rather than letting it drop out. `dominates` is rule 4's comparison. Turning the three
+scores into rule 4's verdict is left to the gate PR. See "Still to build".
+
+Any change to a proposer after a corpus number is seen makes it a different proposer,
+reported separately, as with strategy 6.
+
 ## Still to build
+
+Rule 4's verdict when **both** cheaper proposers match or beat `resolution` is not settled by
+the plan, which names a different outcome for each. It needs a docs decision before the run.
+
 
 `repeat-oracle.ts` is one input to the referee, not the whole of it. §3.2's remaining pieces —
 the per-JSX-site oracle, the six-strategy comparison, and the corpus runner that walks real
