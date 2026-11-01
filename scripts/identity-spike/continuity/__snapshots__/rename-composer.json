@@ -147,6 +147,100 @@
           "fingerprint": "SettingsPage>SettingRow>Row>Switch|switch|\"Dark mode\""
         }
       ]
+    },
+    "role+name": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "a|\"Docs\"",
+          "a|\"Help\"",
+          "a|\"Home\"",
+          "button:button|\"Cancel\"",
+          "button:button|\"Save\"",
+          "input:email|\"Email\"",
+          "switch|\"Dark mode\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "switch|\"Dark mode\""
+        }
+      ]
+    },
+    "selector-path": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "a:nth-child=\"1\"nth-of-type=\"1\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Home\"",
+          "a:nth-child=\"2\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Docs\"",
+          "a:nth-child=\"2\"nth-of-type=\"2\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Help\"",
+          "button:nth-child=\"1\"nth-of-type=\"1\";div.row:nth-child=\"4\"nth-of-type=\"2\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|switch|\"Dark mode\"",
+          "button:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Save\"",
+          "button:nth-child=\"2\"nth-of-type=\"2\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Cancel\"",
+          "input:nth-child=\"1\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|input:email|\"Email\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "a:nth-child=\"1\"nth-of-type=\"1\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "a:nth-child=\"2\"nth-of-type=\"2\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "a:nth-child=\"2\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "input:nth-child=\"1\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "button:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "button:nth-child=\"2\"nth-of-type=\"2\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "button:nth-child=\"1\"nth-of-type=\"1\";div.row:nth-child=\"4\"nth-of-type=\"2\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|switch|\"Dark mode\""
+        }
+      ]
     }
   }
 }

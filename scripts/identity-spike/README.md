@@ -111,6 +111,22 @@ them on an app whose answers we know: known edits, each with the fingerprint cha
 cause, under every strategy `rastro-core` has. Its outputs are committed snapshots, so it is
 also CI's guard against any PR changing a fingerprint unannounced. See its README.
 
+### `baselines.ts`: strategies 1 and 2
+
+§3.2 rule 1's two baselines, which will never ship and so live here rather than in core:
+**role + accessible name** (`role|"name"`), and the **CSS selector path**
+(`<path>|role|"name"`), modelled on PostHog's `$elements_chain`. Both are composed from core's
+`overrideOf`, `roleOf` and `accName`, so they honour `data-telemetry-id` and redact exactly as
+`fingerprint()` does. The comparison is between paths, not between override or redaction rules.
+
+The selector path is an **approximation**, and its doc comment gives the source it was read
+from and every departure. It keeps every ancestor to `<body>`, sorted classes (hashed
+CSS-in-JS names included), `id`, `nth-child` and `nth-of-type`. It drops text, `href` and all
+other attributes, since the name is composed separately and state attributes would only add
+splits. One thing no definition can model is that PostHog matches a looser Action selector
+over this string at query time. Its splits therefore overstate the incumbent's, and its merges
+understate them.
+
 ### `drift-proposers.ts` — rule 4's three proposers, fixed before the corpus
 
 Rule 4 compares IDENTITY-RESOLUTION.md's drift proposals with two cheaper ones. The
@@ -150,9 +166,10 @@ reported separately, as with strategy 6.
 
 In the order agreed for §3.2:
 
-1. **The missing strategies:** role + name (1), CSS selector path (2), and the marked fiber
-   walk (6, which needs plugin marks plus a walk). Today `continuity/` covers strategies 3, 4
-   and 5. Each new one joins its `STRATEGIES` with an expectation per scenario.
+1. **The marked fiber walk (6),** which needs plugin marks plus a walk in core. Today
+   `continuity/` covers strategies 1 to 5. It joins `STRATEGIES` with an expectation per
+   scenario, and needs library files compiled without the plugin before it can be told apart
+   from 3.
 2. **Pre-registration, in the docs:** the ~10 commits per corpus app, the screen lists, and
    rule 3's ~20 flow elements per app. Also rule 4's verdict when **both** cheaper proposers
    match or beat `resolution`, which the plan does not settle (it names a different outcome

@@ -30,25 +30,37 @@ corpus is for (`docs/VALIDATION-PLAN.md`). What it can say, on an app whose answ
    checks that the fingerprint-only diff (all the corpus will have) agrees with that, and
    compares everything with `__snapshots__/`.
 
-**Strategies:** the three that exist in `rastro-core` today: the attribute chain with file
-(the default), the attribute chain without file, and the fiber walk (compiled without the
-plugin, names intact, so a dev build). The CSS selector path and the marked fiber walk from
-§3.2 rule 1 join `STRATEGIES` in `harness.ts` when they are built, and every scenario then
-needs an expectation for them.
+**Strategies:** five of §3.2 rule 1's six. The three that are `rastro-core`'s own
+`fingerprint()`: the attribute chain with file (the default), the attribute chain without
+file, and the fiber walk (compiled without the plugin, names intact, so a dev build). Then the
+two baselines from `../src/baselines.ts`, both compiled without the plugin: role + accessible
+name (`role+name`), and the CSS selector path modelled on PostHog's `$elements_chain`
+(`selector-path`). The marked fiber walk joins `STRATEGIES` in `harness.ts` when it is
+built, and every scenario then needs an expectation for it.
+
+The fixture has no two controls with the same role and name, so it cannot show `role+name`'s
+characteristic failure, which is merging look-alikes. That is for the corpus. Here it only
+shows that the baseline is wired up and splits on nothing but a name.
 
 ## The scenarios
 
-| Scenario | Edit | Changes |
-|---|---|---|
-| `rebuild` | none | nothing (output is deterministic) |
-| `heading-copy` | edit a heading no control is named by | nothing |
-| `provider-wrapper` | wrap the app in a `ThemeProvider` that renders a `<div>` | nothing (NOISE) |
-| `layout-wrapper` | insert `Layout` between `App` and `SettingsPage` | the shallow elements only; the fiber walk spares `pref-dark` |
-| `label-edit` | change the Save button's text | `save` |
-| `rename-component` | rename `Toolbar` in place | `save`, `cancel` |
-| `move-file` | move `SaveButton.tsx` to another folder | `save`, with the file part only |
-| `tooltip-wrap` | wrap the Save button in a new `Tooltip` | `save` |
-| `rename-composer` | rename `PreferenceRow`, which only composes primitives | `pref-dark`, fiber walk only |
+| Scenario | Edit | Changes | Selector path |
+|---|---|---|---|
+| `rebuild` | none | nothing (output is deterministic) | nothing |
+| `heading-copy` | edit a heading no control is named by | nothing | nothing |
+| `provider-wrapper` | wrap the app in a `ThemeProvider` that renders a `<div>` | nothing (NOISE) | **all seven** |
+| `layout-wrapper` | insert `Layout` between `App` and `SettingsPage` | the shallow elements only; the fiber walk spares `pref-dark` | everything below `Layout` (five) |
+| `label-edit` | change the Save button's text | `save` | `save` |
+| `rename-component` | rename `Toolbar` in place | `save`, `cancel` | nothing |
+| `move-file` | move `SaveButton.tsx` to another folder | `save`, with the file part only | nothing |
+| `tooltip-wrap` | wrap the Save button in a new `Tooltip` | `save` | `save`, and `cancel` by position alone |
+| `rename-composer` | rename `PreferenceRow`, which only composes primitives | `pref-dark`, fiber walk only | nothing |
+
+`role+name` changes only on `label-edit`. The selector path's column is the trade the
+design bets on, seen on the fixture: it does not notice renames, and it does notice every
+wrapper `<div>`, including one around the whole app. Wrappers are exactly what NOISE and the
+chain cap exist to absorb. `tooltip-wrap` shows that the selector path's positional parts
+move an element no one touched, because `cancel`'s preceding sibling changed tag.
 
 The last row is the design-system degeneration from `docs/NOTES.md`, seen from its other
 side: a component that stamping cannot see is one whose rename stamping cannot see either.
