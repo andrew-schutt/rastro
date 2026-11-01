@@ -1,4 +1,4 @@
-# NOTES — commit #1 (walking skeleton, step 1)
+# NOTES — what shipped, and every deviation from the design
 
 This is the scaffold in [`DESIGN.md`](DESIGN.md) §19. It stands up the pnpm monorepo and gets
 **all six steps of §19.4** running end to end:
@@ -668,6 +668,10 @@ Verified: replaying a batch stores nothing new.
   **The remaining exposure is Next.js**, which compiles with SWC and has no plugin yet, and
   any app that installs the SDK without its build step. Asserted in
   `fingerprint.dom.test.tsx` and `babel-plugin/src/minification.test.ts`.
+  **"Gone" holds for minification, not for identity.** In design-system apps the stamped chain
+  survives minification and still carries little: it degenerates to the primitive (`View`) or
+  to nothing. This is in the reopened attribute decision above, from samples of both corpus
+  apps, and is unmeasured until §3.2 runs.
 - **i18n and copy edits cause false splits.** Same button, new text, new fingerprint. §4.2.1
   accepts this cost knowingly: dropping the name would merge the forty buttons saying "Save".
 - **Moving a file causes false splits too, since conventions 0.3.** Same trade as above, same
@@ -685,10 +689,12 @@ Verified: replaying a batch stores nothing new.
 - **The `history` patch does not see everything.** Next's App Router can change what the user
   sees without a `pushState` this can observe (§4.6). Each router wants a real `RouteAdapter`,
   which would also retire `tokenizePath`'s blind spot by reporting the route pattern directly.
-- **Step 3 will make the click handler expensive.** Capture is cheap today, so it runs
-  synchronously. A fiber walk inside a passive handler is exactly the jank §4.7 warns about;
-  the fix is to take the cheap DOM facts synchronously — `ux.seq` MUST stay in gesture order —
-  and defer only the derivation to `requestIdleCallback`.
+- **The click handler's cost is measured only on a clean layout.** The derivation runs
+  synchronously, and measured at ~0.0015 ms per call on the demo app (see `describeElement`).
+  `accName` reads `innerText`, though, so a click against a dirty layout would force a reflow
+  that measurement never saw. The fix, if a large app shows the jank §4.7 warns about, is to
+  take the cheap DOM facts synchronously (`ux.seq` MUST stay in gesture order) and defer only
+  the derivation to `requestIdleCallback`.
 - **The graph loads every event into memory.** `GET /projects/:app/graph` caps at 50k events
   and aggregates in Node. That is the honest ceiling of "store the record as JSON and read it
   all back", and it is exactly the pressure toward ClickHouse §8 describes — not something to

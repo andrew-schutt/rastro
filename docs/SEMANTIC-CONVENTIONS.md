@@ -1,6 +1,6 @@
 # Rastro Semantic Conventions
 
-**Version:** 0.2 · **Stability:** Development (expect breaking changes before 1.0)
+**Version:** 0.3 · **Stability:** Development (expect breaking changes before 1.0)
 
 This document defines how Rastro represents UX-behavioral telemetry on top of
 OpenTelemetry. It is the contract any instrumentation — first-party SDK or otherwise —
