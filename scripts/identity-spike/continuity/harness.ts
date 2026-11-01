@@ -16,14 +16,35 @@ import * as jsxRuntime from 'react/jsx-runtime';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { fingerprint, resetAnnotationProbe } from 'rastro-core';
+import { roleNameFingerprint, selectorPathFingerprint } from '../src/baselines.js';
 import { snapshotDocument, type SnapshotEntry } from '../src/continuity.js';
 
 /**
- * The identity strategies that exist in rastro-core today. §3.2 rule 1 names six; the CSS
- * selector path and the marked fiber walk join this list when they are built.
+ * §3.2 rule 1's strategies, all but the marked fiber walk (6), which joins when it is built.
+ * The first three are rastro-core's own `fingerprint()`; the two baselines are in
+ * `src/baselines.ts`. Appended in this order so the existing three keep their place in every
+ * committed snapshot.
  */
-export const STRATEGIES = ['attribute+file', 'attribute', 'fiber'] as const;
+export const STRATEGIES = ['attribute+file', 'attribute', 'fiber', 'role+name', 'selector-path'] as const;
 export type Strategy = (typeof STRATEGIES)[number];
+
+/** Which build each strategy reads: with the plugin's stamps, and with or without the file. */
+const PLUGIN: Record<Strategy, { includeSourceFile: boolean } | null> = {
+  'attribute+file': { includeSourceFile: true },
+  attribute: { includeSourceFile: false },
+  fiber: null,
+  // The baselines read no stamp, and an app using either would not have the plugin.
+  'role+name': null,
+  'selector-path': null,
+};
+
+const FINGERPRINT: Record<Strategy, (element: Element) => string> = {
+  'attribute+file': (element) => fingerprint(element),
+  attribute: (element) => fingerprint(element),
+  fiber: (element) => fingerprint(element),
+  'role+name': (element) => roleNameFingerprint(element),
+  'selector-path': (element) => selectorPathFingerprint(element),
+};
 
 export type Files = ReadonlyMap<string, string>;
 
@@ -56,10 +77,9 @@ const commonjsPlugin = require('@babel/plugin-transform-modules-commonjs') as Pl
 const typescriptPreset = require('@babel/preset-typescript') as PluginItem;
 
 function compile(path: string, source: string, strategy: Strategy): string {
+  const plugin = PLUGIN[strategy];
   const rastro: PluginItem[] =
-    strategy === 'fiber'
-      ? []
-      : [[rastroPlugin, { root: VIRTUAL_ROOT, includeSourceFile: strategy === 'attribute+file' }]];
+    plugin === null ? [] : [[rastroPlugin, { root: VIRTUAL_ROOT, includeSourceFile: plugin.includeSourceFile }]];
   const result = transformSync(source, {
     filename: posix.join(VIRTUAL_ROOT, path),
     cwd: VIRTUAL_ROOT,
@@ -118,7 +138,7 @@ export function snapshotVariant(files: Files, strategy: Strategy): SnapshotEntry
     // The annotation probe is cached per document, and this document hosts every strategy in
     // turn. Without the reset, the fiber renders would silently reuse the attribute verdict.
     resetAnnotationProbe(document);
-    return snapshotDocument(container, (element) => fingerprint(element), { oracleAttribute: ORACLE_ATTRIBUTE });
+    return snapshotDocument(container, FINGERPRINT[strategy], { oracleAttribute: ORACLE_ATTRIBUTE });
   } finally {
     act(() => root.unmount());
     container.remove();

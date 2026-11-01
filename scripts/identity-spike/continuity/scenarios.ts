@@ -13,6 +13,11 @@
 //   save                … > ProfilePanel > ProfileForm > Toolbar > SaveButton (6: capped at 4)
 //   cancel              … > ProfilePanel > ProfileForm > Toolbar > CancelButton
 //   pref-dark           Switch, inside Row, inside PreferenceRow — which writes no host element
+//
+// The two baselines read none of that. `role+name` sees only role and accessible name, so it
+// moves only when a name does. `selector-path` sees the host-element path to <body> with
+// classes and sibling position, so it moves when markup does, whatever the components are
+// called. Their expectations were written before their first run, like the rest.
 import type { Files, Strategy } from './harness.js';
 
 export interface Scenario {
@@ -44,7 +49,11 @@ const everywhere = (elements: string[]): Record<Strategy, string[]> => ({
   'attribute+file': elements,
   attribute: elements,
   fiber: elements,
+  'role+name': elements,
+  'selector-path': elements,
 });
+
+const ALL = ['cancel', 'email', 'nav-help', 'nav-home', 'page-docs', 'pref-dark', 'save'];
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -71,7 +80,11 @@ export const SCENARIOS: Scenario[] = [
       replace(f, 'src/App.tsx', '<main>', '<ThemeProvider>\n      <main>');
       replace(f, 'src/App.tsx', '</main>', '</main>\n      </ThemeProvider>');
     }),
-    changes: everywhere([]),
+    changes: {
+      ...everywhere([]),
+      // A new <div class="theme"> sits above <main>, so it enters every element's path.
+      'selector-path': ALL,
+    },
   },
   {
     name: 'layout-wrapper',
@@ -94,6 +107,10 @@ export const SCENARIOS: Scenario[] = [
       // Fiber walk: pref-dark's four are Switch, Row, PreferenceRow, SettingsPage. The fiber
       // tree sees PreferenceRow, which the DOM cannot, so the cap keeps Layout out.
       fiber: ['email', 'page-docs'],
+      'role+name': [],
+      // A new <div class="layout"> sits above <section>, so everything SettingsPage renders
+      // gets a new ancestor. The nav links are beside it, and keep their path.
+      'selector-path': ['cancel', 'email', 'page-docs', 'pref-dark', 'save'],
     },
   },
   {
@@ -110,7 +127,8 @@ export const SCENARIOS: Scenario[] = [
       replace(f, 'src/settings/ProfilePanel.tsx', "import { Toolbar } from './Toolbar.js';", "import { ActionBar } from './Toolbar.js';");
       replace(f, 'src/settings/ProfilePanel.tsx', '<Toolbar />', '<ActionBar />');
     }),
-    changes: everywhere(['cancel', 'save']),
+    // No markup changes: neither baseline reads a component name.
+    changes: { ...everywhere(['cancel', 'save']), 'role+name': [], 'selector-path': [] },
   },
   {
     name: 'move-file',
@@ -122,7 +140,7 @@ export const SCENARIOS: Scenario[] = [
       f.set('src/settings/SaveButton.tsx', source);
       replace(f, 'src/settings/Toolbar.tsx', "from '../ui/SaveButton.js'", "from './SaveButton.js'");
     }),
-    changes: { 'attribute+file': ['save'], attribute: [], fiber: [] },
+    changes: { ...everywhere([]), 'attribute+file': ['save'] },
   },
   {
     name: 'tooltip-wrap',
@@ -136,7 +154,13 @@ export const SCENARIOS: Scenario[] = [
       replace(f, 'src/ui/SaveButton.tsx', '    <button', '    <Tooltip>\n    <button');
       replace(f, 'src/ui/SaveButton.tsx', '</button>', '</button>\n    </Tooltip>');
     }),
-    changes: everywhere(['save']),
+    changes: {
+      ...everywhere(['save']),
+      'role+name': [],
+      // save gains a <span class="tooltip"> ancestor. cancel is moved by position alone: its
+      // preceding sibling is now that span, not a button, so nth-of-type goes 2 → 1.
+      'selector-path': ['cancel', 'save'],
+    },
   },
   {
     name: 'rename-composer',
@@ -148,6 +172,6 @@ export const SCENARIOS: Scenario[] = [
       replace(f, 'src/settings/SettingsPage.tsx', "import { PreferenceRow } from './PreferenceRow.js';", "import { SettingRow } from './PreferenceRow.js';");
       replace(f, 'src/settings/SettingsPage.tsx', '<PreferenceRow ', '<SettingRow ');
     }),
-    changes: { 'attribute+file': [], attribute: [], fiber: ['pref-dark'] },
+    changes: { ...everywhere([]), fiber: ['pref-dark'] },
   },
 ];

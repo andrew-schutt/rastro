@@ -42,6 +42,7 @@ export {
   NOISE,
   norm,
   OVERRIDE_ATTRIBUTE,
+  overrideOf,
   resetAnnotationProbe,
   roleOf,
   SOURCE_FILE_ATTRIBUTE,
