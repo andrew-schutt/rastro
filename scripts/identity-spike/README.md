@@ -148,13 +148,20 @@ reported separately, as with strategy 6.
 
 ## Still to build
 
-Rule 4's verdict when **both** cheaper proposers match or beat `resolution` is not settled by
-the plan, which names a different outcome for each. It needs a docs decision before the run.
+In the order agreed for §3.2:
 
-
-`repeat-oracle.ts` is one input to the referee, not the whole of it. §3.2's remaining pieces —
-the per-JSX-site oracle, the six-strategy comparison, and the corpus runner that walks real
-commits — are not here yet.
+1. **The missing strategies:** role + name (1), CSS selector path (2), and the marked fiber
+   walk (6, which needs plugin marks plus a walk). Today `continuity/` covers strategies 3, 4
+   and 5. Each new one joins its `STRATEGIES` with an expectation per scenario.
+2. **Pre-registration, in the docs:** the ~10 commits per corpus app, the screen lists, and
+   rule 3's ~20 flow elements per app. Also rule 4's verdict when **both** cheaper proposers
+   match or beat `resolution`, which the plan does not settle (it names a different outcome
+   for each).
+3. **The corpus runner**, which walks the pinned commits, builds and drives each app, and
+   feeds `snapshotDocument` and the proposers.
+4. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
+   missing are the per-JSX-site oracle and the shared-design-system case.
+5. **The run:** blind labels, scores, and the gate PR.
 
 ## Running it
 
