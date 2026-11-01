@@ -376,6 +376,22 @@ export function accName(
   return clean(element.getAttribute('title') ?? element.getAttribute('alt') ?? '');
 }
 
+/**
+ * The `data-telemetry-id` override that applies to this element, if any.
+ *
+ * The nearest carrier wins, on the element or any ancestor. An empty value on the nearest
+ * carrier means no override, not "keep looking": the closest host is the one the developer
+ * wrote, and emitting `id:` would join everything that does the same.
+ *
+ * Exported so every identity strategy honours the override the same way. §3.2 rule 1
+ * composes each alternative "exactly as `fingerprint()` does", and an override that only the
+ * default respected would count as a win for the default that no strategy ever earned.
+ */
+export function overrideOf(element: Element): string | undefined {
+  const value = element.closest(`[${OVERRIDE_ATTRIBUTE}]`)?.getAttribute(OVERRIDE_ATTRIBUTE);
+  return value === null || value === undefined || value === '' ? undefined : value;
+}
+
 /** Everything §4.2.1 derives about an element, from a single pass. */
 export interface ElementDescription {
   /** The composite identity. Opaque to consumers — they join on it, they do not parse it. */
@@ -419,9 +435,8 @@ export function describeElement(
 
   // Step 5, first branch: an explicit override skips derivation entirely. Rock-solid, and the
   // far end of the automatic↔manual dial — worth honouring before any work is done.
-  const overrideHost = element.closest(`[${OVERRIDE_ATTRIBUTE}]`);
-  const override = overrideHost?.getAttribute(OVERRIDE_ATTRIBUTE);
-  if (override !== null && override !== undefined && override !== '') {
+  const override = overrideOf(element);
+  if (override !== undefined) {
     return { fingerprint: `id:${override}`, componentChain: [], role };
   }
 

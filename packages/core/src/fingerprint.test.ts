@@ -20,6 +20,7 @@ import {
   fingerprint,
   getFiber,
   norm,
+  overrideOf,
   roleOf,
 } from './fingerprint.js';
 import { REDACTED, noopRedactor } from './redact.js';
@@ -63,6 +64,29 @@ describe('fingerprint — the data-telemetry-id override', () => {
     expect(fingerprint(html('<button data-telemetry-id="">Save</button>'))).toBe(
       `${UNKNOWN_CHAIN}|button|"Save"`,
     );
+  });
+});
+
+// The same rule, exported so every §3.2 strategy honours the override exactly as the default.
+describe('overrideOf', () => {
+  it('returns the nearest carrier’s value, on the element or an ancestor', () => {
+    const root = html('<div data-telemetry-id="outer"><span data-telemetry-id="inner" id="s">x</span><b id="b">y</b></div>');
+
+    expect(overrideOf(root.querySelector('#s')!)).toBe('inner');
+    expect(overrideOf(root.querySelector('#b')!)).toBe('outer');
+  });
+
+  it('returns undefined when nothing carries one', () => {
+    expect(overrideOf(html('<button>Save</button>'))).toBeUndefined();
+  });
+
+  // The nearest carrier is the one the developer wrote. An empty one switches the override
+  // off there; it does not fall through to an outer carrier.
+  it('treats an empty nearest carrier as no override, without looking further out', () => {
+    const root = html('<div data-telemetry-id="outer"><button data-telemetry-id="" id="b">Save</button></div>');
+
+    expect(overrideOf(root.querySelector('#b')!)).toBeUndefined();
+    expect(fingerprint(root.querySelector('#b')!)).toBe(`${UNKNOWN_CHAIN}|button|"Save"`);
   });
 });
 
