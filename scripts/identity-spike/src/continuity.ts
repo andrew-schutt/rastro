@@ -9,25 +9,7 @@
 // says which element at commit B "is" which element at commit A. That question is rule 4's
 // blind labelling. The smoke test knows the answer for its own app and checks this diff
 // against it.
-
-/**
- * What counts as interactive: the elements a user can act on and Rastro would emit events
- * for. The same selector the build checks used, so their numbers and the runner's agree.
- */
-export const INTERACTIVE_SELECTOR = [
-  'button',
-  'a[href]',
-  'input',
-  'select',
-  'textarea',
-  '[role=button]',
-  '[role=link]',
-  '[role=checkbox]',
-  '[role=switch]',
-  '[role=tab]',
-  '[role=menuitem]',
-  '[role=option]',
-].join(', ');
+import { INTERACTIVE_SELECTOR } from 'rastro-core';
 
 export interface SnapshotEntry {
   /** The element's ground-truth identity, where the page carries one; null otherwise. */
@@ -42,7 +24,10 @@ export interface SnapshotOptions {
   include?: (element: Element) => boolean;
 }
 
-/** Every interactive element under `root`, in document order, with its fingerprint. */
+/**
+ * Every interactive element under `root`, in document order, with its fingerprint.
+ * "Interactive" is core's `INTERACTIVE_SELECTOR`, the same set capture emits events for.
+ */
 export function snapshotDocument(
   root: ParentNode,
   fingerprintOf: (element: Element) => string,

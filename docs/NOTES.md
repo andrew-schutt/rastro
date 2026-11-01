@@ -499,6 +499,12 @@ recover it.
 Two harness decisions this check forced are now fixed in §3.2: stamping is scoped to the app's
 own source, and strategy 3 is measured with mangling on.
 
+**Both build checks counted a narrower set of elements than capture emits events for.** The
+spike carried its own interactive selector, missing `label`, `summary`, `[data-telemetry-id]`,
+three ARIA roles, and any positively `tabindex`ed element. The element counts and percentages
+above come from that set. It is now `rastro-core`'s `INTERACTIVE_SELECTOR`, shared by capture
+and the spike, so the measured corpus counts the elements Rastro actually identifies.
+
 **`babel-plugin-rastro` breaks the `rastro-*` naming on purpose.** Babel resolves the
 shorthand `plugins: ["rastro"]` to `babel-plugin-rastro`; matching the ecosystem convention is
 worth more than matching the sibling packages.
