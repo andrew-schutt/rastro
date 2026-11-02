@@ -148,6 +148,11 @@ works). Delete it to start clean.
   installed without the build step. The same walk also takes `data-rastro-source-file` from
   the element contributing the innermost chain entry, which becomes the fingerprint's `@<file>`
   qualifier and the `ux.source_file` part (conventions 0.3).
+- **`markedComponentChain` + the plugin's `markComponents`: §3.2 strategy 6, built and
+  unmeasured.** A candidate, not the default. `fingerprint()` never calls it, and the plugin
+  marks nothing unless asked. `describeElement` takes the chain walk as a parameter so the
+  spike composes it exactly as the default. How it was built, and what that settled, is under
+  the reopened attribute decision below.
 
 ### Stubbed — real signatures, naive bodies, TODOs naming the work
 
@@ -499,6 +504,29 @@ recover it.
 Two harness decisions this check forced are now fixed in §3.2: stamping is scoped to the app's
 own source, and strategy 3 is measured with mangling on.
 
+**Strategy 6 is built (2026-11-01), and not yet measured.** Building it settled three things
+§3.2's definition does not spell out. All three were settled before any corpus number:
+
+- **What gets marked.** Every component that owns JSX of any kind, by the plugin's existing
+  naming rule. That includes the composers that write no host element, which is the point:
+  on the fixture, renaming `PreferenceRow` moves strategy 6 and leaves 4 and 5 blind. The
+  mark is a `Name.__rastroMark = { name, file }` statement after the declaration, like a
+  `displayName` assignment, so the component's own syntax is untouched for the React
+  Compiler and Fast Refresh.
+- **Seeing through `memo` takes `fiber.elementType`.** The mark sits on the binding the
+  developer named, which for `memo(...)` is the memo object. Without a comparator, React
+  renders one fiber whose `type` is the inner function and whose `elementType` is the memo
+  object (checked against React 19), so the walk reads `elementType` when `type` carries no
+  mark. Otherwise it unwraps exactly as `componentChain` does.
+- **A duplicate inherited from strategy 3.** `memo(Inner, compare)` around a separately
+  declared `Inner` is two fibers that both resolve to `Inner`. Both walks count it twice.
+  The walk keeps that rather than diverging from the strategy it is defined against.
+
+The continuity fixture now carries a stand-in library (`vendor/`, compiled without the
+plugin), and its `library-upgrade` scenario renames a library-internal component. Only
+strategy 3 moves. That is what tells 6 apart from 3 on an app we wrote. The end-to-end test
+runs every authoring pattern through the real plugin, React and React Compiler.
+
 **Both build checks counted a narrower set of elements than capture emits events for.** The
 spike carried its own interactive selector, missing `label`, `summary`, `[data-telemetry-id]`,
 three ARIA roles, and any positively `tabindex`ed element. The element counts and percentages
@@ -678,6 +706,12 @@ Verified: replaying a batch stores nothing new.
   survives minification and still carries little: it degenerates to the primitive (`View`) or
   to nothing. This is in the reopened attribute decision above, from samples of both corpus
   apps, and is unmeasured until §3.2 runs.
+- **The fiber walk never sees a component written `memo(() => …)`.** Without a comparator,
+  React renders it as one fiber whose `type` is the anonymous inner function. `componentChain`
+  reads that function's empty name and skips the fiber. So the fallback strategy drops the
+  component from every chain beneath it, in dev as well as in production. Found while building
+  §3.2 strategy 6, which reads the memo object from `fiber.elementType` instead. Asserted in
+  `fingerprint.dom.test.tsx`. A named inner function (`memo(function Row() {…})`) is seen.
 - **i18n and copy edits cause false splits.** Same button, new text, new fingerprint. §4.2.1
   accepts this cost knowingly: dropping the name would merge the forty buttons saying "Save".
 - **Moving a file causes false splits too, since conventions 0.3.** Same trade as above, same
