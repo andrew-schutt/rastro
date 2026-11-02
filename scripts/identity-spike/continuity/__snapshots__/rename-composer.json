@@ -11,6 +11,7 @@
           "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\"",
           "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\"",
           "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\"",
+          "App>SettingsPage@src/settings/SettingsPage.tsx|button:button|\"Theme\"",
           "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\"",
           "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
         ],
@@ -46,6 +47,10 @@
         {
           "element": "pref-dark",
           "fingerprint": "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|button:button|\"Theme\""
         }
       ]
     },
@@ -58,6 +63,7 @@
           "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\"",
           "App>SettingsPage>Row>Switch|switch|\"Dark mode\"",
           "App>SettingsPage|a|\"Docs\"",
+          "App>SettingsPage|button:button|\"Theme\"",
           "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\"",
           "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
         ],
@@ -93,6 +99,10 @@
         {
           "element": "pref-dark",
           "fingerprint": "App>SettingsPage>Row>Switch|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "App>SettingsPage|button:button|\"Theme\""
         }
       ]
     },
@@ -107,7 +117,8 @@
           "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\"",
           "App>SettingsPage|a|\"Docs\"",
           "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\"",
-          "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\"",
+          "SettingsPage>ThemePicker>Picker>PickerTrigger|button:button|\"Theme\""
         ],
         "vanished": [
           "SettingsPage>PreferenceRow>Row>Switch|switch|\"Dark mode\""
@@ -145,6 +156,10 @@
         {
           "element": "pref-dark",
           "fingerprint": "SettingsPage>SettingRow>Row>Switch|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "SettingsPage>ThemePicker>Picker>PickerTrigger|button:button|\"Theme\""
         }
       ]
     },
@@ -157,6 +172,7 @@
           "a|\"Home\"",
           "button:button|\"Cancel\"",
           "button:button|\"Save\"",
+          "button:button|\"Theme\"",
           "input:email|\"Email\"",
           "switch|\"Dark mode\""
         ],
@@ -192,6 +208,10 @@
         {
           "element": "pref-dark",
           "fingerprint": "switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "button:button|\"Theme\""
         }
       ]
     },
@@ -205,6 +225,7 @@
           "button:nth-child=\"1\"nth-of-type=\"1\";div.row:nth-child=\"4\"nth-of-type=\"2\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|switch|\"Dark mode\"",
           "button:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Save\"",
           "button:nth-child=\"2\"nth-of-type=\"2\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Cancel\"",
+          "button:nth-child=\"5\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Theme\"",
           "input:nth-child=\"1\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|input:email|\"Email\""
         ],
         "vanished": [],
@@ -239,6 +260,67 @@
         {
           "element": "pref-dark",
           "fingerprint": "button:nth-child=\"1\"nth-of-type=\"1\";div.row:nth-child=\"4\"nth-of-type=\"2\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "button:nth-child=\"5\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Theme\""
+        }
+      ]
+    },
+    "marked-fiber": {
+      "changed": [
+        "pref-dark"
+      ],
+      "diff": {
+        "kept": [
+          "App>NavBar@src/NavBar.tsx|a|\"Help\"",
+          "App>NavBar@src/NavBar.tsx|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\"",
+          "App>SettingsPage>ThemePicker@src/settings/ThemePicker.tsx|button:button|\"Theme\"",
+          "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\"",
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
+        ],
+        "vanished": [
+          "SettingsPage>PreferenceRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        ],
+        "appeared": [
+          "SettingsPage>SettingRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        ],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "SettingsPage>SettingRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "App>SettingsPage>ThemePicker@src/settings/ThemePicker.tsx|button:button|\"Theme\""
         }
       ]
     }

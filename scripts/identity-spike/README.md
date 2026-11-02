@@ -166,19 +166,21 @@ reported separately, as with strategy 6.
 
 In the order agreed for §3.2:
 
-1. **The marked fiber walk (6),** which needs plugin marks plus a walk in core. Today
-   `continuity/` covers strategies 1 to 5. It joins `STRATEGIES` with an expectation per
-   scenario, and needs library files compiled without the plugin before it can be told apart
-   from 3.
-2. **Pre-registration, in the docs:** the ~10 commits per corpus app, the screen lists, and
+All six of rule 1's strategies now exist and run in `continuity/`. Strategy 6, the marked
+fiber walk, is `rastro-core`'s `markedComponentChain`, reading the marks that
+`babel-plugin-rastro` writes with `markComponents`. It is in core, not here, so the corpus
+measures the code that would ship. `continuity/marked-walk.test.ts` runs it end to end through
+the real plugin, React and React Compiler.
+
+1. **Pre-registration, in the docs:** the ~10 commits per corpus app, the screen lists, and
    rule 3's ~20 flow elements per app. Also rule 4's verdict when **both** cheaper proposers
    match or beat `resolution`, which the plan does not settle (it names a different outcome
    for each).
-3. **The corpus runner**, which walks the pinned commits, builds and drives each app, and
+2. **The corpus runner**, which walks the pinned commits, builds and drives each app, and
    feeds `snapshotDocument` and the proposers.
-4. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
+3. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
    missing are the per-JSX-site oracle and the shared-design-system case.
-5. **The run:** blind labels, scores, and the gate PR.
+4. **The run:** blind labels, scores, and the gate PR.
 
 ## Running it
 

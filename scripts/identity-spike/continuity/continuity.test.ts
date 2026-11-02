@@ -23,7 +23,7 @@ declare global {
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const base = loadBaseApp();
-const ELEMENTS = ['cancel', 'email', 'nav-help', 'nav-home', 'page-docs', 'pref-dark', 'save'];
+const ELEMENTS = ['cancel', 'email', 'nav-help', 'nav-home', 'page-docs', 'pick-theme', 'pref-dark', 'save'];
 
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
 
