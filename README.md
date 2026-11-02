@@ -167,6 +167,7 @@ examples/demo-app    a React app to dogfood on
 - [`docs/NOTES.md`](docs/NOTES.md) — how to run this repo, and what is implemented vs. stubbed
 - [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) — the next body of work: closing the two de-risking gates
 - [`docs/IDENTITY-RESOLUTION.md`](docs/IDENTITY-RESOLUTION.md) — how element identity survives deploys (design, unbuilt)
+- [`docs/CORPUS.md`](docs/CORPUS.md) — the real apps and commits the identity measurement runs on, fixed in advance
 - [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) — what this is similar to, and where it actually differs
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — commit, branch, and merge conventions, and what counts as verified
 

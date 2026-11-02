@@ -108,7 +108,7 @@ count changes (the only trace a new merge leaves). Both are for the corpus runne
 
 Before the runner trusts them with numbers nobody can check, [`continuity/`](continuity) runs
 them on an app whose answers we know: known edits, each with the fingerprint changes it must
-cause, under every strategy `rastro-core` has. Its outputs are committed snapshots, so it is
+cause, under all six of §3.2 rule 1's strategies. Its outputs are committed snapshots, so it is
 also CI's guard against any PR changing a fingerprint unannounced. See its README.
 
 ### `baselines.ts`: strategies 1 and 2
@@ -164,8 +164,6 @@ reported separately, as with strategy 6.
 
 ## Still to build
 
-In the order agreed for §3.2:
-
 All six of rule 1's strategies now exist and run in `continuity/`. Strategy 6, the marked
 fiber walk, is `rastro-core`'s `markedComponentChain`, reading the marks that
 `babel-plugin-rastro` writes with `markComponents`. It is in core, not here, so the corpus
@@ -175,6 +173,8 @@ the real plugin, React and React Compiler.
 The corpus is pre-registered in [`docs/CORPUS.md`](../../docs/CORPUS.md): apps, commits,
 screens, run conditions and rule 3's flow elements. Rule 4's verdict when both cheaper
 proposers match `resolution` is settled in the plan.
+
+In the order agreed for §3.2:
 
 1. **The corpus runner**, which walks `CORPUS.md`'s commits under its run conditions,
    including the same-commit rebuild control. It builds and drives each app, and feeds

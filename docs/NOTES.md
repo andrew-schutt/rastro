@@ -236,7 +236,7 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 **The collision referee uses React's `key`, which is the opposite of an identity.** §3.2
 cannot produce a collision number until something decides whether two elements sharing a
 fingerprint are a right merge (50 rows of one list) or a false one (two separately-written
-buttons). `scripts/identity-spike/repeat-oracle.ts` rules on that: React stamps every array
+buttons). `scripts/identity-spike/src/repeat-oracle.ts` rules on that: React stamps every array
 child's fiber with the developer's key, so two elements are repeats of one another exactly
 when they hang off two *different* keyed items of the *same* list.
 
