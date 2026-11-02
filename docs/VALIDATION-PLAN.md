@@ -145,8 +145,8 @@ increasing cost:
 **a) Within-commit collision rate.** Render one commit of a real React app, fingerprint every
 interactive element, count distinct elements sharing a fingerprint. No history, no traffic, no
 ground truth, no labelling. Run it against **a dev build and a minified prod build of the same
-commit** and the README's biggest caveat stops being an adjective: *"on app X, 4% of
-interactive elements collide in dev and 61% collide in prod."* That single comparison was
+commit** and the README's biggest caveat stops being an adjective: *"on app X, N% of
+interactive elements collide in dev and M% collide in prod."* That single comparison was
 meant to decide whether §4.3's build-time plugin is the next thing built. The Babel plugin was
 built ahead of it (see §5), so the comparison now prices a plugin that exists, and decides
 whether its SWC port is worth building.
@@ -200,7 +200,9 @@ shipped in the identity) as the second referee for pairs the key cannot rule on,
 shared-design-system case where every button in an app comes from one JSX site.
 
 **Done:** `scripts/identity-spike/`, plus a written report carrying all three numbers across
-≥2 real apps and ≥10 commits. *(In progress. The package README's "Still to build" is the
+≥2 real apps and ≥10 commits. The apps, the commits, the screens, the run conditions and rule
+3's flow elements are pre-registered in [`CORPUS.md`](CORPUS.md), resolved by rule before the
+runner exists. *(In progress. The package README's "Still to build" is the
 current list.)* Use apps we do not control — OSS React products with real
 history work fine.
 
@@ -334,6 +336,10 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
      answer is §4.3's anchor, and `IDENTITY-RESOLUTION.md` records that.
    - **Naive matches or beats it:** neither the file nor the other parts carry anything
      offline. The decision waits for traffic.
+   - **Both match or beat it:** settled 2026-11-01, before any corpus number. The same
+     domination test decides between the two. If anchor dominates naive, the file carries
+     something the route does not, and anchor's verdict stands. Otherwise naive's does. No
+     new number is needed for this.
    - **Neither dominates nor loses outright:** report the trade. It does not license building.
    - **No fingerprint labelled `continued`:** (d) is unanswered, not passed. Low churn is good
      news for rule 2, and says nothing about whether drift is repairable.
