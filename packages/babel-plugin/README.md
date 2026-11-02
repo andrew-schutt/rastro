@@ -133,6 +133,7 @@ see [`docs/DESIGN.md`](https://github.com/andrew-schutt/rastro/blob/main/docs/DE
 | `componentAttribute` | `data-rastro-component` | Attribute carrying the owning component's name |
 | `sourceFileAttribute` | `data-rastro-source-file` | Attribute carrying the defining file |
 | `includeSourceFile` | `true` | Emit the source-file attribute at all |
+| `markComponents` | `false` | Also attach `{ name, file }` to each component it names, for the marked fiber walk. A `docs/VALIDATION-PLAN.md` §3.2 candidate that nothing reads by default. `file` follows `includeSourceFile` |
 
 ## What it does and does not annotate
 

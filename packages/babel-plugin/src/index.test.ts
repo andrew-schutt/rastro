@@ -9,6 +9,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import rastroComponentAnnotate, {
   COMPONENT_ATTRIBUTE,
+  MARK_PROPERTY,
   SOURCE_FILE_ATTRIBUTE,
   sourceFilePath,
   toStampedPath,
@@ -212,6 +213,101 @@ function hoistingCompiler({ types: t }: { types: typeof BabelTypes }): PluginObj
     },
   };
 }
+
+// markComponents: the marks the §3.2 marked fiber walk (strategy 6) reads.
+describe('markComponents', () => {
+  const marked = (source: string, options: RastroPluginOptions = {}): string =>
+    transform(source, { markComponents: true, ...options });
+  const markOf = (name: string, file = 'src/SettingsForm.tsx'): string =>
+    `${name}.${MARK_PROPERTY} = {\n  name: "${name}",\n  file: "${file}"\n};`;
+
+  it('is off by default', () => {
+    expect(transform(`function SettingsForm() { return <form />; }`)).not.toContain(MARK_PROPERTY);
+  });
+
+  it('marks a declared component right after its declaration', () => {
+    const out = marked(`function SettingsForm() { return <form />; }`);
+    expect(out).toContain(`}\n${markOf('SettingsForm')}`);
+  });
+
+  it('marks exported and default-exported declarations', () => {
+    const out = marked(`export function A() { return <a />; }\nexport default function B() { return <b />; }`);
+    expect(out).toContain(markOf('A'));
+    expect(out).toContain(markOf('B'));
+  });
+
+  // The binding the developer named is what gets marked, so a wrapped component is marked on
+  // its wrapper object. rastro-core reads it there (fiber.elementType, or fiber.type).
+  it('marks the binding of a memo, forwardRef, or nested wrapper, not the inner function', () => {
+    const out = marked(
+      `const A = memo(() => <a />);\nconst B = forwardRef((p, r) => <b ref={r} />);\nconst C = memo(forwardRef(function Inner() { return <c />; }));`,
+    );
+    expect(out).toContain(`const A = memo(() => <a`);
+    expect(out).toContain(markOf('A'));
+    expect(out).toContain(markOf('B'));
+    expect(out).toContain(markOf('C'));
+    expect(out).not.toContain('Inner.');
+  });
+
+  it('marks a class component', () => {
+    const out = marked(`class Panel extends Component { render() { return <section />; } }`);
+    expect(out).toContain(markOf('Panel'));
+  });
+
+  // The case stamping cannot see: a component that writes no host element of its own.
+  it('marks a component that only composes other components', () => {
+    const out = marked(`function PreferenceRow() { return <Row><Switch /></Row>; }`);
+    expect(out).toContain(markOf('PreferenceRow'));
+    expect(out).not.toContain(COMPONENT_ATTRIBUTE);
+  });
+
+  it('marks a component whose only JSX is a fragment', () => {
+    expect(marked(`function Group({ children }) { return <>{children}</>; }`)).toContain(markOf('Group'));
+  });
+
+  it('marks each component once, however much JSX it owns', () => {
+    const out = marked(`function Form() { return <form><input /><button /></form>; }`);
+    expect(out.split(`Form.${MARK_PROPERTY}`)).toHaveLength(2);
+  });
+
+  it('leaves unmarked what it would not name: no JSX, or JSX only in a lowercase helper', () => {
+    const out = marked(`function Total() { return 1; }\nfunction row() { return <tr />; }\nconst List = () => row();`);
+    expect(out).not.toContain(MARK_PROPERTY);
+  });
+
+  it('skips a binding no following statement could see', () => {
+    const out = marked(`for (const Loop = () => <i />;;) break;`);
+    expect(out).toContain(`${COMPONENT_ATTRIBUTE}="Loop"`);
+    expect(out).not.toContain(MARK_PROPERTY);
+  });
+
+  it('carries no file when includeSourceFile is off', () => {
+    const out = marked(`function SettingsForm() { return <form />; }`, { includeSourceFile: false });
+    expect(out).toContain(`SettingsForm.${MARK_PROPERTY} = {\n  name: "SettingsForm"\n};`);
+  });
+
+  it('marks .jsx/.tsx only, like stamping', () => {
+    const out = transform(`function A() { return <a />; }`, { markComponents: true }, '/repo/src/a.js');
+    expect(out).not.toContain(MARK_PROPERTY);
+  });
+
+  // Placed in the same Program.enter pass as stamping, so a compiler that rewrites functions
+  // afterwards still finds the marks already in place, and the components' own syntax intact.
+  it('marks before a compiler listed after it rewrites anything', () => {
+    const source = `function ColorPalette({ colors }) { return <ul>{colors.map((c) => <li>{c}</li>)}</ul>; }`;
+    const out =
+      transformSync(source, {
+        filename: '/repo/src/ColorPalette.tsx',
+        cwd: '/repo',
+        babelrc: false,
+        configFile: false,
+        parserOpts: { plugins: ['jsx', 'typescript'] },
+        plugins: [[rastroComponentAnnotate, { markComponents: true }], hoistingCompiler],
+      })?.code ?? '';
+    expect(out).toMatch(/function _temp/);
+    expect(out.split(`ColorPalette.${MARK_PROPERTY}`)).toHaveLength(2);
+  });
+});
 
 describe('alongside the React Compiler', () => {
   const source = `function ColorPalette({ colors }) {
