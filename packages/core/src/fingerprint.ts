@@ -141,6 +141,8 @@ function namedByContent(element: Element): boolean {
 /** The parts of React's fiber this walks. Typed loosely on purpose: it is private API. */
 interface FiberLike {
   type?: unknown;
+  /** What was rendered, before React resolved it. Differs from `type` for a simple `memo`. */
+  elementType?: unknown;
   return?: FiberLike | null;
 }
 
@@ -218,6 +220,97 @@ export function componentChain(fiber: FiberLike | null, max: number = MAX_CHAIN_
 }
 
 /**
+ * Where `babel-plugin-rastro`'s `markComponents` option attaches a component's mark: a
+ * property on the component itself, holding `{ name, file }` as string literals.
+ *
+ * ⚠ Duplicated in the plugin, like `COMPONENT_ATTRIBUTE`, and for the same reason. The two
+ * MUST agree.
+ */
+export const MARK_PROPERTY = '__rastroMark';
+
+/** What the plugin marks a first-party component with. */
+export interface ComponentMark {
+  name: string;
+  /** Repo-relative, POSIX. Absent when the plugin was told not to emit files. */
+  file?: string;
+}
+
+/** The mark carried by this value itself, never one inherited from a superclass. */
+function ownMark(value: unknown): ComponentMark | null {
+  if ((typeof value !== 'function' && typeof value !== 'object') || value === null) return null;
+  if (!Object.prototype.hasOwnProperty.call(value, MARK_PROPERTY)) return null;
+
+  const mark = (value as Record<string, unknown>)[MARK_PROPERTY];
+  if (typeof mark !== 'object' || mark === null) return null;
+  const { name, file } = mark as Record<string, unknown>;
+  if (typeof name !== 'string' || name === '') return null;
+  return typeof file === 'string' && file !== '' ? { name, file } : { name };
+}
+
+/** A type's mark, unwrapping forwardRef and memo one level, as `nameOfType` unwraps names. */
+function markOfType(type: unknown): ComponentMark | null {
+  const own = ownMark(type);
+  if (own !== null || typeof type !== 'object' || type === null) return own;
+  const wrapper = type as ComponentType;
+  if (wrapper.render !== undefined) return ownMark(wrapper.render); // forwardRef
+  if (wrapper.type !== undefined) return ownMark(wrapper.type); // memo
+  return null;
+}
+
+/**
+ * A fiber's mark: from its `type`, and failing that from its `elementType`.
+ *
+ * The second read is what "seeing through `memo`" takes once marks sit on the component the
+ * developer named. For `const Row = memo(() => …)` without a comparator, React renders a
+ * single fiber whose `type` is the anonymous inner function and whose `elementType` is the
+ * memo object, so the mark on `Row` is reachable from `elementType` alone. `nameOfType`
+ * never reads it, so strategy 3 sees no name on that fiber at all.
+ */
+function markOf(fiber: FiberLike): ComponentMark | null {
+  return markOfType(fiber.type) ?? (fiber.elementType === fiber.type ? null : markOfType(fiber.elementType));
+}
+
+/**
+ * Fiber → MARKED component ancestry: docs/VALIDATION-PLAN.md §3.2 rule 1's strategy 6.
+ *
+ * ⚠ A §3.2 candidate, not the default, and not called by `fingerprint()`. It lives here, not
+ * in the spike, so the corpus measures the code that would ship. If it wins, promoting it is
+ * one line: `defaultChainWalk` uses it. That line would also have to settle a fallback for
+ * unmarked builds, which this candidate deliberately has none of.
+ *
+ * The walk climbs the fiber tree as `componentChain` does, but counts only components the
+ * plugin marked. Library internals and anonymous wrappers are skipped rather than taking a
+ * slot. Marks are string literals attached at build time, so this survives minification,
+ * where the names `componentChain` reads do not. `NOISE` and `MAX_CHAIN_DEPTH` apply
+ * unchanged. The file is the innermost counted component's, as in the attribute walk.
+ *
+ * The costs that kept it from being the design, which still hold: it reads React's private
+ * internals in production, not only as a dev fallback, and it is React-only.
+ *
+ * A `memo` with a comparator around a separately declared component is two fibers that both
+ * resolve to that component, and it is counted twice. `componentChain` does the same.
+ */
+export function markedComponentChain(fiber: FiberLike | null, max: number = MAX_CHAIN_DEPTH): ComponentWalk {
+  const names: string[] = [];
+  let sourceFile: string | undefined;
+  let current: FiberLike | null | undefined = fiber;
+
+  while (current !== null && current !== undefined && names.length < max) {
+    const mark = markOf(current);
+    if (mark !== null && !NOISE.test(mark.name)) {
+      if (names.length === 0) sourceFile = mark.file; // innermost counted component's file only
+      names.push(mark.name);
+    }
+    current = current.return;
+  }
+
+  return {
+    componentChain: names.reverse(), // outermost → innermost
+    ...(sourceFile === undefined ? {} : { sourceFile }),
+  };
+}
+
+/**
  * DOM → component ancestry, outermost → innermost, from build-time attributes.
  *
  * The same shape as `componentChain` over a different tree. The plugin stamps the owning
@@ -241,13 +334,16 @@ export function attributeChain(element: Element, max: number = MAX_CHAIN_DEPTH):
   return walkAttributes(element, max).componentChain;
 }
 
-/** What one walk of the build-time attributes yields. */
-interface AttributeWalk {
+/** What one walk of a component ancestry yields, from whichever source it reads. */
+export interface ComponentWalk {
   /** Component ancestry, outermost → innermost. */
   componentChain: string[];
-  /** The file defining the INNERMOST chain entry. Absent when the chain is empty. */
+  /** The file defining the INNERMOST chain entry. Absent when it is not known. */
   sourceFile?: string;
 }
+
+/** Element → component ancestry: the part of identity the strategies differ on. */
+export type ChainWalk = (element: Element) => ComponentWalk;
 
 /**
  * The single walk behind both `attributeChain` and `describeElement`.
@@ -258,7 +354,7 @@ interface AttributeWalk {
  * anywhere up the tree would re-identify everything below) for information the innermost
  * one already carries.
  */
-function walkAttributes(element: Element, max: number = MAX_CHAIN_DEPTH): AttributeWalk {
+function walkAttributes(element: Element, max: number = MAX_CHAIN_DEPTH): ComponentWalk {
   const names: string[] = [];
   let sourceFile: string | null = null;
   let current: Element | null = element;
@@ -312,6 +408,25 @@ export function documentIsAnnotated(document: Document): boolean {
 export function resetAnnotationProbe(document: Document): void {
   annotatedDocuments.delete(document);
 }
+
+/**
+ * The walk `fingerprint()` uses: build-time attributes when the app has the plugin, the fiber
+ * walk when it does not.
+ *
+ * Not a per-element fallback (see `documentIsAnnotated`). The fiber walk is what an app gets
+ * when Rastro is installed without its build step, and it is only reliable in dev.
+ */
+export const defaultChainWalk: ChainWalk = (element) =>
+  documentIsAnnotated(element.ownerDocument)
+    ? walkAttributes(element)
+    : { componentChain: componentChain(getFiber(element)) };
+
+/**
+ * §3.2 strategy 6 as a walk, for `describeElement`. A candidate only: see
+ * `markedComponentChain`. It has no fallback, so an app built without `markComponents`
+ * gets an empty chain from it.
+ */
+export const markedFiberWalk: ChainWalk = (element) => markedComponentChain(getFiber(element));
 
 /**
  * Role-ish descriptor: tag name plus the disambiguating attribute.
@@ -426,10 +541,15 @@ export interface ElementDescription {
  * would not resemble the number above. Re-measure on a large app before assuming this is
  * free there; the escape hatch remains to take the cheap facts synchronously (`ux.seq` MUST
  * stay in gesture order) and defer the derivation.
+ *
+ * `walkChain` is where the component ancestry comes from, and the only thing that varies.
+ * The default is `fingerprint()`'s own. The §3.2 spike passes `markedFiberWalk` to measure
+ * strategy 6 composed exactly as the default is.
  */
 export function describeElement(
   element: Element,
   redactor: Redactor = defaultRedactor,
+  walkChain: ChainWalk = defaultChainWalk,
 ): ElementDescription {
   const role = roleOf(element);
 
@@ -440,12 +560,9 @@ export function describeElement(
     return { fingerprint: `id:${override}`, componentChain: [], role };
   }
 
-  // Build-time attributes when the app has the plugin, the fiber walk when it does not.
-  // Not a per-element fallback — see `documentIsAnnotated`. The fiber walk is what an app
-  // gets when Rastro is installed without its build step, and it is only reliable in dev.
-  const walk: AttributeWalk = documentIsAnnotated(element.ownerDocument)
-    ? walkAttributes(element)
-    : { componentChain: componentChain(getFiber(element)) };
+  // Everything below composes the walk's result identically, whichever walk it is. That is
+  // what lets §3.2 compare chain strategies with role, name and override held fixed.
+  const walk = walkChain(element);
   const chain = walk.componentChain;
   const file = walk.sourceFile;
   const name = accName(element, redactor);

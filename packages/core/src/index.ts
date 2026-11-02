@@ -30,6 +30,7 @@ export {
   attributeChain,
   COMPONENT_ATTRIBUTE,
   componentChain,
+  defaultChainWalk,
   documentIsAnnotated,
   defaultFingerprintStrategy,
   describeElement,
@@ -37,6 +38,9 @@ export {
   fingerprint,
   getFiber,
   INTERACTIVE_SELECTOR,
+  MARK_PROPERTY,
+  markedComponentChain,
+  markedFiberWalk,
   MAX_CHAIN_DEPTH,
   MAX_NAME_LENGTH,
   NOISE,
@@ -48,7 +52,7 @@ export {
   SOURCE_FILE_ATTRIBUTE,
   UNKNOWN_CHAIN,
 } from './fingerprint.js';
-export type { ElementDescription } from './fingerprint.js';
+export type { ChainWalk, ComponentMark, ComponentWalk, ElementDescription } from './fingerprint.js';
 export {
   defaultRedactor,
   noopRedactor,
