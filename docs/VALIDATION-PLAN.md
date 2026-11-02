@@ -297,8 +297,12 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
    changed it. Any other library-driven churn counts against this rule.
 3. **Zero collisions among the flow that matters.** Traffic cannot be weighted offline, so
    proxy it: hand-pick the ~20 elements of one real flow — the same picking §3.5 needs anyway —
-   and require no collisions among them. Those are the elements every number in a Phase 0
-   deliverable is computed from.
+   and require that none of them collides with any other distinct element on its own screen,
+   whether that element is on the list or not. Those are the elements every number in a Phase 0
+   deliverable is computed from, and a merge with an element off the list corrupts them as
+   surely as a merge within it. *Widened 2026-11-02, before any corpus number; it first read
+   "no collisions among them".* Collisions across screens are reported, not gating, since
+   events carry the route.
 4. **Drift proposals must beat the cheaper ways of making them.** The resolution layer adds
    persisted state to the collector and a review surface to the dashboard. It earns that only
    if its proposals are better than ones nobody has to build.

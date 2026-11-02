@@ -166,11 +166,12 @@ cannot be found, or is not matched by `INTERACTIVE_SELECTOR` (capture would emit
 it), it is **reported, not substituted**. A cell that is a `<div>` until it is edited is a real
 finding about what capture can see, not a gap in this list.
 
-**What counts as a collision.** As the plan words it: two elements **of this list** sharing a
-fingerprint at the same commit, as judged by the collision referee. Also reported beside it,
-not gating: any of these elements sharing a fingerprint with any *other* distinct element on
-the screens above. A false merge with an element outside the flow corrupts the flow's numbers
-just as surely, but the plan did not make it the gate, and this file does not change the rule.
+**What counts as a collision.** As the plan's rule 3 now words it (widened 2026-11-02, before
+any corpus number): any element of this list sharing a fingerprint, at the same commit, with
+any other distinct element **on the same screen or state**, whether or not that element is on
+the list. The collision referee judges "distinct", so repeats of one element in a list are not
+collisions. Collisions with elements on other screens are reported beside the rule but do not
+fail it, because events carry the route and can still tell those apart.
 
 Source paths are relative to each app's components directory:
 `packages/desktop-client/src/components/` for Actual, and `examples/demo/src/` for the demo.
