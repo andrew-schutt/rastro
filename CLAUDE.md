@@ -54,8 +54,9 @@ apps. That is the "reopened" entry in `docs/NOTES.md`, and why strategy 6, the m
 walk, exists.
 
 Identity derives from build-time DOM attributes stamped by `babel-plugin-rastro`, so it
-survives minification; the React fiber walk remains the fallback for apps installed without
-the build step, and is reliable only in dev. Strategy is chosen once per document, never per
+survives minification. The React fiber walk is the fallback for apps installed without
+the build step. It is documented as a development diagnostic only, and §3.2 rule 1 removes it
+unless it beats role + accessible name on the corpus. Strategy is chosen once per document, never per
 element. **Next.js is the open gap.** It compiles with SWC, and that port is the open half of
 §17 #4.
 

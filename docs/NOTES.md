@@ -702,6 +702,9 @@ Verified: replaying a batch stores nothing new.
   **The remaining exposure is Next.js**, which compiles with SWC and has no plugin yet, and
   any app that installs the SDK without its build step. Asserted in
   `fingerprint.dom.test.tsx` and `babel-plugin/src/minification.test.ts`.
+  **Since 2026-11-02 the fallback is documented as a development diagnostic only,** and
+  §3.2 rule 1 pre-registers its removal: it stays only if, with mangling on, it beats role +
+  accessible name alone on both corpus apps.
   **"Gone" holds for minification, not for identity.** In design-system apps the stamped chain
   survives minification and still carries little: it degenerates to the primitive (`View`) or
   to nothing. This is in the reopened attribute decision above, from samples of both corpus

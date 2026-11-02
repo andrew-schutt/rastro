@@ -104,14 +104,23 @@ click → capture (stable fingerprint) → OTel Event → OTLP → collector →
   > app is unknown, and [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) §3.2 exists to
   > find out. Treat the numbers this tool produces accordingly until it has run.
 
-  > ⚠️ **In production, install the build plugin.** Identity is anchored on the React
-  > component chain, and a production build renames `SaveButton` to `t` — so unrelated
-  > elements collapse into one identity, quietly, with no error.
-  > [`babel-plugin-rastro`](packages/babel-plugin) fixes this by stamping component names
-  > into the DOM at build time, where a minifier cannot reach them; the SDK then derives
-  > identity from those instead of from React's internals. **Without it, Rastro is reliable
-  > in development and not in a minified production build.** Next.js is not yet supported —
-  > it compiles with SWC ([`docs/DESIGN.md`](docs/DESIGN.md) §4.3).
+  > ⚠️ **Install the build plugin. Without it, identity is a development aid, not a
+  > production feature.** [`babel-plugin-rastro`](packages/babel-plugin) stamps component
+  > names into the DOM at build time, where a minifier cannot reach them, and the SDK
+  > derives identity from those. Without it, the SDK falls back to reading component names
+  > out of React's internals (the "fiber walk"). That fallback fails in known ways:
+  >
+  > - a minified build renames `SaveButton` to `t`, so unrelated elements collapse into
+  >   one identity with no error, and the short names change from build to build;
+  > - library components fill the chain with their internal names, which change on a
+  >   dependency upgrade;
+  > - a component written `memo(() => …)` has no name to read, so it drops out of the chain.
+  >
+  > Treat the fallback as a diagnostic for development. Whether it stays at all is decided
+  > by [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) §3.2: if it does not beat role
+  > and accessible name alone on real apps, it is removed. Next.js is not yet supported by
+  > the plugin, since it compiles with SWC ([`docs/DESIGN.md`](docs/DESIGN.md) §4.3), so a
+  > Next app gets only this fallback today.
 - **OpenTelemetry-native.** Interactions are OTel *Events* (log records), grouped by
   the standard `session.id`. UX meaning rides in a small `ux.*` attribute namespace —
   see [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md).

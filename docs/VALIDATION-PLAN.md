@@ -252,6 +252,16 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
    liability is being carried for convenience rather than capability, and the honest answer is
    to make the build plugin the primary strategy and the fiber walk the zero-config fallback.
 
+   **Whether that fallback stays: pre-registered 2026-11-02, before any corpus number.** The
+   plugin is already primary. Strategy 3 stays as the SDK's fallback for apps without the
+   plugin only if, measured with mangling on, it **beats strategy 1 on both corpus apps**.
+   Otherwise it is removed. An app without the plugin then gets role and accessible name,
+   with the chain part degraded to `unknown`, as it already is when no chain can be derived.
+   Strategy 1 is the bar because it is what removal leaves. A fallback that does not beat it
+   costs React's private internals and buys nothing. The as-shipped numbers, with mangling
+   off, are reported but do not decide this. Strategy 6 reads the same internals, and is
+   decided separately by the paragraph below.
+
    **What decides the default.** Strategy 6 replaces 5 as the default only if it beats 5 *and*
    passes rules 2 and 3 on its own. Beating 5 is not enough by itself, because its costs are not
    errors and so are not in the comparison: React-only, and dependent on internals that degrade
