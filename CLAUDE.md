@@ -24,6 +24,7 @@ emitted as OpenTelemetry Events. Open source, pre-alpha, one maintainer.
 | How do I commit / branch / merge / verify? | `CONTRIBUTING.md` |
 | Is this idea novel? Who else does it? | `docs/PRIOR-ART.md` |
 | What happens when a fingerprint drifts across a deploy? | `docs/IDENTITY-RESOLUTION.md` |
+| Which commits, screens and flows does §3.2 run on? | `docs/CORPUS.md` |
 
 **`docs/NOTES.md` outranks `docs/DESIGN.md` on questions of fact.** The design says what was
 intended; NOTES records what shipped, every deviation and why. Where they disagree about the

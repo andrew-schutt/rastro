@@ -172,15 +172,16 @@ fiber walk, is `rastro-core`'s `markedComponentChain`, reading the marks that
 measures the code that would ship. `continuity/marked-walk.test.ts` runs it end to end through
 the real plugin, React and React Compiler.
 
-1. **Pre-registration, in the docs:** the ~10 commits per corpus app, the screen lists, and
-   rule 3's ~20 flow elements per app. Also rule 4's verdict when **both** cheaper proposers
-   match or beat `resolution`, which the plan does not settle (it names a different outcome
-   for each).
-2. **The corpus runner**, which walks the pinned commits, builds and drives each app, and
-   feeds `snapshotDocument` and the proposers.
-3. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
+The corpus is pre-registered in [`docs/CORPUS.md`](../../docs/CORPUS.md): apps, commits,
+screens, run conditions and rule 3's flow elements. Rule 4's verdict when both cheaper
+proposers match `resolution` is settled in the plan.
+
+1. **The corpus runner**, which walks `CORPUS.md`'s commits under its run conditions,
+   including the same-commit rebuild control. It builds and drives each app, and feeds
+   `snapshotDocument` and the proposers.
+2. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
    missing are the per-JSX-site oracle and the shared-design-system case.
-4. **The run:** blind labels, scores, and the gate PR.
+3. **The run:** blind labels, scores, and the gate PR.
 
 ## Running it
 
