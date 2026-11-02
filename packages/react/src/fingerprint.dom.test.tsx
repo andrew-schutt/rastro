@@ -9,11 +9,20 @@
  * lives in `rastro-core`, which stays React-free — the React-specific half of its behaviour
  * is tested here, where React already is.
  */
-import { StrictMode, forwardRef, memo, type ReactElement, type ReactNode } from 'react';
+import { Component, StrictMode, forwardRef, memo, type ReactElement, type ReactNode } from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { UNKNOWN_CHAIN, componentChain, fingerprint, getFiber } from 'rastro-core';
+import {
+  MARK_PROPERTY,
+  UNKNOWN_CHAIN,
+  componentChain,
+  describeElement,
+  fingerprint,
+  getFiber,
+  markedComponentChain,
+  markedFiberWalk,
+} from 'rastro-core';
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -258,5 +267,151 @@ describe('known failure modes', () => {
     // limitation of v1, and why §4.3's build-time plugin exists.
     expect(print(<Save />)).toBe('e|button|"Go"');
     expect(print(<Delete />)).toBe(print(<Save />));
+  });
+});
+
+// §3.2 strategy 6, against real React. Marks are attached by hand here, exactly where
+// babel-plugin-rastro's `markComponents` attaches them: on the binding the developer named.
+// The plugin's own placement, and the two together through a real build, are tested in
+// packages/babel-plugin and scripts/identity-spike.
+describe('the marked fiber walk (§3.2 strategy 6)', () => {
+  const mark = <T extends object>(component: T, name: string, file?: string): T => {
+    (component as Record<string, unknown>)[MARK_PROPERTY] = file === undefined ? { name } : { name, file };
+    return component;
+  };
+  const walk = (ui: ReactElement, selector = 'button'): ReturnType<typeof markedComponentChain> => {
+    act(() => root.render(ui));
+    return markedComponentChain(getFiber(container.querySelector(selector)!));
+  };
+
+  // Stand-ins for library code: named, so the unmarked fiber walk sees them, but unmarked.
+  function LibTrigger({ children }: { children: ReactNode }): ReactElement {
+    return <button>{children}</button>;
+  }
+  function LibPressable({ children }: { children: ReactNode }): ReactElement {
+    return <LibTrigger>{children}</LibTrigger>;
+  }
+  function LibFocusRing({ children }: { children: ReactNode }): ReactElement {
+    return <LibPressable>{children}</LibPressable>;
+  }
+
+  it('counts only marked components, so library internals take no slot', () => {
+    const Page = mark(function Page(): ReactElement { return <main><Picker /></main>; }, 'Page', 'src/Page.tsx');
+    const Picker = mark(function Picker(): ReactElement { return <LibFocusRing>Theme</LibFocusRing>; }, 'Picker', 'src/Picker.tsx');
+    const App = mark(function App(): ReactElement { return <Page />; }, 'App', 'src/App.tsx');
+
+    expect(walk(<App />)).toEqual({ componentChain: ['App', 'Page', 'Picker'], sourceFile: 'src/Picker.tsx' });
+    // The unmarked walk, for contrast: the library fills the four slots.
+    expect(componentChain(getFiber(container.querySelector('button')!))).toEqual([
+      'Picker', 'LibFocusRing', 'LibPressable', 'LibTrigger',
+    ]);
+  });
+
+  it('caps at MAX_CHAIN_DEPTH marked components, innermost kept, and takes the innermost file', () => {
+    const D = mark(function D(): ReactElement { return <button>x</button>; }, 'D', 'src/D.tsx');
+    const C = mark(function C(): ReactElement { return <D />; }, 'C', 'src/C.tsx');
+    const B = mark(function B(): ReactElement { return <C />; }, 'B', 'src/B.tsx');
+    const A = mark(function A(): ReactElement { return <B />; }, 'A', 'src/A.tsx');
+    const Top = mark(function Top(): ReactElement { return <A />; }, 'Top', 'src/Top.tsx');
+
+    expect(walk(<Top />)).toEqual({ componentChain: ['A', 'B', 'C', 'D'], sourceFile: 'src/D.tsx' });
+  });
+
+  it('applies NOISE to marked names', () => {
+    const ThemeProvider = mark(function ThemeProvider({ children }: { children: ReactNode }): ReactElement {
+      return <div>{children}</div>;
+    }, 'ThemeProvider');
+    const Save = mark(function Save(): ReactElement { return <button>Save</button>; }, 'Save');
+
+    expect(walk(<ThemeProvider><Save /></ThemeProvider>).componentChain).toEqual(['Save']);
+  });
+
+  it('carries no file when the mark has none, and nothing for an unmarked tree', () => {
+    const Save = mark(function Save(): ReactElement { return <button>Save</button>; }, 'Save');
+    expect(walk(<Save />)).toEqual({ componentChain: ['Save'] });
+    expect(walk(<LibTrigger>x</LibTrigger>)).toEqual({ componentChain: [] });
+    expect(markedComponentChain(null)).toEqual({ componentChain: [] });
+  });
+
+  // A memo without a comparator renders as one fiber whose `type` is the inner function and
+  // whose `elementType` is the memo object. The mark is on the memo object.
+  it('sees a mark on a simple memo, which only fiber.elementType reaches', () => {
+    const Row = mark(memo(() => <button>Row</button>), 'Row', 'src/Row.tsx');
+    expect(walk(<Row />).componentChain).toEqual(['Row']);
+    // Strategy 3 sees nothing there: the inner arrow has no name.
+    expect(componentChain(getFiber(container.querySelector('button')!))).toEqual([]);
+  });
+
+  it('sees a mark on a memo with a comparator, a forwardRef, and memo(forwardRef), once each', () => {
+    const Compared = mark(memo(() => <button>a</button>, () => false), 'Compared');
+    const Forwarded = mark(forwardRef<HTMLButtonElement>((_p, ref) => <button ref={ref}>b</button>), 'Forwarded');
+    const Both = mark(memo(forwardRef<HTMLButtonElement>((_p, ref) => <button ref={ref}>c</button>)), 'Both');
+
+    expect(walk(<Compared />).componentChain).toEqual(['Compared']);
+    expect(walk(<Forwarded />).componentChain).toEqual(['Forwarded']);
+    expect(walk(<Both />).componentChain).toEqual(['Both']);
+  });
+
+  // `memo(Inner)` where Inner is its own declaration: the binding the plugin marks is Inner.
+  // With a comparator that is two fibers resolving to Inner, counted twice as strategy 3 does.
+  it('unwraps memo to a separately marked component as componentChain does, duplicate included', () => {
+    const Inner = mark(function Inner(): ReactElement { return <button>i</button>; }, 'Inner');
+    const Simple = memo(Inner);
+    const Compared = memo(Inner, () => false);
+
+    expect(walk(<Simple />).componentChain).toEqual(['Inner']);
+    expect(walk(<Compared />).componentChain).toEqual(['Inner', 'Inner']);
+    expect(componentChain(getFiber(container.querySelector('button')!))).toEqual(['Inner', 'Inner']);
+  });
+
+  it('reads a class component’s own mark, never one inherited from its superclass', () => {
+    class Base extends Component { override render(): ReactNode { return <button>base</button>; } }
+    mark(Base, 'Base');
+    class Derived extends Base {}
+
+    expect(walk(<Base />).componentChain).toEqual(['Base']);
+    expect(walk(<Derived />).componentChain).toEqual([]);
+  });
+
+  it('ignores a malformed mark rather than inventing a name', () => {
+    const Bad = function Bad(): ReactElement { return <button>x</button>; };
+    (Bad as unknown as Record<string, unknown>)[MARK_PROPERTY] = { name: '' };
+    const Worse = function Worse(): ReactElement { return <Bad />; };
+    (Worse as unknown as Record<string, unknown>)[MARK_PROPERTY] = 'Worse';
+
+    expect(walk(<Worse />).componentChain).toEqual([]);
+  });
+
+  // The reason marks exist: names in a production build are mangled, the marks are not.
+  it('reads marks, not names, so minified components keep their identity', () => {
+    const t = mark(function t(): ReactElement { return <button>Save</button>; }, 'SaveButton');
+    const e = mark(function e(): ReactElement { return <form>{h(t)}</form>; }, 'SettingsForm');
+    const h = (c: () => ReactElement): ReactElement => { const C = c; return <C />; };
+
+    expect(walk(h(e)).componentChain).toEqual(['SettingsForm', 'SaveButton']);
+  });
+
+  it('composes through describeElement exactly as the default walk does', () => {
+    const Save = mark(function Save(): ReactElement { return <button>Save</button>; }, 'Save', 'src/Save.tsx');
+    const App = mark(function App(): ReactElement { return <main><Save /></main>; }, 'App', 'src/App.tsx');
+    act(() => root.render(<App />));
+    const button = container.querySelector('button')!;
+
+    expect(describeElement(button, undefined, markedFiberWalk)).toEqual({
+      fingerprint: 'App>Save@src/Save.tsx|button|"Save"',
+      componentChain: ['App', 'Save'],
+      role: 'button',
+      accessibleName: 'Save',
+      sourceFile: 'src/Save.tsx',
+    });
+    // fingerprint() itself never reads marks: strategy 6 is a candidate, not the default.
+    expect(fingerprint(button)).toBe('App>Save|button|"Save"');
+  });
+
+  it('still lets data-telemetry-id win', () => {
+    const Save = mark(function Save(): ReactElement { return <button data-telemetry-id="save">Save</button>; }, 'Save');
+    act(() => root.render(<Save />));
+
+    expect(describeElement(container.querySelector('button')!, undefined, markedFiberWalk).fingerprint).toBe('id:save');
   });
 });

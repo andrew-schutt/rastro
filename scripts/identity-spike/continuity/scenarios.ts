@@ -13,11 +13,18 @@
 //   save                … > ProfilePanel > ProfileForm > Toolbar > SaveButton (6: capped at 4)
 //   cancel              … > ProfilePanel > ProfileForm > Toolbar > CancelButton
 //   pref-dark           Switch, inside Row, inside PreferenceRow — which writes no host element
+//   pick-theme          rendered by vendor/picker.tsx's PickerTrigger, inside Picker, inside
+//                       ThemePicker — which composes only that library, so writes no host element
 //
 // The two baselines read none of that. `role+name` sees only role and accessible name, so it
 // moves only when a name does. `selector-path` sees the host-element path to <body> with
 // classes and sibling position, so it moves when markup does, whatever the components are
 // called. Their expectations were written before their first run, like the rest.
+//
+// `marked-fiber` (strategy 6) walks the fiber tree like `fiber`, but counts only components
+// the plugin marked: everything in src/, including the composers stamping cannot see, and
+// nothing in vendor/. Its file is the innermost counted component's, like `attribute+file`.
+// Its expectations, and pick-theme's under every strategy, were also written before their run.
 import type { Files, Strategy } from './harness.js';
 
 export interface Scenario {
@@ -51,9 +58,10 @@ const everywhere = (elements: string[]): Record<Strategy, string[]> => ({
   fiber: elements,
   'role+name': elements,
   'selector-path': elements,
+  'marked-fiber': elements,
 });
 
-const ALL = ['cancel', 'email', 'nav-help', 'nav-home', 'page-docs', 'pref-dark', 'save'];
+const ALL = ['cancel', 'email', 'nav-help', 'nav-home', 'page-docs', 'pick-theme', 'pref-dark', 'save'];
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -101,16 +109,21 @@ export const SCENARIOS: Scenario[] = [
     }),
     changes: {
       // DOM walk: pref-dark's stamps are Switch, Row, SettingsPage, App, so Layout enters its
-      // four. save and cancel already fill four below ProfilePanel.
-      'attribute+file': ['email', 'page-docs', 'pref-dark'],
-      attribute: ['email', 'page-docs', 'pref-dark'],
+      // four. save and cancel already fill four below ProfilePanel. pick-theme's only stamps
+      // are SettingsPage and App, so Layout enters too.
+      'attribute+file': ['email', 'page-docs', 'pick-theme', 'pref-dark'],
+      attribute: ['email', 'page-docs', 'pick-theme', 'pref-dark'],
       // Fiber walk: pref-dark's four are Switch, Row, PreferenceRow, SettingsPage. The fiber
-      // tree sees PreferenceRow, which the DOM cannot, so the cap keeps Layout out.
+      // tree sees PreferenceRow, which the DOM cannot, so the cap keeps Layout out. pick-theme's
+      // four are PickerTrigger, Picker, ThemePicker, SettingsPage: the library fills the window.
       fiber: ['email', 'page-docs'],
       'role+name': [],
       // A new <div class="layout"> sits above <section>, so everything SettingsPage renders
       // gets a new ancestor. The nav links are beside it, and keep their path.
-      'selector-path': ['cancel', 'email', 'page-docs', 'pref-dark', 'save'],
+      'selector-path': ['cancel', 'email', 'page-docs', 'pick-theme', 'pref-dark', 'save'],
+      // Marked walk: as the fiber walk for the seven original elements, since every component
+      // they pass is marked. pick-theme counts only ThemePicker, SettingsPage, App, so Layout enters.
+      'marked-fiber': ['email', 'page-docs', 'pick-theme'],
     },
   },
   {
@@ -127,7 +140,8 @@ export const SCENARIOS: Scenario[] = [
       replace(f, 'src/settings/ProfilePanel.tsx', "import { Toolbar } from './Toolbar.js';", "import { ActionBar } from './Toolbar.js';");
       replace(f, 'src/settings/ProfilePanel.tsx', '<Toolbar />', '<ActionBar />');
     }),
-    // No markup changes: neither baseline reads a component name.
+    // No markup changes: neither baseline reads a component name. The marked walk reads the
+    // renamed Toolbar's new mark.
     changes: { ...everywhere(['cancel', 'save']), 'role+name': [], 'selector-path': [] },
   },
   {
@@ -140,7 +154,8 @@ export const SCENARIOS: Scenario[] = [
       f.set('src/settings/SaveButton.tsx', source);
       replace(f, 'src/settings/Toolbar.tsx', "from '../ui/SaveButton.js'", "from './SaveButton.js'");
     }),
-    changes: { ...everywhere([]), 'attribute+file': ['save'] },
+    // The two strategies with a file: SaveButton is save's innermost component in both.
+    changes: { ...everywhere([]), 'attribute+file': ['save'], 'marked-fiber': ['save'] },
   },
   {
     name: 'tooltip-wrap',
@@ -172,6 +187,21 @@ export const SCENARIOS: Scenario[] = [
       replace(f, 'src/settings/SettingsPage.tsx', "import { PreferenceRow } from './PreferenceRow.js';", "import { SettingRow } from './PreferenceRow.js';");
       replace(f, 'src/settings/SettingsPage.tsx', '<PreferenceRow ', '<SettingRow ');
     }),
-    changes: { ...everywhere([]), fiber: ['pref-dark'] },
+    // The marked walk sees the composer too: the plugin marks every component it names,
+    // including those that write no host element. This is what separates 6 from 4 and 5.
+    changes: { ...everywhere([]), fiber: ['pref-dark'], 'marked-fiber': ['pref-dark'] },
+  },
+  {
+    name: 'library-upgrade',
+    description:
+      'A dependency upgrade renames a component inside vendor/picker.tsx. Only the unmarked ' +
+      'fiber walk reads library names; every other strategy is blind to the library.',
+    edit: edit((f) => {
+      replace(f, 'vendor/picker.tsx', 'return <PickerTrigger ', 'return <PickerButton ');
+      replace(f, 'vendor/picker.tsx', 'function PickerTrigger(', 'function PickerButton(');
+    }),
+    // This is churn on a component nobody in the app touched, which rule 2 requires to be zero.
+    // It is what separates 6 from 3.
+    changes: { ...everywhere([]), fiber: ['pick-theme'] },
   },
 ];

@@ -31,6 +31,15 @@ export const COMPONENT_ATTRIBUTE = 'data-rastro-component';
  */
 export const SOURCE_FILE_ATTRIBUTE = 'data-rastro-source-file';
 
+/**
+ * The property `markComponents` attaches a component's `{ name, file }` mark under. Read by
+ * `markedComponentChain` in `rastro-core`.
+ *
+ * ⚠ Duplicated from `rastro-core`'s `MARK_PROPERTY`, as `COMPONENT_ATTRIBUTE` is. The two
+ * MUST agree.
+ */
+export const MARK_PROPERTY = '__rastroMark';
+
 /** Only these are transformed. Annotating a `.ts` file's JSX-free source is pure overhead. */
 const JSX_EXTENSIONS = /\.[jt]sx$/;
 
@@ -53,6 +62,14 @@ export interface RastroPluginOptions {
    * identity set per directory somebody happened to run the build from.
    */
   root?: string;
+  /**
+   * Also attach `{ name, file }` to every component the plugin names, for the marked fiber
+   * walk (docs/VALIDATION-PLAN.md §3.2, strategy 6). Default `false`.
+   *
+   * ⚠ For the §3.2 measurement only. Nothing in Rastro reads marks unless asked to, and the
+   * marked walk is a candidate, not the default. `file` follows `includeSourceFile`.
+   */
+  markComponents?: boolean;
 }
 
 /**
@@ -155,6 +172,12 @@ function boundName(path: NodePath): string | null {
   return null;
 }
 
+/** A component the plugin names, and the function or class that defines it. */
+interface Owner {
+  name: string;
+  path: NodePath;
+}
+
 /**
  * The nearest enclosing component, by name.
  *
@@ -162,18 +185,40 @@ function boundName(path: NodePath): string | null {
  * Anonymous functions and lowercase helpers are transparent — the search continues past them,
  * so JSX inside a `renderRow()` helper is attributed to the component that owns it.
  */
-function owningComponent(path: NodePath<BabelTypes.JSXOpeningElement>): string | null {
+function owningComponent(path: NodePath): Owner | null {
   let current: NodePath | null = path.parentPath;
 
   while (current !== null) {
     if (isFunctionOrClass(current.node)) {
       const name = boundName(current);
-      if (name !== null && isComponentName(name)) return name;
+      if (name !== null && isComponentName(name)) return { name, path: current };
     }
     current = current.parentPath;
   }
 
   return null;
+}
+
+/**
+ * The statement that declares a component's binding, which its mark is inserted after: the
+ * declaration itself, or the `const` whose declarator `boundName` climbed to. Null when the
+ * binding is not declared by a statement in a block or the program, where a following
+ * statement could not see it.
+ */
+function declaringStatement(owner: Owner): NodePath | null {
+  const node = owner.path.node;
+  if (node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration') return owner.path;
+
+  let current: NodePath | null = owner.path.parentPath;
+  while (current !== null && current.isCallExpression()) current = current.parentPath;
+  const declaration = current?.parentPath ?? null;
+  if (declaration === null || !declaration.isVariableDeclaration()) return null;
+
+  const container = declaration.parentPath;
+  const ok =
+    container !== null &&
+    (container.isProgram() || container.isBlockStatement() || container.isExportNamedDeclaration());
+  return ok ? declaration : null;
 }
 
 /**
@@ -216,12 +261,11 @@ export default function rastroComponentAnnotate(babel: {
       componentAttribute = COMPONENT_ATTRIBUTE,
       sourceFileAttribute = SOURCE_FILE_ATTRIBUTE,
       includeSourceFile = true,
-      root: configuredRoot,
     } = state.opts;
 
     if (hasAttribute(path.node, componentAttribute)) return;
 
-    const component = owningComponent(path);
+    const component = owningComponent(path)?.name ?? null;
     if (component === null) return; // JSX outside any component — nothing meaningful to say
 
     // Appended, so an explicit attribute or a later spread still wins by source order.
@@ -237,8 +281,58 @@ export default function rastroComponentAnnotate(babel: {
       // The `root` option first, because Babel's own `root` is only pinned to the extent
       // the toolchain pins it — it defaults to `cwd`, and outside Vite (where the root has
       // to be wherever `index.html` is) nothing anchors it to the project.
-      const file = sourceFilePath(configuredRoot ?? state.file.opts.root ?? state.cwd, filename);
+      const file = stampedFile(state);
       if (file !== null) path.node.attributes.push(attribute(sourceFileAttribute, file));
+    }
+  };
+
+  const stampedFile = (state: RastroPluginPass): string | null =>
+    state.filename === undefined
+      ? null
+      : sourceFilePath(state.opts.root ?? state.file.opts.root ?? state.cwd, state.filename);
+
+  /**
+   * `markComponents`: one `Name.__rastroMark = { name, file }` statement after each named
+   * component's declaration, like a `displayName` assignment.
+   *
+   * Marked are the components that own JSX of any kind, not only host elements. A component
+   * that only composes others, which stamping cannot see, is exactly the one the marked walk
+   * exists to see.
+   *
+   * The mark goes on the binding the developer named, so for `memo(...)` and `forwardRef(...)`
+   * it is on the wrapper object. `rastro-core` reads it from there (see its `markOf`). The
+   * function itself is left syntactically untouched, so the React Compiler and Fast Refresh
+   * still recognise it as a component.
+   */
+  const mark = (program: NodePath<BabelTypes.Program>, state: RastroPluginPass): void => {
+    if (state.opts.markComponents !== true) return;
+    const filename = state.filename;
+    if (filename === undefined || !JSX_EXTENSIONS.test(filename)) return;
+
+    const owners = new Map<BabelTypes.Node, Owner>();
+    const collect = (path: NodePath): void => {
+      const owner = owningComponent(path);
+      if (owner !== null) owners.set(owner.path.node, owner);
+    };
+    program.traverse({ JSXElement: collect, JSXFragment: collect });
+
+    const file = state.opts.includeSourceFile === false ? null : stampedFile(state);
+    for (const owner of owners.values()) {
+      const statement = declaringStatement(owner);
+      if (statement === null) continue;
+      const value = t.objectExpression([
+        t.objectProperty(t.identifier('name'), t.stringLiteral(owner.name)),
+        ...(file === null ? [] : [t.objectProperty(t.identifier('file'), t.stringLiteral(file))]),
+      ]);
+      statement.insertAfter(
+        t.expressionStatement(
+          t.assignmentExpression(
+            '=',
+            t.memberExpression(t.identifier(owner.name), t.identifier(MARK_PROPERTY)),
+            value,
+          ),
+        ),
+      );
     }
   };
 
@@ -259,6 +353,9 @@ export default function rastroComponentAnnotate(babel: {
       // (or pass the compiler as a preset). Listed after it, nothing here can recover.
       Program: {
         enter(program, state) {
+          // Marks are read off the same lexical structure, so they are placed in the same
+          // pass, before the compiler moves anything.
+          mark(program, state);
           program.traverse({ JSXOpeningElement: (path) => stamp(path, state) });
         },
       },

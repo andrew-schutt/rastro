@@ -2,7 +2,7 @@
 // Compile a variant of the base app in memory and render it, under one identity strategy.
 //
 // A variant is a map of repo-relative path → source. It is compiled with Babel: rastro's
-// plugin first (for the attribute strategies), then TypeScript and the automatic JSX runtime,
+// plugin first (for the attribute and marked strategies), then TypeScript and the automatic JSX runtime,
 // then CommonJS, so a ten-line loader can link it. Babel and not a bundler, because esbuild's
 // JS API fails inside jsdom test environments, and because Babel leaves every function its
 // written name, which is what the fiber walk reads (a dev build, in effect).
@@ -12,31 +12,46 @@ import { join, posix } from 'node:path';
 import { transformSync, type PluginItem } from '@babel/core';
 import rastroPlugin from 'babel-plugin-rastro';
 import { act, type ComponentType } from 'react';
+import * as compilerRuntime from 'react/compiler-runtime';
 import * as jsxRuntime from 'react/jsx-runtime';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
-import { fingerprint, resetAnnotationProbe } from 'rastro-core';
+import { defaultRedactor, describeElement, fingerprint, markedFiberWalk, resetAnnotationProbe } from 'rastro-core';
 import { roleNameFingerprint, selectorPathFingerprint } from '../src/baselines.js';
 import { snapshotDocument, type SnapshotEntry } from '../src/continuity.js';
 
 /**
- * §3.2 rule 1's strategies, all but the marked fiber walk (6), which joins when it is built.
- * The first three are rastro-core's own `fingerprint()`; the two baselines are in
- * `src/baselines.ts`. Appended in this order so the existing three keep their place in every
- * committed snapshot.
+ * All six of §3.2 rule 1's strategies. The first three are rastro-core's own
+ * `fingerprint()`, the two baselines are in `src/baselines.ts`, and the marked fiber walk is
+ * core's `markedFiberWalk` composed by `describeElement`. Each was appended, so earlier ones
+ * keep their place in every committed snapshot.
  */
-export const STRATEGIES = ['attribute+file', 'attribute', 'fiber', 'role+name', 'selector-path'] as const;
+export const STRATEGIES = [
+  'attribute+file',
+  'attribute',
+  'fiber',
+  'role+name',
+  'selector-path',
+  'marked-fiber',
+] as const;
 export type Strategy = (typeof STRATEGIES)[number];
 
-/** Which build each strategy reads: with the plugin's stamps, and with or without the file. */
-const PLUGIN: Record<Strategy, { includeSourceFile: boolean } | null> = {
+/** Which build each strategy reads: the plugin's options for it, or null for no plugin. */
+const PLUGIN: Record<Strategy, { includeSourceFile: boolean; markComponents?: boolean } | null> = {
   'attribute+file': { includeSourceFile: true },
   attribute: { includeSourceFile: false },
   fiber: null,
   // The baselines read no stamp, and an app using either would not have the plugin.
   'role+name': null,
   'selector-path': null,
+  'marked-fiber': { includeSourceFile: true, markComponents: true },
 };
+
+/**
+ * Third-party code. A real build never runs the plugin over node_modules, so files here are
+ * compiled without it under every strategy.
+ */
+const VENDOR = 'vendor/';
 
 const FINGERPRINT: Record<Strategy, (element: Element) => string> = {
   'attribute+file': (element) => fingerprint(element),
@@ -44,6 +59,7 @@ const FINGERPRINT: Record<Strategy, (element: Element) => string> = {
   fiber: (element) => fingerprint(element),
   'role+name': (element) => roleNameFingerprint(element),
   'selector-path': (element) => selectorPathFingerprint(element),
+  'marked-fiber': (element) => describeElement(element, defaultRedactor, markedFiberWalk).fingerprint,
 };
 
 export type Files = ReadonlyMap<string, string>;
@@ -55,7 +71,7 @@ const APP_ROOT = join(import.meta.dirname, 'app');
 /** Where compiled files pretend to live. Stamped paths are relative to it: `src/App.tsx`. */
 const VIRTUAL_ROOT = '/app';
 
-/** The base app's sources, keyed `src/...`. */
+/** The base app's sources, keyed `src/...` and `vendor/...`. */
 export function loadBaseApp(): Map<string, string> {
   const files = new Map<string, string>();
   const walk = (dir: string): void => {
@@ -66,6 +82,7 @@ export function loadBaseApp(): Map<string, string> {
     }
   };
   walk('src');
+  walk('vendor');
   return files;
 }
 
@@ -76,16 +93,24 @@ const jsxPlugin = require('@babel/plugin-transform-react-jsx') as PluginItem;
 const commonjsPlugin = require('@babel/plugin-transform-modules-commonjs') as PluginItem;
 const typescriptPreset = require('@babel/preset-typescript') as PluginItem;
 
-function compile(path: string, source: string, strategy: Strategy): string {
-  const plugin = PLUGIN[strategy];
-  const rastro: PluginItem[] =
-    plugin === null ? [] : [[rastroPlugin, { root: VIRTUAL_ROOT, includeSourceFile: plugin.includeSourceFile }]];
+const reactCompiler = require('babel-plugin-react-compiler') as PluginItem;
+
+export interface LoadOptions {
+  /** Run the React Compiler after rastro's plugin, in the order its README documents. */
+  reactCompiler?: boolean;
+}
+
+/** One file, as the harness compiles it under `strategy`. Exported for tests of the build itself. */
+export function compile(path: string, source: string, strategy: Strategy, options: LoadOptions = {}): string {
+  const plugin = path.startsWith(VENDOR) ? null : PLUGIN[strategy];
+  const rastro: PluginItem[] = plugin === null ? [] : [[rastroPlugin, { root: VIRTUAL_ROOT, ...plugin }]];
+  const compiler: PluginItem[] = options.reactCompiler === true ? [[reactCompiler, { target: '19' }]] : [];
   const result = transformSync(source, {
     filename: posix.join(VIRTUAL_ROOT, path),
     cwd: VIRTUAL_ROOT,
     babelrc: false,
     configFile: false,
-    plugins: [...rastro, [jsxPlugin, { runtime: 'automatic' }], commonjsPlugin],
+    plugins: [...rastro, ...compiler, [jsxPlugin, { runtime: 'automatic' }], commonjsPlugin],
     presets: [[typescriptPreset, { isTSX: true, allExtensions: true }]],
   });
   if (result?.code == null) throw new Error(`Babel produced nothing for ${path}`);
@@ -99,10 +124,14 @@ function resolveImport(files: Files, from: string, specifier: string): string {
   throw new Error(`cannot resolve ${specifier} from ${from}`);
 }
 
-const EXTERNALS: Record<string, unknown> = { react: React, 'react/jsx-runtime': jsxRuntime };
+const EXTERNALS: Record<string, unknown> = {
+  react: React,
+  'react/jsx-runtime': jsxRuntime,
+  'react/compiler-runtime': compilerRuntime,
+};
 
 /** Compile and link a variant, returning `src/App.tsx`'s `App`. */
-export function loadApp(files: Files, strategy: Strategy): ComponentType {
+export function loadApp(files: Files, strategy: Strategy, options: LoadOptions = {}): ComponentType {
   const modules = new Map<string, { exports: Record<string, unknown> }>();
   const load = (path: string): Record<string, unknown> => {
     const cached = modules.get(path);
@@ -114,7 +143,7 @@ export function loadApp(files: Files, strategy: Strategy): ComponentType {
     const requireIn = (specifier: string): unknown =>
       specifier.startsWith('.') ? load(resolveImport(files, path, specifier)) : EXTERNALS[specifier];
     // eslint-disable-next-line @typescript-eslint/no-implied-eval -- the loader's whole job
-    const run = new Function('require', 'module', 'exports', compile(path, source, strategy)) as (
+    const run = new Function('require', 'module', 'exports', compile(path, source, strategy, options)) as (
       require: (specifier: string) => unknown,
       module: { exports: Record<string, unknown> },
       exports: Record<string, unknown>,

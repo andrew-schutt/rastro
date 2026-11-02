@@ -18,6 +18,7 @@
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "babel-plugin-rastro": "workspace:*",
+    "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^26.1.0",
     "rastro-core": "workspace:*",
     "react": "^19.1.1",

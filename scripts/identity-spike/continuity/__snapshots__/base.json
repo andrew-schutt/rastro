@@ -27,6 +27,10 @@
     {
       "element": "pref-dark",
       "fingerprint": "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+    },
+    {
+      "element": "pick-theme",
+      "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|button:button|\"Theme\""
     }
   ],
   "attribute": [
@@ -57,6 +61,10 @@
     {
       "element": "pref-dark",
       "fingerprint": "App>SettingsPage>Row>Switch|switch|\"Dark mode\""
+    },
+    {
+      "element": "pick-theme",
+      "fingerprint": "App>SettingsPage|button:button|\"Theme\""
     }
   ],
   "fiber": [
@@ -87,6 +95,10 @@
     {
       "element": "pref-dark",
       "fingerprint": "SettingsPage>PreferenceRow>Row>Switch|switch|\"Dark mode\""
+    },
+    {
+      "element": "pick-theme",
+      "fingerprint": "SettingsPage>ThemePicker>Picker>PickerTrigger|button:button|\"Theme\""
     }
   ],
   "role+name": [
@@ -117,6 +129,10 @@
     {
       "element": "pref-dark",
       "fingerprint": "switch|\"Dark mode\""
+    },
+    {
+      "element": "pick-theme",
+      "fingerprint": "button:button|\"Theme\""
     }
   ],
   "selector-path": [
@@ -147,6 +163,44 @@
     {
       "element": "pref-dark",
       "fingerprint": "button:nth-child=\"1\"nth-of-type=\"1\";div.row:nth-child=\"4\"nth-of-type=\"2\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|switch|\"Dark mode\""
+    },
+    {
+      "element": "pick-theme",
+      "fingerprint": "button:nth-child=\"5\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Theme\""
+    }
+  ],
+  "marked-fiber": [
+    {
+      "element": "nav-home",
+      "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Home\""
+    },
+    {
+      "element": "nav-help",
+      "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Help\""
+    },
+    {
+      "element": "page-docs",
+      "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\""
+    },
+    {
+      "element": "email",
+      "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\""
+    },
+    {
+      "element": "save",
+      "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
+    },
+    {
+      "element": "cancel",
+      "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
+    },
+    {
+      "element": "pref-dark",
+      "fingerprint": "SettingsPage>PreferenceRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+    },
+    {
+      "element": "pick-theme",
+      "fingerprint": "App>SettingsPage>ThemePicker@src/settings/ThemePicker.tsx|button:button|\"Theme\""
     }
   ]
 }

@@ -330,6 +330,9 @@ importers:
       babel-plugin-rastro:
         specifier: workspace:*
         version: link:../../packages/babel-plugin
+      babel-plugin-react-compiler:
+        specifier: ^1.0.0
+        version: 1.0.0
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0

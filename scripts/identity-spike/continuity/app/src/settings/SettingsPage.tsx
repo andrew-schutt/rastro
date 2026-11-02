@@ -1,5 +1,6 @@
 import { PreferenceRow } from './PreferenceRow.js';
 import { ProfilePanel } from './ProfilePanel.js';
+import { ThemePicker } from './ThemePicker.js';
 
 export function SettingsPage() {
   return (
@@ -10,6 +11,7 @@ export function SettingsPage() {
       </a>
       <ProfilePanel />
       <PreferenceRow label="Dark mode" el="pref-dark" />
+      <ThemePicker />
     </section>
   );
 }

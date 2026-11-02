@@ -1,0 +1,323 @@
+{
+  "scenario": "library-upgrade",
+  "description": "A dependency upgrade renames a component inside vendor/picker.tsx. Only the unmarked fiber walk reads library names; every other strategy is blind to the library.",
+  "strategies": {
+    "attribute+file": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "App>NavBar@src/NavBar.tsx|a|\"Help\"",
+          "App>NavBar@src/NavBar.tsx|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\"",
+          "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\"",
+          "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\"",
+          "App>SettingsPage@src/settings/SettingsPage.tsx|button:button|\"Theme\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\"",
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|button:button|\"Theme\""
+        }
+      ]
+    },
+    "attribute": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "App>NavBar|a|\"Help\"",
+          "App>NavBar|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\"",
+          "App>SettingsPage>Row>Switch|switch|\"Dark mode\"",
+          "App>SettingsPage|a|\"Docs\"",
+          "App>SettingsPage|button:button|\"Theme\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\"",
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "App>SettingsPage>Row>Switch|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "App>SettingsPage|button:button|\"Theme\""
+        }
+      ]
+    },
+    "fiber": {
+      "changed": [
+        "pick-theme"
+      ],
+      "diff": {
+        "kept": [
+          "App>NavBar|a|\"Help\"",
+          "App>NavBar|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\"",
+          "App>SettingsPage|a|\"Docs\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\"",
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\"",
+          "SettingsPage>PreferenceRow>Row>Switch|switch|\"Dark mode\""
+        ],
+        "vanished": [
+          "SettingsPage>ThemePicker>Picker>PickerTrigger|button:button|\"Theme\""
+        ],
+        "appeared": [
+          "SettingsPage>ThemePicker>Picker>PickerButton|button:button|\"Theme\""
+        ],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "SettingsPage>PreferenceRow>Row>Switch|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "SettingsPage>ThemePicker>Picker>PickerButton|button:button|\"Theme\""
+        }
+      ]
+    },
+    "role+name": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "a|\"Docs\"",
+          "a|\"Help\"",
+          "a|\"Home\"",
+          "button:button|\"Cancel\"",
+          "button:button|\"Save\"",
+          "button:button|\"Theme\"",
+          "input:email|\"Email\"",
+          "switch|\"Dark mode\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "button:button|\"Theme\""
+        }
+      ]
+    },
+    "selector-path": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "a:nth-child=\"1\"nth-of-type=\"1\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Home\"",
+          "a:nth-child=\"2\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Docs\"",
+          "a:nth-child=\"2\"nth-of-type=\"2\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Help\"",
+          "button:nth-child=\"1\"nth-of-type=\"1\";div.row:nth-child=\"4\"nth-of-type=\"2\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|switch|\"Dark mode\"",
+          "button:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Save\"",
+          "button:nth-child=\"2\"nth-of-type=\"2\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Cancel\"",
+          "button:nth-child=\"5\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Theme\"",
+          "input:nth-child=\"1\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|input:email|\"Email\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "a:nth-child=\"1\"nth-of-type=\"1\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "a:nth-child=\"2\"nth-of-type=\"2\";nav:nth-child=\"1\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "a:nth-child=\"2\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "input:nth-child=\"1\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "button:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "button:nth-child=\"2\"nth-of-type=\"2\";div:nth-child=\"2\"nth-of-type=\"1\";form:nth-child=\"1\"nth-of-type=\"1\";div.panel:nth-child=\"3\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "button:nth-child=\"1\"nth-of-type=\"1\";div.row:nth-child=\"4\"nth-of-type=\"2\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "button:nth-child=\"5\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Theme\""
+        }
+      ]
+    },
+    "marked-fiber": {
+      "changed": [],
+      "diff": {
+        "kept": [
+          "App>NavBar@src/NavBar.tsx|a|\"Help\"",
+          "App>NavBar@src/NavBar.tsx|a|\"Home\"",
+          "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\"",
+          "App>SettingsPage>ThemePicker@src/settings/ThemePicker.tsx|button:button|\"Theme\"",
+          "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\"",
+          "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\"",
+          "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\"",
+          "SettingsPage>PreferenceRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        ],
+        "vanished": [],
+        "appeared": [],
+        "countChanged": []
+      },
+      "after": [
+        {
+          "element": "nav-home",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Home\""
+        },
+        {
+          "element": "nav-help",
+          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Help\""
+        },
+        {
+          "element": "page-docs",
+          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\""
+        },
+        {
+          "element": "email",
+          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\""
+        },
+        {
+          "element": "save",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
+        },
+        {
+          "element": "cancel",
+          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
+        },
+        {
+          "element": "pref-dark",
+          "fingerprint": "SettingsPage>PreferenceRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
+        },
+        {
+          "element": "pick-theme",
+          "fingerprint": "App>SettingsPage>ThemePicker@src/settings/ThemePicker.tsx|button:button|\"Theme\""
+        }
+      ]
+    }
+  }
+}
