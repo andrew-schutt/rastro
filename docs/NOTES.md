@@ -236,7 +236,7 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 **The collision referee uses React's `key`, which is the opposite of an identity.** §3.2
 cannot produce a collision number until something decides whether two elements sharing a
 fingerprint are a right merge (50 rows of one list) or a false one (two separately-written
-buttons). `scripts/identity-spike/repeat-oracle.ts` rules on that: React stamps every array
+buttons). `scripts/identity-spike/src/repeat-oracle.ts` rules on that: React stamps every array
 child's fiber with the developer's key, so two elements are repeats of one another exactly
 when they hang off two *different* keyed items of the *same* list.
 
@@ -702,6 +702,9 @@ Verified: replaying a batch stores nothing new.
   **The remaining exposure is Next.js**, which compiles with SWC and has no plugin yet, and
   any app that installs the SDK without its build step. Asserted in
   `fingerprint.dom.test.tsx` and `babel-plugin/src/minification.test.ts`.
+  **Since 2026-11-02 the fallback is documented as a development diagnostic only,** and
+  §3.2 rule 1 pre-registers its removal: it stays only if, with mangling on, it beats role +
+  accessible name alone on both corpus apps.
   **"Gone" holds for minification, not for identity.** In design-system apps the stamped chain
   survives minification and still carries little: it degenerates to the primitive (`View`) or
   to nothing. This is in the reopened attribute decision above, from samples of both corpus

@@ -24,7 +24,7 @@ corpus is for (`docs/VALIDATION-PLAN.md`). What it can say, on an app whose answ
    whose fingerprint it must change under each strategy. Every other element must not change.
    The expectations were written from the rules before the first run, and each says why.
 3. `harness.ts` compiles a variant in memory with Babel (`babel-plugin-rastro` first for the
-   attribute strategies), renders it with real React in jsdom, and fingerprints every
+   attribute strategies and, with `markComponents`, the marked fiber walk), renders it with real React in jsdom, and fingerprints every
    interactive element with `rastro-core`.
 4. `continuity.test.ts` checks each scenario's changed elements against its expectations,
    checks that the fingerprint-only diff (all the corpus will have) agrees with that, and

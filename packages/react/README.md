@@ -54,8 +54,13 @@ Element identity is anchored on the **React component chain**, and a production 
 `SaveButton` to `t`. Minifiers reuse short names per module, so unrelated components collapse
 into a single identity — quietly, with no error, corrupting every count downstream.
 
-**Until the build-time plugin ships, this is reliable in development and not in a minified
-production build.** That is a real constraint, not a caveat to skim; see
+**Install [`babel-plugin-rastro`](https://github.com/andrew-schutt/rastro/tree/main/packages/babel-plugin).**
+It stamps component names into the DOM at build time, where a minifier cannot reach them.
+Without it, identity falls back to reading React's internals, which is a development
+diagnostic, not a production feature: it breaks under minification, picks up library
+internals, and misses components written `memo(() => …)`. That is a real constraint, not a
+caveat to skim; see the
+[root README](https://github.com/andrew-schutt/rastro#readme) and
 [§4.2.1 and §4.3 of the plan](https://github.com/andrew-schutt/rastro/blob/main/docs/DESIGN.md).
 
 ## What it emits

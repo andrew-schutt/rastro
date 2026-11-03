@@ -30,7 +30,7 @@ emitted as OpenTelemetry Events. Open source, pre-alpha, one maintainer.
 intended; NOTES records what shipped, every deviation and why. Where they disagree about the
 code, NOTES is right. Trust it over your own reading of the design, and over assumptions.
 
-## State, as of 2026-11-01
+## State, as of 2026-11-02
 
 **Active again since 2026-10-29, on §3.2 (the identity spike).** Work had paused on
 2026-09-02.
@@ -44,16 +44,19 @@ number for the fingerprint has been measured yet. That asymmetry is the whole po
 before planning anything: it is why the restart point is §3.2, which never needed anyone's
 permission, and not §3.1. Recruiting a host is the maintainer's to do, not a code task.
 
-**§3.2 is being built as measuring tooling, with every rule fixed before the corpus runs.**
-What exists and what is still to build is listed in `scripts/identity-spike/README.md`.
-The corpus is two third-party apps, built by hand and never in CI. Samples of both, taken
+**§3.2's measuring tooling is built, and its inputs are pre-registered. The corpus runner is
+next.** All six of rule 1's strategies exist and run in the continuity smoke test, and so do
+rule 4's three proposers. The corpus is two third-party apps, built by hand and never in CI.
+Its commits, screens, run conditions and rule 3 flows are fixed in `docs/CORPUS.md`. What is
+still to build is listed in `scripts/identity-spike/README.md`. Samples of both apps, taken
 before any run, already show the attribute chain carrying little identity in design-system
-apps. That is the "reopened" entry in `docs/NOTES.md`, and why §3.2 rule 1 pre-registers a
-sixth strategy.
+apps. That is the "reopened" entry in `docs/NOTES.md`, and why strategy 6, the marked fiber
+walk, exists.
 
 Identity derives from build-time DOM attributes stamped by `babel-plugin-rastro`, so it
-survives minification; the React fiber walk remains the fallback for apps installed without
-the build step, and is reliable only in dev. Strategy is chosen once per document, never per
+survives minification. The React fiber walk is the fallback for apps installed without
+the build step. It is documented as a development diagnostic only, and §3.2 rule 1 removes it
+unless it beats role + accessible name on the corpus. Strategy is chosen once per document, never per
 element. **Next.js is the open gap.** It compiles with SWC, and that port is the open half of
 §17 #4.
 

@@ -182,7 +182,7 @@ rendered list *correctly* share a fingerprint — that is a right merge, not a f
 distinguish "collides with a semantically distinct element" from "collides with its own
 repeated siblings," or the collision number is meaningless. Settle that definition first.
 
-**Half of it is now settled and built:** `scripts/identity-spike/repeat-oracle.ts` rules on a
+**Half of it is now settled and built:** `scripts/identity-spike/src/repeat-oracle.ts` rules on a
 pair using React's `key`, since React stamps every array child's fiber with the developer's
 key. Two elements are repeats of one another exactly when they hang off two *different* keyed
 items of the *same* list — which also, correctly, calls two controls inside one row distinct
@@ -225,7 +225,7 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
    | 3 | **fiber walk**, unmarked — every named component fiber | shipped, as the fallback for unannotated apps |
    | 4 | **attribute chain**, no file | the build-plugin chain as first proposed ([`PRIOR-ART.md`](PRIOR-ART.md)) |
    | 5 | **attribute chain + file** | shipped, the current default |
-   | 6 | **marked fiber walk** | pre-registered 2026-10-30, defined below |
+   | 6 | **marked fiber walk** | pre-registered 2026-10-30, defined below; built 2026-11-01, unmeasured |
 
    **The marked fiber walk, fixed before it sees the corpus.** The build plugin marks every
    component it would name — the same capitalised-binding rule it already uses, seeing through
@@ -251,6 +251,16 @@ comparative or absolute-zero, so none of them needs a number pulled from nowhere
    `data-*-component` attributes matches or beats the fiber walk, then §4.2.1's biggest
    liability is being carried for convenience rather than capability, and the honest answer is
    to make the build plugin the primary strategy and the fiber walk the zero-config fallback.
+
+   **Whether that fallback stays: pre-registered 2026-11-02, before any corpus number.** The
+   plugin is already primary. Strategy 3 stays as the SDK's fallback for apps without the
+   plugin only if, measured with mangling on, it **beats strategy 1 on both corpus apps**.
+   Otherwise it is removed. An app without the plugin then gets role and accessible name,
+   with the chain part degraded to `unknown`, as it already is when no chain can be derived.
+   Strategy 1 is the bar because it is what removal leaves. A fallback that does not beat it
+   costs React's private internals and buys nothing. The as-shipped numbers, with mangling
+   off, are reported but do not decide this. Strategy 6 reads the same internals, and is
+   decided separately by the paragraph below.
 
    **What decides the default.** Strategy 6 replaces 5 as the default only if it beats 5 *and*
    passes rules 2 and 3 on its own. Beating 5 is not enough by itself, because its costs are not
