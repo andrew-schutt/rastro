@@ -49,7 +49,7 @@ instrumentation in the app:
 |---|---|
 | Click anything interactive | `ux.click` with `ux.interaction.method` |
 | Click a nav button | `ux.route_change` with `ux.from_path` |
-| Focus a field, then submit | `ux.form_submit` with time-to-complete |
+| Focus a field, then submit | `ux.form_submit` with time-to-complete in `ux.form.active_ms` |
 | Focus a field, then click away without submitting | `ux.form_abandon` |
 
 Fingerprints in the table are real derived identities. The demo deliberately leaves
@@ -224,6 +224,17 @@ Driven against a real headless Chrome with genuine mouse and keyboard input, on 
 - three frustrated sessions producing `rage_click` on `id:save-profile` (max 5 clicks) and
   `high_abandonment` on `App>SettingsForm|form` (4 sessions, 100%), ranked in that order by
   sessions affected
+- **conventions 0.4's form timing**, re-driven on 2026-11-03 (real mouse over CDP, dev build,
+  collector on a fresh database). After focusing the email field, typing, then clicking
+  Save: `ux.click` on the field at 815ms, on `id:save-profile` at 2511ms, then
+  `ux.form_submit` with `ux.active_ms` 0 and `ux.form.active_ms` 2515. Focusing the name
+  field and then clicking a nav button 1.2s later gave `ux.form_abandon` with 1207 and 1208,
+  and 1 on the click that caused it. The gaps now sum to the session's active time. Records
+  claim `0.4`.
+
+The 6.5s median on the `input → form` edge above was measured under 0.3, so it was the form's
+time-to-complete, not a dwell. See "Form events carried a duration where every other event
+carries a gap" below.
 
 The hidden-tab rule in `dwell.ts` is unit-tested rather than driven in the browser — there is
 no CDP command to force `document.visibilityState`. Real pointer events are browser-only too:
@@ -654,6 +665,31 @@ submit button blurs the field before `submit` arrives. Keying off the click's ow
 can only ever *end* a form episode, never start one; only focus starts one, because a click
 is not evidence the user began filling anything in.
 
+**Form events carried a duration where every other event carries a gap (fixed in conventions
+0.4).** Through 0.3, `ux.form_submit` and `ux.form_abandon` put time-to-complete in
+`ux.active_ms`, while the spec's own attribute table defines `ux.active_ms` as the dwell before
+the event. Every consumer reads the attribute table's meaning. The graph medians it per edge,
+the timeline sums it into its time axis, and rage detection compares it with a window. So the
+time spent inside a form was counted twice: once in the dwells of the clicks inside it, and
+again on the form event. Under 0.3, the `input → form` edge's "median" was a fill-in duration,
+and a timeline ran longer than the session. Form events now carry the real gap in
+`ux.active_ms`, and time-to-complete moves to `ux.form.active_ms`. Nothing in the analysis
+reads the new attribute yet. It is kept because time-to-complete is the number a designer asks
+about a form. The analysis does not migrate stored 0.3 form records, which is safe only because
+no 0.3 data exists outside development databases. Delete a local `rastro.sqlite` from before
+this change. Found while building a walkthrough of the pipeline, not by a test.
+
+**A missing `ux.active_ms` is unknown, not 0.** `sessionize` used to default it to 0 so that
+`Step` stayed total, and a test pinned that choice. A 0 is a measurement nobody took. It
+pulled edge medians toward zero, drew as an instant on the timeline, and would have let any
+three clicks with no reported timing count as a rage click. `Step.activeMs` and
+`FlowEdge.medianMs` are now optional. The median uses only the traversals that reported a
+dwell, and an edge without any has no median (its label drops the time). Rage detection never
+extends a run with an untimed click. The timeline adds nothing for an untimed step and labels
+its gap `?`, so its total under-counts rather than inventing time. The conventions'
+"Minimum for analysis" claimed no metric read a Recommended attribute. That was never true of
+timing, and it now says so.
+
 **`GET /projects/:app/events` is not in §19.1.** §19.4 step 1 calls for a dashboard that
 renders stored events as a plain table, and nothing in the documented API returns them.
 
@@ -693,6 +729,26 @@ Verified: replaying a batch stores nothing new.
   `sendBeaconOtlp()` exists but is unused, because the one-method `Exporter` interface has no
   way to express "deliver this during teardown". Resolving that is the real §4.4 work, and
   until it is done the abandonment and exit signals are the ones most likely to vanish.
+- **A successful submit reads as abandonment.** Drop-off is counted on the node a session
+  *ended* on: `detectAbandonment`'s `high_abandonment` and `buildGraph`'s `dropoffRate` both do
+  this. A session whose last event is `ux.form_submit` ended on the form's node, so a user who
+  completed the form counts toward that form's abandonment. That is the likeliest ending, too,
+  because submitting is often the end of the task. A form that does a full-page post reloads,
+  and with per-page-load sessions (above) every such submit becomes the last event of its
+  session. In a six-session example, a form two of three users submitted was flagged at
+  "67% abandonment". This is §12's warning ("an exit point may be where the task legitimately
+  finishes") turned into a false friction signal on exactly the element a designer would act
+  on. Any fix must leave a session that ends on `ux.form_submit` out of that form's drop-off,
+  or record it as a completion. **Must be fixed before any friction output is put in front of
+  a person.** Not asserted in a test yet.
+- **Submit and abandon of one form are one node.** Nodes are keyed on `ux.fingerprint` alone,
+  and both form events carry the form's fingerprint. So the graph has one `SettingsForm form`
+  node whose `hits` add completions to abandonments. An edge into it cannot say which outcome
+  followed, and its median mixes the time before a submit with the time before giving up. The
+  timeline tells them apart (`kindOf` reads `eventName`), but the flow graph and the friction
+  roll-up, which also groups by fingerprint, cannot. The likely fix is to key form-outcome
+  nodes on `eventName` as well. That is a change to what a node *is*, so it goes in the same
+  change as the drop-off fix above, not separately. Not asserted in a test yet.
 - **Minified production builds destroy fingerprints — unless `babel-plugin-rastro` is
   installed.** Without it `fn.name` becomes `t`, `a`, `e`, minifiers reuse those per-module,
   and unrelated components collapse into one identity: a mass false *merge* rather than a
