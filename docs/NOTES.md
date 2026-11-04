@@ -690,6 +690,21 @@ its gap `?`, so its total under-counts rather than inventing time. The conventio
 "Minimum for analysis" claimed no metric read a Recommended attribute. That was never true of
 timing, and it now says so.
 
+**A session that ends on a submit did not drop off.** `dropoffRate` and `high_abandonment` both
+counted every session on the node it *ended* on, and a submit carries the form's fingerprint.
+So a user who completed a form counted toward that form's abandonment. That is the likeliest
+ending, because submitting is often the end of the task. A form that does a full-page post
+reloads, and with per-page-load sessions every such submit ends its session. In a six-session
+example, a form two of three users submitted was flagged at "67% abandonment". Both now go
+through one `dropoffStep`, which returns nothing for a session whose last event is
+`ux.form_submit`, so the two cannot disagree. The node's `reached` still counts the submitters,
+so the rate reads "of everyone who got here, how many gave up here". Only a submit counts as a
+completion, because it is the one outcome the conventions name. A session that submits and
+then lands on a success page still drops off at that page, which is §12's legitimate finish,
+and telling those apart needs a per-app completion signal. Submit and abandon still share one
+node; that is a separate problem, and this change does not need it fixed. The drop-off figures
+under "Verified end to end" were measured before this rule.
+
 **`GET /projects/:app/events` is not in §19.1.** §19.4 step 1 calls for a dashboard that
 renders stored events as a plain table, and nothing in the documented API returns them.
 
@@ -729,26 +744,16 @@ Verified: replaying a batch stores nothing new.
   `sendBeaconOtlp()` exists but is unused, because the one-method `Exporter` interface has no
   way to express "deliver this during teardown". Resolving that is the real §4.4 work, and
   until it is done the abandonment and exit signals are the ones most likely to vanish.
-- **A successful submit reads as abandonment.** Drop-off is counted on the node a session
-  *ended* on: `detectAbandonment`'s `high_abandonment` and `buildGraph`'s `dropoffRate` both do
-  this. A session whose last event is `ux.form_submit` ended on the form's node, so a user who
-  completed the form counts toward that form's abandonment. That is the likeliest ending, too,
-  because submitting is often the end of the task. A form that does a full-page post reloads,
-  and with per-page-load sessions (above) every such submit becomes the last event of its
-  session. In a six-session example, a form two of three users submitted was flagged at
-  "67% abandonment". This is §12's warning ("an exit point may be where the task legitimately
-  finishes") turned into a false friction signal on exactly the element a designer would act
-  on. Any fix must leave a session that ends on `ux.form_submit` out of that form's drop-off,
-  or record it as a completion. **Must be fixed before any friction output is put in front of
-  a person.** Not asserted in a test yet.
 - **Submit and abandon of one form are one node.** Nodes are keyed on `ux.fingerprint` alone,
   and both form events carry the form's fingerprint. So the graph has one `SettingsForm form`
   node whose `hits` add completions to abandonments. An edge into it cannot say which outcome
   followed, and its median mixes the time before a submit with the time before giving up. The
   timeline tells them apart (`kindOf` reads `eventName`), but the flow graph and the friction
-  roll-up, which also groups by fingerprint, cannot. The likely fix is to key form-outcome
-  nodes on `eventName` as well. That is a change to what a node *is*, so it goes in the same
-  change as the drop-off fix above, not separately. Not asserted in a test yet.
+  roll-up, which also groups by fingerprint, cannot. Drop-off no longer suffers from this:
+  a session ending on a submit is not counted as dropping off (see the decision entry), so the
+  merged node's rate counts only real abandonments. The likely fix is to key form-outcome
+  nodes on `eventName` as well. That changes what a node *is*, and it is a separate decision.
+  Not asserted in a test yet.
 - **Minified production builds destroy fingerprints — unless `babel-plugin-rastro` is
   installed.** Without it `fn.name` becomes `t`, `a`, `e`, minifiers reuse those per-module,
   and unrelated components collapse into one identity: a mass false *merge* rather than a

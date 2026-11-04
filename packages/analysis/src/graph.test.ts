@@ -209,6 +209,21 @@ describe('buildGraph', () => {
       expect(edgeBetween(graph, 'A', 'B')?.dropoffRate).toBe(0);
     });
 
+    // A user who submitted the form finished it. Counting them made completed forms read as
+    // drop-off points, and a full-page post ends nearly every session on its submit.
+    it('does not count a session that ended by submitting as dropping off', () => {
+      const form = (eventName: string, seq: number): Step => ({ ...step('F', 0, seq), eventName });
+      const graph = buildGraph([
+        { sessionId: 's1', steps: [step('I', 0, 1), form('ux.form_submit', 2)] },
+        { sessionId: 's2', steps: [step('I', 0, 1), form('ux.form_submit', 2)] },
+        { sessionId: 's3', steps: [step('I', 0, 1), form('ux.form_abandon', 2)] },
+        { sessionId: 's4', steps: [step('I', 0, 1), form('ux.form_abandon', 2), step('N', 0, 3)] },
+      ]);
+
+      // Four sessions reached F. Only s3 dropped off there: two submitted, s4 moved on.
+      expect(edgeBetween(graph, 'F', 'N')?.dropoffRate).toBeCloseTo(0.25);
+    });
+
     // dropoffRate is a property of `from`, reported on each outgoing edge.
     it('is identical on every edge leaving the same node', () => {
       const graph = buildGraph([
