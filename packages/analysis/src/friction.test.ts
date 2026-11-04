@@ -81,6 +81,19 @@ describe('detectFriction — rage clicks', () => {
     expect(signals[0]?.magnitude).toBe(3);
   });
 
+  it('does not extend a run with a click whose dwell was not reported', () => {
+    // ux.active_ms is Recommended. Without it a click cannot be shown to be quick, and
+    // counting it as a 0ms gap would let any three clicks read as rage.
+    const unknown = { eventName: 'ux.click', fingerprint: 'Save', route: '/' };
+    const signals = rage(
+      detectFriction([
+        { sessionId: 's1', steps: [1, 2, 3].map((seq) => ({ ...unknown, seq })) },
+      ]),
+    );
+
+    expect(signals).toEqual([]);
+  });
+
   it('breaks the run when a different element is clicked', () => {
     const signals = rage(
       detectFriction([

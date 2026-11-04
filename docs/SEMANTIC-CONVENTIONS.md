@@ -1,6 +1,6 @@
 # Rastro Semantic Conventions
 
-**Version:** 0.3 · **Stability:** Development (expect breaking changes before 1.0)
+**Version:** 0.4 · **Stability:** Development (expect breaking changes before 1.0)
 
 This document defines how Rastro represents UX-behavioral telemetry on top of
 OpenTelemetry. It is the contract any instrumentation — first-party SDK or otherwise —
@@ -71,7 +71,8 @@ reinvent them.
 | `ux.fingerprint` | Required | string | Stable element identity. The join key for every flow, funnel, and friction metric. See "Fingerprint format" below. |
 | `ux.anonymous_id` | Required | string | Stable per-visitor/device identifier. MUST NOT be a login or any PII. |
 | `ux.interaction.method` | Recommended | enum | How the interaction occurred: `mouse` \| `keyboard` \| `touch`. Powers accessibility/ergonomics signals. |
-| `ux.active_ms` | Recommended | int | Visibility-adjusted dwell **before** this event, in ms. MUST exclude time while `document.hidden` was true. |
+| `ux.active_ms` | Recommended | int | Visibility-adjusted dwell **before** this event, in ms: the time since the previous event in the session. MUST exclude time while `document.hidden` was true. Means the same on every event, form events included. Absent means unknown; consumers MUST NOT read absence as 0. |
+| `ux.form.active_ms` | Recommended | int | On `ux.form_submit` and `ux.form_abandon` only: visibility-adjusted time from focus first entering the form to the outcome, in ms. MUST be omitted when focus was never observed entering the form. Overlaps the `ux.active_ms` of the events inside the form, so MUST NOT be summed with them. |
 | `ux.from_path` | Opt-In | string | On `ux.route_change`, the previous `url.path` (tokenized). |
 | `ux.component_chain` | Recommended | string[] | Component ancestry, outermost → innermost. Emitted when it composed the fingerprint. |
 | `ux.role` | Recommended | string | Element role/tag (`button`, `input:email`, `a`). A queryable slice of the fingerprint. |
@@ -82,7 +83,7 @@ reinvent them.
 
 | Attribute | Level | Type | Meaning |
 |---|---|---|---|
-| `ux.convention.version` | Recommended | string (resource) | Version of *this* spec the record conforms to (e.g. `"0.3"`). Lets the analysis layer handle mixed-version data across migrations. |
+| `ux.convention.version` | Recommended | string (resource) | Version of *this* spec the record conforms to (e.g. `"0.4"`). Lets the analysis layer handle mixed-version data across migrations. |
 
 ## Fingerprint format
 
@@ -156,8 +157,8 @@ plus `service.name` on the resource. Additional attributes per event below.
 |---|---|---|
 | `ux.click` | An element is activated by pointer or keyboard. | `ux.interaction.method` |
 | `ux.route_change` | SPA navigation changes the route. | `ux.from_path` (opt-in) |
-| `ux.form_submit` | A form is submitted. | `ux.active_ms` = time-to-complete |
-| `ux.form_abandon` | Focus entered a form, then left without submitting. | `ux.active_ms` |
+| `ux.form_submit` | A form is submitted. | `ux.form.active_ms` = time-to-complete |
+| `ux.form_abandon` | Focus entered a form, then left without submitting. | `ux.form.active_ms` = time before leaving |
 | `session.start` | A new session begins. | `session.previous_id` if a continuation. **Standard OTel event.** |
 | `session.end` | A session ends (best-effort). | **Standard OTel event.** |
 | *custom* | Developer calls `track(name, props?)`. | App-owned name; same static-naming rules; props become attributes. |
@@ -189,7 +190,7 @@ exporter):
   "resource": {
     "service.name": "my-app",
     "service.version": "4.2.1",
-    "ux.convention.version": "0.3"
+    "ux.convention.version": "0.4"
   }
 }
 ```
@@ -210,6 +211,15 @@ exporter):
   exact idle threshold is an implementation choice and is out of scope for this spec.
 
 ## Change history
+
+**0.4** — on `ux.form_submit` and `ux.form_abandon`, `ux.active_ms` now means what it means on
+every other event: the dwell since the previous event. Time-to-complete moves to the new
+`ux.form.active_ms`. In 0.3 the form events carried time-to-complete in `ux.active_ms`, and
+every consumer that sums or takes medians of it counted that time twice: once in the dwells of
+the steps inside the form and again on the form event. **Not additive for stored data:** a 0.3
+form event's `ux.active_ms` is a duration, not a gap. A consumer reading both versions should
+treat it as unknown on 0.3 form events rather than as a gap. The Required set is unchanged.
+This release also states outright that an absent `ux.active_ms` is unknown, not 0.
 
 **0.3** — the fingerprint gains an optional `@<source file>` qualifier on its chain segment,
 and `ux.source_file` joins the parts. **Not additive for stored data:** every fingerprint
@@ -234,6 +244,7 @@ conforming emitter sends by default, which is why the version moves.
 ## Minimum for analysis
 
 Rastro's analysis layer (`sessionize` → `buildGraph` → single-session timeline)
-depends only on the **required set**. No aggregate or timeline metric depends on any
-Recommended or Opt-In attribute, so a minimal conforming emitter still produces fully
-usable flows and timelines.
+depends only on the **required set** for its structure: nodes, edges, counts, drop-off and
+step order. Timing is the exception. Edge medians, the timeline's time axis and the rage-click
+window all read `ux.active_ms`, which is Recommended. A minimal conforming emitter gets every
+flow and timeline, with timing left absent, never filled in with zeros.

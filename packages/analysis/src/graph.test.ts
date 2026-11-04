@@ -5,18 +5,18 @@ import type { Session, Step } from 'rastro-core';
 import { buildGraph, labelFor } from './graph.js';
 
 /** A step, with only the fields the graph actually reads spelled out. */
-const step = (fingerprint: string, activeMs = 0, seq = 0): Step => ({
+const step = (fingerprint: string, activeMs?: number, seq = 0): Step => ({
   eventName: 'ux.click',
   fingerprint,
   route: '/',
   seq,
-  activeMs,
+  ...(activeMs === undefined ? {} : { activeMs }),
 });
 
 /** A session from a path of fingerprints, with optional dwell before each. */
 const session = (sessionId: string, path: [string, number?][]): Session => ({
   sessionId,
-  steps: path.map(([fingerprint, activeMs], index) => step(fingerprint, activeMs ?? 0, index + 1)),
+  steps: path.map(([fingerprint, activeMs], index) => step(fingerprint, activeMs, index + 1)),
 });
 
 const edgeBetween = (graph: ReturnType<typeof buildGraph>, from: string, to: string) =>
@@ -148,14 +148,26 @@ describe('buildGraph', () => {
       expect(edgeBetween(graph, 'A', 'B')?.medianMs).toBe(1150);
     });
 
-    it('treats a missing dwell as 0 rather than dropping the occurrence', () => {
+    // A 0 here would be a dwell nobody measured, and it drags the median toward zero.
+    it('leaves a missing dwell out of the median rather than counting it as 0', () => {
       const graph = buildGraph([
         session('s1', [['A'], ['B']]),
         session('s2', [['A'], ['B', 1000]]),
         session('s3', [['A'], ['B', 2000]]),
       ]);
+      const edge = edgeBetween(graph, 'A', 'B');
 
-      expect(edgeBetween(graph, 'A', 'B')?.medianMs).toBe(1000);
+      expect(edge?.medianMs).toBe(1500);
+      // Still a traversal: only the timing is unknown.
+      expect(edge?.count).toBe(3);
+    });
+
+    it('has no medianMs when no traversal reported a dwell', () => {
+      const graph = buildGraph([session('s1', [['A'], ['B']]), session('s2', [['A'], ['B']])]);
+      const edge = edgeBetween(graph, 'A', 'B');
+
+      expect(edge?.count).toBe(2);
+      expect(edge).not.toHaveProperty('medianMs');
     });
 
     // count is per session, but every traversal is a dwell sample — more data, better median.

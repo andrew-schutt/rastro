@@ -109,7 +109,9 @@ interface EdgeTally {
  *   made this A→B transition". One session bouncing A→B→A→B contributes 1. That makes edge
  *   weight answer "how common is this path across users" rather than letting a single
  *   hammering user dominate. `medianMs` still samples every traversal, because more samples
- *   make a better median.
+ *   make a better median — every traversal that reported a dwell, that is. One without
+ *   `ux.active_ms` is left out rather than counted as 0, and an edge with no samples at all
+ *   has no `medianMs`.
  * - **`dropoffRate` is a property of `from`**, reported on each of its outgoing edges, so
  *   every edge leaving a node carries the same value. That is what §19.3 specifies; it is
  *   redundant on the wire and arguably belongs on `FlowNode`. Worth settling before the shape
@@ -160,7 +162,7 @@ export function buildGraph(
       tally.sessions.add(sessionId);
       // `activeMs` is the dwell BEFORE a step, so the time spent on `from` before moving to
       // `to` is the dwell recorded on `to`.
-      tally.dwells.push(to.activeMs);
+      if (to.activeMs !== undefined) tally.dwells.push(to.activeMs);
     }
   }
 
@@ -180,7 +182,7 @@ export function buildGraph(
         from: tally.from,
         to: tally.to,
         count: tally.sessions.size,
-        medianMs: Math.round(median(tally.dwells)),
+        ...(tally.dwells.length === 0 ? {} : { medianMs: Math.round(median(tally.dwells)) }),
         dropoffRate: reachedFrom === 0 ? 0 : endedAtFrom / reachedFrom,
       };
     })

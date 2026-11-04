@@ -66,6 +66,8 @@ export interface BuildEventInput {
   route?: string;
   interactionMethod?: 'mouse' | 'keyboard' | 'touch';
   activeMs?: number;
+  /** On form events, active time from focus entering the form to the outcome. */
+  formActiveMs?: number;
   role?: string;
   /** Raw label. Redacted here (§4.9). */
   accessibleName?: string;
@@ -156,6 +158,7 @@ export function buildEvent(
         ? {}
         : { 'ux.interaction.method': input.interactionMethod }),
       ...(input.activeMs === undefined ? {} : { 'ux.active_ms': input.activeMs }),
+      ...(input.formActiveMs === undefined ? {} : { 'ux.form.active_ms': input.formActiveMs }),
       ...(input.role === undefined ? {} : { 'ux.role': input.role }),
       ...(input.componentChain === undefined
         ? {}
@@ -382,16 +385,18 @@ export function startCapture({
 
     const described = describeElement(outcome.form, redactor);
 
-    lastEventAtMs = clock.elapsed();
     emit({
       eventName: outcome.kind === 'form_submit' ? 'ux.form_submit' : 'ux.form_abandon',
       fingerprint: described.fingerprint,
       route: currentPath,
+      // The gap since the last event, as on every other event. Time-to-complete used to ride
+      // here, and every consumer that sums or medians `ux.active_ms` counted it as a gap —
+      // time already covered by the dwells of the steps inside the form.
+      activeMs: dwellSinceLastEvent(),
       ...optInFrom(described, optIn),
-      // `ux.active_ms` here is time-to-complete, not the gap since the last event.
       ...(outcome.activeMs === undefined
         ? {}
-        : { activeMs: cappedDwell(outcome.activeMs, maxDwellMs) }),
+        : { formActiveMs: cappedDwell(outcome.activeMs, maxDwellMs) }),
     });
   }
 

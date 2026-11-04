@@ -1,9 +1,9 @@
 // packages/react/src/forms.ts
 // The form_submit / form_abandon lifecycle (SEMANTIC-CONVENTIONS.md "Events").
 //
-//   ux.form_submit   A form is submitted.                    ux.active_ms = time-to-complete
-//   ux.form_abandon  Focus entered a form, then left         ux.active_ms
-//                    without submitting.
+//   ux.form_submit   A form is submitted.                    ux.form.active_ms = time-to-complete
+//   ux.form_abandon  Focus entered a form, then left         ux.form.active_ms = time before
+//                    without submitting.                     leaving
 //
 // Deliberately a pure state machine over opaque form tokens rather than DOM nodes: the
 // interesting behaviour is the transitions, and this way they are testable without a DOM.
@@ -24,7 +24,7 @@ export interface FormOutcome {
   form: object;
   /**
    * Time-to-complete, or time-before-abandoning: visible ms since focus entered the form.
-   * Absent when focus was never seen to enter — omitting `ux.active_ms` says "unknown",
+   * Absent when focus was never seen to enter — omitting `ux.form.active_ms` says "unknown",
    * where a 0 would claim the form was completed instantly.
    */
   activeMs?: number;

@@ -46,6 +46,13 @@ describe('placeSteps', () => {
     expect(placed.map((p) => p.atMs)).toEqual([0, 0, 0]);
   });
 
+  it('adds nothing for a step that reported no dwell', () => {
+    const { activeMs: _omitted, ...noDwell } = step({ seq: 2 });
+    const placed = placeSteps([step({ seq: 1, activeMs: 1_000 }), noDwell, step({ seq: 3, activeMs: 500 })]);
+
+    expect(placed.map((p) => p.atMs)).toEqual([1_000, 1_000, 1_500]);
+  });
+
   it('is monotonic — the axis can never run backwards', () => {
     const placed = placeSteps([
       step({ seq: 1, activeMs: 300 }),

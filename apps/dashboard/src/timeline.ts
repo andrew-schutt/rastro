@@ -21,12 +21,13 @@ export interface PlacedStep {
  *
  * `ux.active_ms` is the dwell BEFORE a step, so a step sits at the running total *including*
  * its own gap. The first step therefore anchors at its own dwell, which is the time spent on
- * the page before the session's first interaction.
+ * the page before the session's first interaction. A step with no reported dwell adds
+ * nothing, so the axis under-counts rather than inventing time.
  */
 export function placeSteps(steps: Step[]): PlacedStep[] {
   let elapsedMs = 0;
   return steps.map((step) => {
-    elapsedMs += step.activeMs;
+    elapsedMs += step.activeMs ?? 0;
     return { step, atMs: elapsedMs };
   });
 }

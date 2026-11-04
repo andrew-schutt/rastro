@@ -73,7 +73,8 @@ export const DEFAULT_MIN_SESSIONS = 3;
  * Timing comes from `Step.activeMs`, the visibility-adjusted dwell *before* a step — so the gap
  * between two consecutive clicks is the second one's `activeMs`. Using that rather than a
  * wall-clock timestamp means the signal already excludes time the tab was hidden (§4.5) and
- * needs no field `Step` does not carry.
+ * needs no field `Step` does not carry. A click with no reported dwell cannot be shown to be
+ * quick, so it starts a new run rather than extending one.
  *
  * Only `ux.click` steps participate. A repeated route change is `repeated_navigation` — a
  * different signal with a different meaning, and folding them together would make the number
@@ -121,7 +122,10 @@ function detectRageClicks(
 
       const first = run[0];
       const continues =
-        first !== undefined && step.fingerprint === first.fingerprint && step.activeMs <= windowMs;
+        first !== undefined &&
+        step.fingerprint === first.fingerprint &&
+        step.activeMs !== undefined &&
+        step.activeMs <= windowMs;
 
       if (continues) run.push(step);
       else {

@@ -27,7 +27,10 @@ export interface UxEvent {
     'ux.seq': number;                  // per-session monotonic order — never trust the clock
     'ux.fingerprint': string;          // stable element identity (§4.2.1)
     'ux.interaction.method'?: 'mouse' | 'keyboard' | 'touch';
-    'ux.active_ms'?: number;           // visibility-adjusted dwell (§4.5)
+    'ux.active_ms'?: number;           // visibility-adjusted dwell BEFORE this event (§4.5)
+    // [SPEC] Recommended — on form events, active time from focus entering the form to the
+    // outcome. Not `ux.active_ms`, which means the gap since the previous event on every event.
+    'ux.form.active_ms'?: number;
     'ux.anonymous_id': string;
 
     'ux.from_path'?: string;           // [SPEC] Opt-In — on ux.route_change, previous url.path
@@ -73,7 +76,7 @@ export function isReservedAttribute(key: string): boolean {
  * Rides on the resource as `ux.convention.version` so the analysis layer can handle
  * mixed-version data across migrations.
  */
-export const UX_CONVENTION_VERSION = '0.3';
+export const UX_CONVENTION_VERSION = '0.4';
 
 /**
  * The Required set from the semantic conventions: every conforming record MUST carry these

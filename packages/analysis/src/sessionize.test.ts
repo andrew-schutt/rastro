@@ -46,10 +46,11 @@ describe('sessionize', () => {
     });
   });
 
-  it('defaults activeMs to 0 — ux.active_ms is Recommended, not Required', () => {
+  // ux.active_ms is Recommended, not Required. A 0 would be a dwell nobody measured.
+  it('leaves activeMs absent when ux.active_ms was not reported, rather than inventing 0', () => {
     const [, sessionB] = sessionize(events);
 
-    expect(sessionB?.steps[1]?.activeMs).toBe(0);
+    expect(sessionB?.steps[1]).not.toHaveProperty('activeMs');
   });
 
   it('carries eventName through, so a timeline can tell a click from a navigation', () => {

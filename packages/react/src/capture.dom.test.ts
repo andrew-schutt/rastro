@@ -6,7 +6,7 @@
  * interaction between clicks, focus, and the form lifecycle. The pure logic these sit on top
  * of is tested without a DOM in capture.test.ts, dwell.test.ts, and forms.test.ts.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UxEvent } from 'rastro-core';
 import { createSessionState, startCapture } from './capture.js';
 
@@ -171,6 +171,60 @@ describe('startCapture', () => {
       window.dispatchEvent(new Event('pagehide'));
 
       expect(names()).toEqual(['ux.form_abandon']);
+    });
+
+    describe('timing', () => {
+      let nowMs: number;
+
+      // Restart capture on a clock the test drives, so dwell is exact rather than ~0.
+      beforeEach(() => {
+        stop();
+        nowMs = 0;
+        vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+        stop = startCapture({
+          state: createSessionState('test-app'),
+          onEvent: (event) => events.push(event),
+        });
+      });
+
+      afterEach(() => vi.restoreAllMocks());
+
+      const attributesOf = (eventName: string) =>
+        events.find((event) => event.eventName === eventName)?.attributes;
+
+      it('puts time-to-complete in ux.form.active_ms and the gap in ux.active_ms', () => {
+        nowMs = 1_000;
+        pointerClick(el('save'));
+        nowMs = 1_500;
+        el('email').dispatchEvent(new Event('focusin', { bubbles: true }));
+        nowMs = 4_000;
+        el('settings').dispatchEvent(new Event('submit', { bubbles: true }));
+
+        // 2.5s from focus to submit, and 3s since the click: two different durations. Before
+        // 0.4 the 2.5s rode in ux.active_ms and consumers summed it as a gap.
+        expect(attributesOf('ux.form_submit')?.['ux.form.active_ms']).toBe(2_500);
+        expect(attributesOf('ux.form_submit')?.['ux.active_ms']).toBe(3_000);
+      });
+
+      it('gives an abandon the gap too, and the click that caused it none', () => {
+        el('email').dispatchEvent(new Event('focusin', { bubbles: true }));
+        nowMs = 6_500;
+        pointerClick(el('nav-orders'));
+
+        expect(attributesOf('ux.form_abandon')?.['ux.form.active_ms']).toBe(6_500);
+        expect(attributesOf('ux.form_abandon')?.['ux.active_ms']).toBe(6_500);
+        // The hesitation is counted once, on the abandon — not again on the click.
+        expect(attributesOf('ux.click')?.['ux.active_ms']).toBe(0);
+      });
+
+      it('omits ux.form.active_ms, but not ux.active_ms, when focus was never seen', () => {
+        nowMs = 2_000;
+        el('settings').dispatchEvent(new Event('submit', { bubbles: true }));
+
+        expect(names()).toEqual(['ux.form_submit']);
+        expect(attributesOf('ux.form_submit')).not.toHaveProperty('ux.form.active_ms');
+        expect(attributesOf('ux.form_submit')?.['ux.active_ms']).toBe(2_000);
+      });
     });
   });
 
