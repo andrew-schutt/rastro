@@ -73,6 +73,24 @@ export function labelFor(fingerprint: string): string {
 }
 
 /**
+ * The step a session dropped off at: its last one, unless that was a completion.
+ *
+ * A session whose last event is `ux.form_submit` finished there. Counting it as ending on the
+ * form flagged completed forms as abandoned, and a full-page post makes that the usual case,
+ * because the reload ends the session on the submit. Only a submit counts as a completion,
+ * because it is the one outcome the conventions name. A session that submits and then lands
+ * on a success page still drops off at that page. That is §12's "exit point may be where the
+ * task legitimately finishes", and a per-app completion signal would be needed to tell.
+ *
+ * Shared by `dropoffRate` and `high_abandonment`, so the two cannot disagree on what ending
+ * somewhere means.
+ */
+export function dropoffStep(steps: Step[]): Step | undefined {
+  const last = steps.at(-1);
+  return last?.eventName === 'ux.form_submit' ? undefined : last;
+}
+
+/**
  * Median of a list.
  *
  * Median rather than mean, deliberately: dwell is long-tailed, and one session where somebody
@@ -115,7 +133,7 @@ interface EdgeTally {
  * - **`dropoffRate` is a property of `from`**, reported on each of its outgoing edges, so
  *   every edge leaving a node carries the same value. That is what §19.3 specifies; it is
  *   redundant on the wire and arguably belongs on `FlowNode`. Worth settling before the shape
- *   ossifies.
+ *   ossifies. A session that ends on a submit is not a drop-off (`dropoffStep`).
  *
  * Output is sorted by id and by (from, to), so the same sessions in any order give an
  * identical graph.
@@ -128,7 +146,7 @@ export function buildGraph(
   const edges = new Map<string, EdgeTally>();
   /** Sessions that reached a fingerprint at all. Denominator of dropoffRate. */
   const reached = new Map<string, Set<string>>();
-  /** Sessions whose LAST step was this fingerprint. Numerator of dropoffRate. */
+  /** Sessions that dropped off at this fingerprint (`dropoffStep`). Numerator of dropoffRate. */
   const endedAt = new Map<string, Set<string>>();
 
   const addTo = (map: Map<string, Set<string>>, key: string, sessionId: string): void => {
@@ -144,8 +162,8 @@ export function buildGraph(
       addTo(reached, step.fingerprint, sessionId);
     }
 
-    const last: Step | undefined = steps.at(-1);
-    if (last !== undefined) addTo(endedAt, last.fingerprint, sessionId);
+    const droppedAt = dropoffStep(steps);
+    if (droppedAt !== undefined) addTo(endedAt, droppedAt.fingerprint, sessionId);
 
     for (let index = 1; index < steps.length; index += 1) {
       const from = steps[index - 1];

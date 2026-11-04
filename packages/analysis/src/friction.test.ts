@@ -256,6 +256,21 @@ describe('detectFriction — high abandonment', () => {
     expect(new Set(signals.map((signal) => signal.seq))).toEqual(new Set([2]));
   });
 
+  // The false alarm §12 warns about: a form most users completed, flagged as abandoned.
+  it('does not count a session that ended by submitting as abandoning', () => {
+    const signals = abandonment(
+      detectFriction([
+        session('s0', [['Field', 0], ['Form', 100, 'ux.form_submit']]),
+        session('s1', [['Field', 0], ['Form', 100, 'ux.form_submit']]),
+        session('s2', [['Field', 0], ['Form', 100, 'ux.form_submit']]),
+        session('s3', [['Field', 0], ['Form', 100, 'ux.form_abandon']]),
+      ]),
+    );
+
+    // 1 of 4 dropped off: below the threshold. Counting the submits made it 100%.
+    expect(signals).toEqual([]);
+  });
+
   it('does not count a revisit as extra evidence', () => {
     // s0 visits Dead twice but is still one session that reached it.
     const signals = abandonment(
