@@ -22,8 +22,12 @@ export interface Step {
   fingerprint: string;
   route: string;
   seq: number;
-  /** Visibility-adjusted dwell BEFORE this step, in ms (§4.5). 0 when not reported. */
-  activeMs: number;
+  /**
+   * Visibility-adjusted dwell BEFORE this step, in ms (§4.5). Absent when not reported:
+   * `ux.active_ms` is Recommended, and a 0 standing in for "unknown" would be a measurement
+   * nobody took — it dragged edge medians toward zero and read as an instant on the timeline.
+   */
+  activeMs?: number;
   interactionMethod?: 'mouse' | 'keyboard' | 'touch';
 }
 
@@ -44,7 +48,8 @@ export interface FlowEdge {
   from: string;
   to: string;                    // fingerprints
   count: number;                 // how many sessions made this A→B transition
-  medianMs: number;              // median dwell on `from` before moving to `to`
+  medianMs?: number;             // median dwell on `from` before moving to `to`; absent when
+                                 // no traversal reported one
   dropoffRate: number;           // share of sessions that hit `from` then ended
 }
 

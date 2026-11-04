@@ -39,15 +39,16 @@ export function SessionTimeline({ session }: SessionTimelineProps): ReactElement
         <ol className="track">
           {placed.map(({ step, atMs }, index) => {
             const { label, kind } = kindOf(step);
-            // The gap before this step. The first step has no predecessor to dwell after.
+            // The gap before this step. The first step has no predecessor to dwell after, and a
+            // step that reported no dwell gets the shortest connector and a "?" — not "0ms".
             const gap = index === 0 ? 0 : step.activeMs;
             const routeChanged = index > 0 && step.route !== placed[index - 1]?.step.route;
 
             return (
               <li key={step.seq}>
                 {index > 0 && (
-                  <div className="gap" style={{ height: `${gapHeight(gap)}px` }}>
-                    <span className="gap-label">{formatMs(gap)}</span>
+                  <div className="gap" style={{ height: `${gapHeight(gap ?? 0)}px` }}>
+                    <span className="gap-label">{gap === undefined ? '?' : formatMs(gap)}</span>
                   </div>
                 )}
 

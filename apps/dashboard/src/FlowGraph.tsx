@@ -107,7 +107,10 @@ export function FlowGraph({ graph, friction }: FlowGraphProps): ReactElement {
         id: `${edge.from}->${edge.to}`,
         source: edge.from,
         target: edge.to,
-        label: `${edge.count}× · ${formatMs(edge.medianMs)}`,
+        label:
+          edge.medianMs === undefined
+            ? `${edge.count}×`
+            : `${edge.count}× · ${formatMs(edge.medianMs)}`,
         labelShowBg: true,
         markerEnd: { type: MarkerType.ArrowClosed },
         style: {
