@@ -14,6 +14,18 @@ export {
 
 export type { FlowEdge, FlowGraph, FlowNode, Session, Step } from './shapes.js';
 
+export { decodeOtlpLogs, encodeOtlpLogs } from './otlp.js';
+export type {
+  AnyValue,
+  DecodedLogRecord,
+  LogRecord,
+  OtlpAnyValue,
+  OtlpKeyValue,
+  OtlpLogRecord,
+  OtlpLogsPayload,
+  OtlpScope,
+} from './otlp.js';
+
 export type {
   EventStore,
   Exporter,
