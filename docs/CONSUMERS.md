@@ -213,7 +213,7 @@ to 8 wait for §3.2 to pass and Phase 0 to come back positive. Each item is one 
   collector; a record with a map attribute and a structured body round-trips unchanged.
   *How we know:* a round-trip test in `core`; the existing collector and SDK tests pass with no
   change to what they assert.
-- [ ] **2. Read the instrumentation scope on ingest, and reject Rastro's own output by name.**
+- [x] **2. Read the instrumentation scope on ingest, and reject Rastro's own output by name.**
   `decodeOtlpLogs` never reads `scope.name`. A finding posted back to `/v1/logs` is rejected
   today only because it lacks `ux.fingerprint`, which is protection by accident. Rule 1 wants it
   explicit: records in the derived scope are refused and counted in `partialSuccess`.
@@ -221,6 +221,10 @@ to 8 wait for §3.2 to pass and Phase 0 to come back positive. Each item is one 
   reported.
   *How we know:* a test posts a derived record and sees it rejected by scope, with the
   `ux.*` Required set present.
+  *As built:* the scope is `rastro-analysis` (`DERIVED_SCOPE_NAME` in `core/derived.ts`). It is a
+  deny-list of that one name, not an allow-list of `rastro-react`, because the conventions
+  admit any instrumentation. An unknown scope, or none, is accepted. `partialSuccess` carries
+  an `errorMessage` naming each reason, not just the count.
 - [ ] **3. Carry `service.version` through `Session`.** `sessionize` flattens the resource away,
   so no analysis output can say which deploy it describes. One session is one page load, so
   one version per session is exact today.
