@@ -9,6 +9,11 @@ producer or the consumer, the output is OpenTelemetry.** Rastro is a transform f
 records to OTel records. What it adds in between is component identity and the flows built on
 it.
 
+**Rastro is the output library, not the factory.** It emits findings and stops. Writing tests,
+fixing code, shipping and judging whether a fix worked all belong to whoever consumes the
+output. **A person stays in view.** A person checks the output before any agent relies on it,
+and a person can always look at exactly what is being fed to an agent.
+
 This document records that direction, what it changes, and where it is weaker than it looks.
 It started from an outside sketch of an "AI-consumable UX flows" product. That sketch was read
 skeptically, and most of its specifics are not adopted. The review is
@@ -60,7 +65,7 @@ aggregate over a window, and it changes whenever a session arrives. Putting a wh
 one LogRecord body is legal, but it is a snapshot dressed up as an event. Open question 1
 covers this.
 
-### Three rules the output has to keep
+### Four rules the output has to keep
 
 1. **Derived records must never be mistaken for observed ones.** If findings travel through
    the same collector as interactions, a naive consumer will count them as interactions. Rastro
@@ -72,6 +77,12 @@ covers this.
 3. **The `ux.*` namespace stays a capture contract.** Output vocabulary is a separate, versioned
    section of the conventions, or a sibling document. Mixing the two would make
    `ux.convention.version` move for reasons no emitter cares about.
+4. **A person can read what the agent reads, easily.** The records an agent receives must be
+   readable by a person as they are, with no separate rendering that could drift from them. A
+   view for people sits beside the agent's feed, never in front of it, and shows the same
+   records. If what the person sees and what the agent sees can differ, the person is checking
+   the wrong thing. This is why output size matters twice: an agent has a context budget, and a
+   person peeking has an attention budget.
 
 ---
 
@@ -79,7 +90,8 @@ covers this.
 
 | Who | Role | Reads / emits | State today |
 |---|---|---|---|
-| AI agent in a software factory | First consumer | Findings with evidence, through a query interface | Nothing built |
+| AI agent in a software factory | First consumer. The factory is not part of Rastro | Findings with evidence, through a query interface | Nothing built |
+| A person checking the feed | Alongside the agent, from the start | The same records the agent reads (rule 4) | Nothing built |
 | `apps/dashboard` | Later consumer | Today: bespoke JSON from `GET /projects/:app/graph` and `/sessions/:id` | Built. Its output is **not** OTel, a deviation from this rule |
 | Any OTLP backend (Grafana, Honeycomb, …) | Consumer of raw input | Interaction events, through `multiExporter` fan-out | Works for input today. Nothing derived reaches it |
 | `rastro-react` | Producer | `ux.*` Events over OTLP | Built |
@@ -107,15 +119,16 @@ and it comes from the producer.
 **Changes:**
 
 - **The name of the first audience.** §2's last box and §13 assume a person reading a
-  dashboard. The first reader is now an agent. The dashboard stays as a later consumer and as
-  the place a person supervises from.
+  dashboard. The first reader is now an agent, with a person able to see what it sees (rule 4).
+  The dashboard stays as a later consumer.
 - **The "stand alone" test needs restating.** §16 Phase 5 asks whether the output is
   *"valuable with AI turned off"*, which assumed a human reader. The version that survives
   agent-first consumption: **a person must be able to read Rastro's output and verify every
   claim in it against the raw events, with no model involved.** If they cannot, an agent acting
   on it is acting on noise faster.
-- **Phase 0's subject is now an open question.** §16 shows hand-made output to a PM or
-  designer. It does not change silently. See open question 2.
+- **Phase 0 does not change.** A person checks the output first, as §16 already says. The
+  decision is the maintainer's, 2026-11-08. §12's qualified-evaluator paradox is why: an
+  agent cannot tell a right finding from a plausible one, so it cannot be the first judge.
 
 ---
 
@@ -124,16 +137,19 @@ and it comes from the producer.
 The sketch proposed an end-to-end loop: Rastro clusters broken flows into ranked issues, an
 agent writes a failing browser test from the session, fixes the code and ships it, and Rastro
 reopens the issue if the pattern survives the deploy. The idea of an agent as the reader is
-adopted. Most of the mechanics are not, or not yet.
+adopted. Most of the mechanics are not, or not yet. **The loop itself is out of scope:**
+Rastro is the output library, not the factory, so test-writing, fixing and issue tracking are
+the consumer's. The rows on them stay because they constrain what the output must carry.
 
 | Claim in the sketch | Verdict | Why |
 |---|---|---|
-| Agents are the first-class consumer; humans supervise | **Adopted**, as a direction | It is the user's decision. §3 above says what it changes. |
+| Agents are the first-class consumer; humans supervise | **Adopted**, sharpened | The maintainer's decision. A person checks the output before an agent relies on it, and can always see exactly what an agent is fed (rule 4). |
+| Rastro is the whole software factory | **Rejected** | The maintainer's decision. Rastro is the output library and stops at findings. |
 | Every claim links to raw events | **Adopted** | Rule 2 above. |
 | Output states "the likely causal chain" ("users abandon here *after* this component ignores clicks") | **Rejected** | §12: the data cannot establish causation. A human reader discounts a stated cause, but an agent treats it as a spec and fixes it. Output carries observations and competing hypotheses, never a single cause. |
 | A confidence threshold routes low-confidence clusters to a human | **Rejected** | §11 calls confidence theatre before Phase 7, and the project does not invent thresholds. Any routing rule has to be pre-committed as comparative or absolute-zero, the way `VALIDATION-PLAN.md` §3.2 does it. |
-| Session → failing Playwright test that replays the path | **Unproven; spike before planning around it** | Rastro deliberately captures no input values (the conventions make redaction a MUST), and no DOM state, viewport or backend state. A fingerprint is not a selector. `data-rastro-component` plus role and accessible name may locate an element, but nobody has tried. A test built this way reconstructs the path. It does not reproduce the session, and it can pass while the bug stays. |
-| Post-deploy verification: the bad pattern disappears, or the issue reopens | **Unsafe as stated** | A fix usually edits the very components involved, which moves their fingerprints. The old node's traffic then drops to zero because its identity split, not because the problem went away. That is exactly the drift [`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md) describes, and the alias layer is unbuilt. Without it, "verified fixed" and "renamed" look the same. It also needs `service.version`, which is only Recommended, though `rastro-react` emits it when the provider is given one. |
+| Session → failing Playwright test that replays the path | **The factory's job; unproven either way** | Rastro deliberately captures no input values (the conventions make redaction a MUST), and no DOM state, viewport or backend state. A fingerprint is not a selector. `data-rastro-component` plus role and accessible name may locate an element, but nobody has tried. A test built this way reconstructs the path. It does not reproduce the session, and it can pass while the bug stays. Any consumer that tries this should be told so by the output. |
+| Post-deploy verification: the bad pattern disappears, or the issue reopens | **The factory's job, and unsafe on today's output** | A fix usually edits the very components involved, which moves their fingerprints. The old node's traffic then drops to zero because its identity split, not because the problem went away. That is exactly the drift [`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md) describes, and the alias layer is unbuilt. Without it, "verified fixed" and "renamed" look the same. It also needs `service.version`, which is only Recommended, though `rastro-react` emits it when the provider is given one. Rastro's part is to carry `service.version` on findings and say when a node's identity may have drifted, so a consumer cannot mistake a rename for a fix. |
 | Flow-shape clustering, impact ranking | **Deferred** | §8 trace clustering and §11 ranking are on `VALIDATION-PLAN.md` §5's not-doing list. Frequency-only is the honest ranking today. |
 | MCP interface | **Plausible later** | This is the query interface from §1. Cheap once something is worth querying, and it moves neither gate. |
 | Incumbents "start from exceptions"; flow problems that throw no error "never become work" | **Overstated** | Friction without errors is a decade old ([`PRIOR-ART.md`](PRIOR-ART.md)). LogRocket's Galileo AI surfaces rage clicks, dead clicks and slow requests, not just errors ([docs](https://docs.logrocket.com/docs/galileo)). PostHog's MCP server lets a coding agent search replays by rage and dead clicks ([docs](https://posthog.com/docs/session-replay/surfaces/mcp)). Agent-readable UX telemetry is an occupied lane. |
@@ -148,12 +164,13 @@ adopted. Most of the mechanics are not, or not yet.
 In order. None of these is scheduled, and the first two are already the plan.
 
 1. **§3.2 passes.** No identity means no finding worth handing an agent.
-2. **Phase 0 comes back positive**, in whatever form open question 2 settles.
+2. **Phase 0 comes back positive**, judged by a person (§3).
 3. **An output vocabulary exists**, versioned and separate from the capture contract (rule 3),
    with derived records marked (rule 1) and evidence links (rule 2).
 4. **The dashboard reads the same OTel-shaped output** as any other consumer, which retires the
    bespoke JSON endpoints. Until then, the dashboard is the deviation recorded in §2.
-5. **Identity resolution exists**, before any loop claims a fix worked.
+5. **Identity resolution exists**, before Rastro's output can support any consumer claiming a
+   fix worked.
 
 ---
 
@@ -163,16 +180,13 @@ In order. None of these is scheduled, and the first two are already the plan.
    per-session summaries as Events, and rebuild the graph from those on the consumer side. The
    other: emit graph snapshots, with a window and a `service.version` range. The second is
    simpler to read and harder to keep honest.
-2. **Who judges Phase 0 now: a PM/designer, an agent, or both?** §12's qualified-evaluator
-   paradox gets worse with an agent. It cannot tell a right finding from a plausible one. The
-   recommendation is that a person still judges. The call belongs to the maintainer.
-3. **Is Rastro the factory, or the UX front end to an existing one?** Everything above assumes
-   the front end: Rastro emits findings and stops. Owning the fix-and-ship loop would be a
-   different project.
-4. **What does an agent need that the conventions lack?** `ux.source_file` exists (0.3) and may
+2. **What is the person's view of the feed?** Rule 4 says it shows the same records the agent
+   gets. Whether that is the dashboard, a collector `debug` exporter, or a plain log of what the
+   query interface returned is open. The cheapest one that cannot drift wins.
+3. **What does an agent need that the conventions lack?** `ux.source_file` exists (0.3) and may
    be the most agent-useful attribute there is. Whether a finding needs more, such as a
    component's props shape or a route's source, is unknown until an agent tries to use one.
-5. **Where do output records live?** The same `EventStore`, kept apart by rule 1, or a second
+4. **Where do output records live?** The same `EventStore`, kept apart by rule 1, or a second
    store. This is the same storage question §8 defers, and it stays deferred.
 
 ---

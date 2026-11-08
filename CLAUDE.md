@@ -88,7 +88,8 @@ Each is documented with its reasoning; the pointer is where to argue with it.
   reasons that will look like preferences until you read them.
 - **Interactions are Events, never spans** — `SEMANTIC-CONVENTIONS.md`.
 - **Output is OpenTelemetry, whoever produces or consumes it; AI agents read it first** —
-  `docs/CONSUMERS.md`. An agent reading the output is not an `Interpreter`, so §1 still holds.
+  `docs/CONSUMERS.md`. Rastro is the output library, not the factory, and a person can always
+  see what an agent is fed. An agent reading the output is not an `Interpreter`, so §1 holds.
 
 ## How to be useful here
 

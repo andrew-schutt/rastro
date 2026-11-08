@@ -18,7 +18,7 @@ Setup, the dev loop, and what is implemented vs. stubbed live in
 | [`docs/IDENTITY-RESOLUTION.md`](docs/IDENTITY-RESOLUTION.md) | Design for surviving fingerprint drift across deploys. Unbuilt; folds into `DESIGN.md` at its next revision. |
 | [`docs/CORPUS.md`](docs/CORPUS.md) | The §3.2 corpus, pre-registered: apps, commits, screens, run conditions and rule 3's flows. Changes after a corpus number is seen make a different run. |
 | [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) | Field survey: what is genuinely novel here and what is not. A dated snapshot — re-check before leaning on it. |
-| [`docs/CONSUMERS.md`](docs/CONSUMERS.md) | Direction, not plan: AI agents are the first consumer, and output is OpenTelemetry whoever produces or reads it. Includes the skeptical review of the sketch it came from. |
+| [`docs/CONSUMERS.md`](docs/CONSUMERS.md) | Direction, not plan: AI agents are the first consumer, Rastro is the output library and not the factory, and output is OpenTelemetry whoever produces or reads it. Includes the skeptical review of the sketch it came from. |
 
 **The docs are the contract.** Deviate from them when they are wrong — several deviations are
 already on the record — but say so, and say why, in `NOTES.md`. A silent deviation is the
