@@ -2,7 +2,12 @@
 // POST /v1/logs — accept OTLP logs, assign observedTime, insert (docs/DESIGN.md §19.4 step 1).
 import type { FastifyInstance } from 'fastify';
 import type { AnyValue, AttributeValue, EventStore, UxEvent } from 'rastro-core';
-import { decodeOtlpLogs as decodeRecords, isUxEvent } from 'rastro-core';
+import {
+  decodeOtlpLogs as decodeRecords,
+  DERIVED_SCOPE_NAME,
+  isDerivedScope,
+  isUxEvent,
+} from 'rastro-core';
 
 /**
  * Narrow a decoded value to what a `UxEvent` attribute may hold.
@@ -33,8 +38,16 @@ function narrow(source: Record<string, AnyValue>): Record<string, AttributeValue
 
 export interface DecodeResult {
   events: UxEvent[];
-  /** Records that arrived but did not carry the Required set. Counted, never stored. */
+  /** Every record refused, for OTLP's `rejectedLogRecords`. The sum of the two below. */
   rejected: number;
+  /** Records that did not carry the Required set. Counted, never stored. */
+  rejectedNonconforming: number;
+  /**
+   * Records under Rastro's own derived scope (docs/CONSUMERS.md, rule 1). Refused before the
+   * Required-set check, so a finding that happens to carry every `ux.*` attribute is still
+   * never counted as an interaction.
+   */
+  rejectedDerived: number;
 }
 
 /**
@@ -47,9 +60,15 @@ export interface DecodeResult {
  */
 export function decodeOtlpLogs(payload: unknown, observedTimeUnixNano: string): DecodeResult {
   const events: UxEvent[] = [];
-  let rejected = 0;
+  let rejectedNonconforming = 0;
+  let rejectedDerived = 0;
 
   for (const record of decodeRecords(payload)) {
+    if (isDerivedScope(record.scope?.name)) {
+      rejectedDerived += 1;
+      continue;
+    }
+
     const candidate = {
       eventName: record.eventName,
       timeUnixNano: record.timeUnixNano,
@@ -61,29 +80,53 @@ export function decodeOtlpLogs(payload: unknown, observedTimeUnixNano: string): 
     };
 
     if (isUxEvent(candidate)) events.push(candidate);
-    else rejected += 1;
+    else rejectedNonconforming += 1;
   }
 
-  return { events, rejected };
+  return {
+    events,
+    rejected: rejectedNonconforming + rejectedDerived,
+    rejectedNonconforming,
+    rejectedDerived,
+  };
+}
+
+/** OTLP's partial-success `errorMessage`: why records were dropped, for the sender's logs. */
+function rejectionMessage({ rejectedNonconforming, rejectedDerived }: DecodeResult): string {
+  const reasons: string[] = [];
+  if (rejectedNonconforming > 0) {
+    reasons.push(`${rejectedNonconforming} missing the Required set (SEMANTIC-CONVENTIONS.md)`);
+  }
+  if (rejectedDerived > 0) {
+    reasons.push(
+      `${rejectedDerived} under scope ${DERIVED_SCOPE_NAME}, which is Rastro's own output ` +
+        'and never input (CONSUMERS.md, rule 1)',
+    );
+  }
+  return `rejected ${reasons.join('; ')}`;
 }
 
 export function registerIngest(app: FastifyInstance, store: EventStore): void {
   app.post('/v1/logs', async (request, reply) => {
     const observedTimeUnixNano = `${Date.now()}000000`;
-    const { events, rejected } = decodeOtlpLogs(request.body, observedTimeUnixNano);
+    const result = decodeOtlpLogs(request.body, observedTimeUnixNano);
 
-    await store.insert(events);
+    await store.insert(result.events);
 
-    if (rejected > 0) {
-      request.log.warn(
-        { rejected },
-        'dropped records missing the Required set (docs/SEMANTIC-CONVENTIONS.md)',
-      );
-    }
+    if (result.rejected === 0) return reply.code(200).send({ partialSuccess: {} });
 
-    // OTLP's partial-success shape: accepted, with a count of what was dropped.
+    const message = rejectionMessage(result);
+    request.log.warn(
+      {
+        rejectedNonconforming: result.rejectedNonconforming,
+        rejectedDerived: result.rejectedDerived,
+      },
+      message,
+    );
+
+    // OTLP's partial-success shape: accepted, with a count of what was dropped and why.
     return reply.code(200).send({
-      partialSuccess: rejected === 0 ? {} : { rejectedLogRecords: String(rejected) },
+      partialSuccess: { rejectedLogRecords: String(result.rejected), errorMessage: message },
     });
   });
 }
