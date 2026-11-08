@@ -23,6 +23,8 @@ But the honest framing of the project is: **a developer-native UX observability 
 
 **A founding principle, promoted from an afterthought:** *AI is not the engine.* The durable value is instrumentation + sequence analysis + friction metrics. The AI is the layer that interprets and communicates that evidence. If the deterministic analytics aren't already useful with the AI turned off, the AI is lipstick. Build so the AI can be removed and the tool still earns its place.
 
+**A later direction (2026-11), recorded in [`CONSUMERS.md`](CONSUMERS.md):** the first reader of Rastro's output is an AI agent feeding a software factory, not a person at the dashboard, and the output is OpenTelemetry whatever produces or consumes it. This does not reverse the principle above. The agent is a consumer outside Rastro, not a model wired into it, and the `Interpreter` seam stays `none`. It does restate the test: a person must be able to verify every claim in the output against the raw events, with no model involved.
+
 ---
 
 ## 2. The core loop (annotated with where the hard parts actually are)

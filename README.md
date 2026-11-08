@@ -178,6 +178,7 @@ examples/demo-app    a React app to dogfood on
 - [`docs/IDENTITY-RESOLUTION.md`](docs/IDENTITY-RESOLUTION.md) — how element identity survives deploys (design, unbuilt)
 - [`docs/CORPUS.md`](docs/CORPUS.md) — the real apps and commits the identity measurement runs on, fixed in advance
 - [`docs/PRIOR-ART.md`](docs/PRIOR-ART.md) — what this is similar to, and where it actually differs
+- [`docs/CONSUMERS.md`](docs/CONSUMERS.md) — who reads the output (AI agents first), and why it is always OpenTelemetry
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — commit, branch, and merge conventions, and what counts as verified
 
 ## License
