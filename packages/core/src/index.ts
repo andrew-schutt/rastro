@@ -14,6 +14,8 @@ export {
 
 export type { FlowEdge, FlowGraph, FlowNode, Session, Step } from './shapes.js';
 
+export { DERIVED_SCOPE_NAME, isDerivedScope } from './derived.js';
+
 export { decodeOtlpLogs, encodeOtlpLogs } from './otlp.js';
 export type {
   AnyValue,
