@@ -25,6 +25,7 @@ emitted as OpenTelemetry Events. Open source, pre-alpha, one maintainer.
 | Is this idea novel? Who else does it? | `docs/PRIOR-ART.md` |
 | What happens when a fingerprint drifts across a deploy? | `docs/IDENTITY-RESOLUTION.md` |
 | Which commits, screens and flows does §3.2 run on? | `docs/CORPUS.md` |
+| Who reads the output, and in what format? | `docs/CONSUMERS.md` |
 
 **`docs/NOTES.md` outranks `docs/DESIGN.md` on questions of fact.** The design says what was
 intended; NOTES records what shipped, every deviation and why. Where they disagree about the
@@ -86,6 +87,9 @@ Each is documented with its reasoning; the pointer is where to argue with it.
 - **No Prettier**, and **squash-merge is disabled** — both in `CONTRIBUTING.md`, both for
   reasons that will look like preferences until you read them.
 - **Interactions are Events, never spans** — `SEMANTIC-CONVENTIONS.md`.
+- **Output is OpenTelemetry, whoever produces or consumes it; AI agents read it first** —
+  `docs/CONSUMERS.md`. Rastro is the output library, not the factory, and a person can always
+  see what an agent is fed. An agent reading the output is not an `Interpreter`, so §1 holds.
 
 ## How to be useful here
 

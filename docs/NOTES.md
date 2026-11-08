@@ -726,6 +726,10 @@ Verified: replaying a batch stores nothing new.
 
 ## Known holes that will bite
 
+- **Analysis output is not OpenTelemetry.** [`CONSUMERS.md`](CONSUMERS.md) makes OTel the
+  output format for every consumer. `GET /projects/:app/graph` and `/sessions/:id` return
+  bespoke JSON, and the dashboard reads that. It is a deviation until an output vocabulary
+  exists. That waits behind both gates, so nothing changes yet.
 - **`ux.anonymous_id` and `session.id` are per-page-load.** No browser storage is used, so
   every reload looks like a new visitor and a new session. The real §4.5 session rule — idle
   threshold, long-lived SPA tabs, backgrounded mobile — is unwritten.
