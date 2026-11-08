@@ -34,6 +34,7 @@ export function sessionize(events: UxEvent[]): Session[] {
 
     const method = attributes['ux.interaction.method'];
     const activeMs = attributes['ux.active_ms'];
+    const serviceVersion = event.resource['service.version'];
 
     steps.push({
       eventName: event.eventName,
@@ -46,6 +47,10 @@ export function sessionize(events: UxEvent[]): Session[] {
       // an ergonomics signal that was never measured.
       ...(activeMs === undefined ? {} : { activeMs }),
       ...(method === undefined ? {} : { interactionMethod: method }),
+      // Off the resource, which is where OTel puts deploy identity. The one resource
+      // attribute a Step carries: without it no analysis output can say which deploy it
+      // describes (CONSUMERS.md, work-list item 3).
+      ...(serviceVersion === undefined ? {} : { serviceVersion }),
     });
   }
 

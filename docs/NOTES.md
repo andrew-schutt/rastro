@@ -731,6 +731,13 @@ Verified: replaying a batch stores nothing new.
 
 ## Known holes that will bite
 
+- **Abandonment rates are pooled across deploys.** `high_abandonment` divides sessions that
+  ended on an element by sessions that reached it, over everything in the window, whatever
+  `service.version` they ran. Each signal now carries the version of the step it fired on, but
+  that dates the occurrence, not the rate: a deploy can inherit a rate it never had on its own
+  (pinned by a test in `friction.test.ts`). Nothing computes a rate per version. It matters the
+  moment anyone asks "did this deploy change abandonment", which is the question
+  [`CONSUMERS.md`](CONSUMERS.md) item 6 hands to consumers.
 - **Analysis output is not OpenTelemetry.** [`CONSUMERS.md`](CONSUMERS.md) makes OTel the
   output format for every consumer. `GET /projects/:app/graph` and `/sessions/:id` return
   bespoke JSON, and the dashboard reads that. It is a deviation until an output vocabulary

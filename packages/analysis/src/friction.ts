@@ -36,6 +36,17 @@ export interface FrictionSignal {
   /** `ux.seq` of the step it fired on, so the signal is locatable on a timeline. */
   seq: number;
   /**
+   * The deploy of the step this fired on (`Step.serviceVersion`). Absent when the app did not
+   * report one.
+   *
+   * ⚠ It dates the occurrence, not the measurement. `high_abandonment`'s rate is pooled over
+   * every session that reached the element, across all deploys in the window, so one signal
+   * can carry this version while its `magnitude` was computed mostly from another. Telling
+   * whether a deploy changed a rate needs the rate split by version, which nothing computes
+   * yet. A consumer must not read "fired on 4.2.1" as "the rate on 4.2.1".
+   */
+  serviceVersion?: string;
+  /**
    * Signal-specific magnitude. **Comparable only within a kind** — clicks for `rage_click`,
    * drop-off percentage for `high_abandonment`. Ranking across kinds must not use this.
    */
@@ -105,6 +116,7 @@ function detectRageClicks(
           fingerprint: first.fingerprint,
           sessionId,
           seq: first.seq,
+          ...(first.serviceVersion === undefined ? {} : { serviceVersion: first.serviceVersion }),
           magnitude: run.length,
         });
       }
@@ -155,7 +167,7 @@ function detectAbandonment(
 ): FrictionSignal[] {
   const reached = new Map<string, Set<string>>();
   /** Fingerprint -> the last step of each session that ended on it. */
-  const endedAt = new Map<string, { sessionId: string; seq: number }[]>();
+  const endedAt = new Map<string, { sessionId: string; step: Step }[]>();
 
   for (const { sessionId, steps } of sessions) {
     for (const step of steps) {
@@ -169,8 +181,8 @@ function detectAbandonment(
     if (last === undefined) continue;
 
     const enders = endedAt.get(last.fingerprint);
-    if (enders === undefined) endedAt.set(last.fingerprint, [{ sessionId, seq: last.seq }]);
-    else enders.push({ sessionId, seq: last.seq });
+    if (enders === undefined) endedAt.set(last.fingerprint, [{ sessionId, step: last }]);
+    else enders.push({ sessionId, step: last });
   }
 
   const signals: FrictionSignal[] = [];
@@ -186,7 +198,10 @@ function detectAbandonment(
         kind: 'high_abandonment',
         fingerprint,
         sessionId: ender.sessionId,
-        seq: ender.seq,
+        seq: ender.step.seq,
+        ...(ender.step.serviceVersion === undefined
+          ? {}
+          : { serviceVersion: ender.step.serviceVersion }),
         magnitude: Math.round(rate * 100),
       });
     }

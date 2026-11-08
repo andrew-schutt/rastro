@@ -225,12 +225,19 @@ to 8 wait for §3.2 to pass and Phase 0 to come back positive. Each item is one 
   deny-list of that one name, not an allow-list of `rastro-react`, because the conventions
   admit any instrumentation. An unknown scope, or none, is accepted. `partialSuccess` carries
   an `errorMessage` naming each reason, not just the count.
-- [ ] **3. Carry `service.version` through `Session`.** `sessionize` flattens the resource away,
+- [x] **3. Carry `service.version` through `Session`.** `sessionize` flattens the resource away,
   so no analysis output can say which deploy it describes. One session is one page load, so
   one version per session is exact today.
   *Done:* `Session` carries `serviceVersion?`; `FrictionSignal` carries it too.
   *How we know:* a sessionize test with two deploys yields two sessions with different
   versions; a snapshot of the `/graph` response changes only by the new field.
+  *As built:* on `Step`, not `Session`. One version per session holds only while sessions are
+  per page load, which is a known hole slated to close (§4.5's idle rule); after that a deploy
+  can fall inside a session. Every signal points at one step, so `Step.serviceVersion` is exact
+  under any session rule, and each `FrictionSignal` takes the version of the step it fired on.
+  **Caveat for item 6:** `high_abandonment`'s rate is pooled across deploys, so a signal's
+  version dates the occurrence, not the rate. A test pins a 4.2.2 occurrence firing at 67%,
+  a rate 4.2.2 never had on its own. Per-version rates are not computed anywhere yet.
 - [ ] **4. Write the output vocabulary, and type it.** A sibling to `SEMANTIC-CONVENTIONS.md`
   with its own version: the derived scope name, event names (a finding, a session summary),
   their Required set, the evidence link shape (`session.id` + `ux.seq` pairs), and

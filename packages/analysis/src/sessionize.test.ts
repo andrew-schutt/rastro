@@ -74,6 +74,26 @@ describe('sessionize', () => {
     expect(step && 'interactionMethod' in step).toBe(false);
   });
 
+  it('carries service.version off the resource onto each step', () => {
+    const [session] = sessionize([makeEvent({ serviceVersion: '4.2.1' })]);
+    expect(session?.steps[0]?.serviceVersion).toBe('4.2.1');
+  });
+
+  it('omits serviceVersion when the app did not report one, rather than inventing one', () => {
+    const [session] = sessionize([makeEvent()]);
+    expect(session?.steps[0]).not.toHaveProperty('serviceVersion');
+  });
+
+  // Impossible with today's per-page-load sessions, but not once §4.5's idle rule lands. The
+  // version is per step precisely so this case needs no special handling.
+  it('keeps each step on its own deploy when one session spans two', () => {
+    const [session] = sessionize([
+      makeEvent({ seq: 2, serviceVersion: '4.2.2' }),
+      makeEvent({ seq: 1, serviceVersion: '4.2.1' }),
+    ]);
+    expect(session?.steps.map((step) => step.serviceVersion)).toEqual(['4.2.1', '4.2.2']);
+  });
+
   it('returns no sessions for no events', () => {
     expect(sessionize([])).toEqual([]);
   });
