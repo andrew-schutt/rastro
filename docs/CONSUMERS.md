@@ -168,7 +168,8 @@ In order. None of these is scheduled, and the first two are already the plan.
 3. **An output vocabulary exists**, versioned and separate from the capture contract (rule 3),
    with derived records marked (rule 1) and evidence links (rule 2).
 4. **The dashboard reads the same OTel-shaped output** as any other consumer, which retires the
-   bespoke JSON endpoints. Until then, the dashboard is the deviation recorded in §2.
+   bespoke JSON endpoints. Until then, the dashboard is the deviation recorded in §2. §7 is
+   the list of what that takes.
 5. **Identity resolution exists**, before Rastro's output can support any consumer claiming a
    fix worked.
 
@@ -188,6 +189,83 @@ In order. None of these is scheduled, and the first two are already the plan.
    component's props shape or a route's source, is unknown until an agent tries to use one.
 4. **Where do output records live?** The same `EventStore`, kept apart by rule 1, or a second
    store. This is the same storage question §8 defers, and it stays deferred.
+
+---
+
+## 7. Work list
+
+What the code needs to carry this direction, in the order to do it. Items 1 to 4 need no gate:
+they are small, touch nothing a gate measures, and are needed under any output shape. Items 5
+to 8 wait for §3.2 to pass and Phase 0 to come back positive. Each item is one PR.
+
+**Needs no gate**
+
+- [ ] **1. Move the OTLP codec to `core`, and teach it maps and `body`.** `toOtlpLogs` and
+  `toAnyValue` live in `packages/react/src/otlp.ts`, the decoder in `apps/collector/src/ingest.ts`,
+  and both drop object values. A finding needs map attribute values (`kvlistValue`) and the
+  LogRecord `body`, which neither side models. `AttributeValue` in `core/events.ts` widens to
+  match.
+  *Done:* one encoder and one decoder in `rastro-core`, imported by `rastro-react` and the
+  collector; a record with a map attribute and a structured body round-trips unchanged.
+  *How we know:* a round-trip test in `core`; the existing collector and SDK tests pass with no
+  change to what they assert.
+- [ ] **2. Read the instrumentation scope on ingest, and reject Rastro's own output by name.**
+  `decodeOtlpLogs` never reads `scope.name`. A finding posted back to `/v1/logs` is rejected
+  today only because it lacks `ux.fingerprint`, which is protection by accident. Rule 1 wants it
+  explicit: records in the derived scope are refused and counted in `partialSuccess`.
+  *Done:* the scope name is a constant in `core`; the decoder refuses it; the count is
+  reported.
+  *How we know:* a test posts a derived record and sees it rejected by scope, with the
+  `ux.*` Required set present.
+- [ ] **3. Carry `service.version` through `Session`.** `sessionize` flattens the resource away,
+  so no analysis output can say which deploy it describes. One session is one page load, so
+  one version per session is exact today.
+  *Done:* `Session` carries `serviceVersion?`; `FrictionSignal` carries it too.
+  *How we know:* a sessionize test with two deploys yields two sessions with different
+  versions; a snapshot of the `/graph` response changes only by the new field.
+- [ ] **4. Write the output vocabulary, and type it.** A sibling to `SEMANTIC-CONVENTIONS.md`
+  with its own version: the derived scope name, event names (a finding, a session summary),
+  their Required set, the evidence link shape (`session.id` + `ux.seq` pairs), and
+  `service.version` on every record. This is where open question 1 is decided. The
+  recommendation is findings and session summaries as Events, and the graph as a view rebuilt
+  from them.
+  *Done:* the doc exists; `core` has a `DerivedRecord` type and an `isDerivedRecord` check
+  that match it, with a stable finding id (`kind` + `fingerprint` + `service.version`).
+  *How we know:* the type and the doc name the same fields; a test builds a finding from a
+  `FrictionSignal` and validates it.
+
+**After both gates**
+
+- [ ] **5. Make findings durable.** Today `/graph` recomputes everything per request from up to
+  50k events, and a signal has no id or lifetime. Findings need `first_seen` / `last_seen`, a
+  store kept apart from interactions (rule 1), and analysis that runs on ingest or on a timer
+  rather than on page load.
+  *Done:* `EventStore` or a sibling interface persists derived records; a finding seen twice
+  updates, never duplicates.
+  *How we know:* ingest the same sessions twice and the finding count does not change.
+- [ ] **6. Emit.** `GET /projects/:app/findings` returning the OTLP logs JSON shape, and an
+  `Exporter` widened to derived records so findings can also be pushed to a configured OTLP
+  endpoint. Ranking in the feed uses sessions affected only; `magnitude` never crosses kinds.
+  *Done:* a plain OTel consumer (the Collector's `debug` exporter is enough) reads the output
+  with no Rastro code.
+  *How we know:* drive the demo app, point an OTel Collector at the feed, and see the
+  findings in its log, each with its evidence links.
+- [ ] **7. Give the person the same feed (rule 4).** A findings view in the dashboard that
+  renders the records from item 6 as they are, with each evidence link opening the session
+  timeline. Then retire the bespoke `/graph` JSON, or rebuild it from the feed.
+  *Done:* the dashboard reads no endpoint an agent could not.
+  *How we know:* the known hole in `NOTES.md` is closed, and the browser verification says
+  what was clicked.
+- [ ] **8. A query interface.** MCP, over the findings store from item 5. Last, because it needs
+  something worth asking about, and because an agent's first questions decide its shape.
+  *Done:* an agent can ask for the top findings for an app and for one finding's evidence.
+  *How we know:* a person asks the same question and gets the same records (rule 4).
+
+Two things this list raises rather than settles. Findings today come from two signal kinds,
+and the plan has been resisting more on purpose; an agent fed two kinds has little to act on,
+so item 6 will put pressure on `VALIDATION-PLAN.md` §5. And per-page-load sessions, the first
+known hole in `NOTES.md`, make every full-page form post end a session, so findings inherit
+that error until the §4.5 session rule exists.
 
 ---
 
