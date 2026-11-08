@@ -112,6 +112,17 @@ export function sanitizeProps(
       continue;
     }
 
+    // `TrackProps` admits only primitives, but an untyped caller can pass anything. An object
+    // or array would skip redaction below, and the codec carries maps, so it would reach the
+    // wire with every string inside it unredacted. Drop it here, at the choke point.
+    if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+      console.warn(
+        `[rastro] track(): dropped prop "${key}" — only strings, numbers and booleans are ` +
+          'allowed, because nested values would bypass redaction.',
+      );
+      continue;
+    }
+
     attributes[key] = typeof value === 'string' ? redactor.redact(value) : value;
   }
 

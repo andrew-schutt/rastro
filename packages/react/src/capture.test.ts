@@ -28,6 +28,16 @@ describe('sanitizeProps', () => {
     });
   });
 
+  it('drops an object or array prop, whose strings would skip redaction', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Untyped JS can pass anything; the cast stands in for that caller.
+    const props = { user: { email: 'jane@x.com' }, tags: ['jane@x.com'], plan: 'pro' } as never;
+
+    expect(sanitizeProps(props)).toEqual({ plan: 'pro' });
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
   it('returns an empty object for no props', () => {
     expect(sanitizeProps(undefined)).toEqual({});
   });
