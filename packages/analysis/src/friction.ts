@@ -12,6 +12,7 @@
 // that ranks the two together has to use a common currency. `frictionByNode` uses sessions
 // affected, which is the one number that means the same thing for both.
 import type { Session, Step } from 'rastro-core';
+import { dropoffStep } from './graph.js';
 
 /**
  * Which deterministic signal fired.
@@ -21,7 +22,7 @@ import type { Session, Step } from 'rastro-core';
  */
 export type FrictionKind =
   | 'rage_click'          // repeated clicks on the same target
-  | 'high_abandonment'    // a large share of sessions end here
+  | 'high_abandonment'    // a large share of sessions drop off here (a submit is not one)
   | 'dead_click'          // click, no state change
   | 'long_pause'          // long active-time pause before an interaction
   | 'repeated_navigation'
@@ -163,7 +164,8 @@ function detectAbandonment(
       else seen.add(sessionId);
     }
 
-    const last = steps.at(-1);
+    // A session that ended on a submit completed the form. It did not abandon it.
+    const last = dropoffStep(steps);
     if (last === undefined) continue;
 
     const enders = endedAt.get(last.fingerprint);

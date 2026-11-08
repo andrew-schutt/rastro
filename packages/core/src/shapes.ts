@@ -50,7 +50,8 @@ export interface FlowEdge {
   count: number;                 // how many sessions made this A→B transition
   medianMs?: number;             // median dwell on `from` before moving to `to`; absent when
                                  // no traversal reported one
-  dropoffRate: number;           // share of sessions that hit `from` then ended
+  dropoffRate: number;           // share of sessions that hit `from` then ended there, other
+                                 // than by submitting it
 }
 
 export interface FlowGraph {

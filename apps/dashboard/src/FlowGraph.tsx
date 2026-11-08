@@ -153,7 +153,8 @@ export function FlowGraph({ graph, friction }: FlowGraphProps): ReactElement {
       <p className="legend">
         Edge label is <strong>sessions × median dwell</strong>; thickness scales with sessions.
         An amber edge leaves a node where at least{' '}
-        {Math.round(DEFAULT_MIN_DROPOFF_RATE * 100)}% of sessions ended. A red outline marks
+        {Math.round(DEFAULT_MIN_DROPOFF_RATE * 100)}% of sessions ended, not counting sessions that
+        ended by submitting a form. A red outline marks
         friction (§10), with the count of sessions affected.
       </p>
 
@@ -170,7 +171,7 @@ export function FlowGraph({ graph, friction }: FlowGraphProps): ReactElement {
                   {entry.sessions} session{entry.sessions === 1 ? '' : 's'} ·{' '}
                   {entry.kinds[0] === 'rage_click'
                     ? `up to ${entry.maxMagnitude} clicks`
-                    : `${entry.maxMagnitude}% ended here`}
+                    : `${entry.maxMagnitude}% dropped off here`}
                 </span>
               </li>
             ))}
