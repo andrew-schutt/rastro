@@ -96,6 +96,11 @@ works). Delete it to start clean.
 - **`rastro-core/events.ts`** — the `UxEvent` contract (§19.2) and `isUxEvent`, the Required-set
   check the collector rejects malformed records with.
 - **`rastro-core/seams.ts`** — all seven swap points from §19.5, typed.
+- **`rastro-core/otlp.ts`** — the OTLP/HTTP JSON logs codec, both directions. `rastro-react`
+  encodes with it under scope `rastro-react`; the collector decodes with it. It carries maps and
+  a structured `body` for analysis output ([`CONSUMERS.md`](CONSUMERS.md)), which interactions
+  never use: the collector narrows decoded attributes back to `AttributeValue` before
+  `isUxEvent`, so ingest stores exactly what the capture contract admits.
 - **`rastro-core/redact.ts`** — the §4.9 privacy requirements, both of which the conventions
   make MUST-level: `tokenizePath` (`/users/42/settings` → `/users/:id/settings`, query
   strings and fragments dropped) and `redact` for free text. `buildEvent` is the single
