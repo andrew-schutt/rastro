@@ -200,11 +200,15 @@ to 8 wait for §3.2 to pass and Phase 0 to come back positive. Each item is one 
 
 **Needs no gate**
 
-- [ ] **1. Move the OTLP codec to `core`, and teach it maps and `body`.** `toOtlpLogs` and
+- [x] **1. Move the OTLP codec to `core`, and teach it maps and `body`.** `toOtlpLogs` and
   `toAnyValue` live in `packages/react/src/otlp.ts`, the decoder in `apps/collector/src/ingest.ts`,
   and both drop object values. A finding needs map attribute values (`kvlistValue`) and the
-  LogRecord `body`, which neither side models. `AttributeValue` in `core/events.ts` widens to
-  match.
+  LogRecord `body`, which neither side models. ~~`AttributeValue` in `core/events.ts` widens to
+  match.~~ *As built:* `AttributeValue` and `UxEvent` did **not** widen. Widening them would
+  let interactions carry maps with no conventions change, which rule 3 forbids. The codec is
+  wide; the collector narrows interactions back to the capture contract before validating.
+  Teaching the encoder maps also exposed that `track()` passed object props through
+  unredacted, so `sanitizeProps` now drops them.
   *Done:* one encoder and one decoder in `rastro-core`, imported by `rastro-react` and the
   collector; a record with a map attribute and a structured body round-trips unchanged.
   *How we know:* a round-trip test in `core`; the existing collector and SDK tests pass with no

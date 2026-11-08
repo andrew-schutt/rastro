@@ -1,56 +1,32 @@
 // apps/collector/src/ingest.ts
 // POST /v1/logs — accept OTLP logs, assign observedTime, insert (docs/DESIGN.md §19.4 step 1).
 import type { FastifyInstance } from 'fastify';
-import type { EventStore, UxEvent } from 'rastro-core';
-import { isUxEvent } from 'rastro-core';
+import type { AnyValue, AttributeValue, EventStore, UxEvent } from 'rastro-core';
+import { decodeOtlpLogs as decodeRecords, isUxEvent } from 'rastro-core';
 
-/** The OTLP/HTTP JSON shapes we read. Only the fields Rastro needs are modelled. */
-interface OtlpAnyValue {
-  stringValue?: string;
-  intValue?: string | number;
-  doubleValue?: number;
-  boolValue?: boolean;
-  arrayValue?: { values?: OtlpAnyValue[] };
-}
-
-interface OtlpKeyValue {
-  key?: string;
-  value?: OtlpAnyValue;
-}
-
-interface OtlpLogRecord {
-  timeUnixNano?: string;
-  observedTimeUnixNano?: string;
-  eventName?: string;
-  severityNumber?: number;
-  attributes?: OtlpKeyValue[];
-}
-
-interface OtlpLogsPayload {
-  resourceLogs?: {
-    resource?: { attributes?: OtlpKeyValue[] };
-    scopeLogs?: { logRecords?: OtlpLogRecord[] }[];
-  }[];
-}
-
-function fromAnyValue(value: OtlpAnyValue | undefined): unknown {
-  if (value === undefined) return undefined;
-  if (value.stringValue !== undefined) return value.stringValue;
-  if (value.boolValue !== undefined) return value.boolValue;
-  if (value.doubleValue !== undefined) return value.doubleValue;
-  if (value.intValue !== undefined) return Number(value.intValue); // int64-as-string on the wire
-  if (value.arrayValue !== undefined) {
-    return (value.arrayValue.values ?? []).map(fromAnyValue);
+/**
+ * Narrow a decoded value to what a `UxEvent` attribute may hold.
+ *
+ * The shared codec carries maps and mixed arrays because analysis output will need them
+ * (docs/CONSUMERS.md). Interactions do not, and the capture contract has never admitted them,
+ * so they are dropped here exactly as the old decoder dropped them. Widening what an
+ * interaction may carry is a conventions change, not a side effect of a codec change.
+ */
+function toAttributeValue(value: AnyValue): AttributeValue | undefined {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+    return value;
   }
   return undefined;
 }
 
-function fromKeyValues(pairs: OtlpKeyValue[] | undefined): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const pair of pairs ?? []) {
-    if (pair.key === undefined) continue;
-    const value = fromAnyValue(pair.value);
-    if (value !== undefined) out[pair.key] = value;
+function narrow(source: Record<string, AnyValue>): Record<string, AttributeValue> {
+  const out: Record<string, AttributeValue> = {};
+  for (const [key, value] of Object.entries(source)) {
+    const narrowed = toAttributeValue(value);
+    if (narrowed !== undefined) out[key] = narrowed;
   }
   return out;
 }
@@ -70,29 +46,22 @@ export interface DecodeResult {
  * authority for ordering within a session.
  */
 export function decodeOtlpLogs(payload: unknown, observedTimeUnixNano: string): DecodeResult {
-  const body = (payload ?? {}) as OtlpLogsPayload;
   const events: UxEvent[] = [];
   let rejected = 0;
 
-  for (const resourceLog of body.resourceLogs ?? []) {
-    const resource = fromKeyValues(resourceLog.resource?.attributes);
+  for (const record of decodeRecords(payload)) {
+    const candidate = {
+      eventName: record.eventName,
+      timeUnixNano: record.timeUnixNano,
+      // Assigned here, never trusted from the client.
+      observedTimeUnixNano,
+      severityNumber: record.severityNumber,
+      attributes: narrow(record.attributes),
+      resource: narrow(record.resource),
+    };
 
-    for (const scopeLog of resourceLog.scopeLogs ?? []) {
-      for (const record of scopeLog.logRecords ?? []) {
-        const candidate = {
-          eventName: record.eventName,
-          timeUnixNano: record.timeUnixNano,
-          // Assigned here, never trusted from the client.
-          observedTimeUnixNano,
-          severityNumber: record.severityNumber,
-          attributes: fromKeyValues(record.attributes),
-          resource,
-        };
-
-        if (isUxEvent(candidate)) events.push(candidate);
-        else rejected += 1;
-      }
-    }
+    if (isUxEvent(candidate)) events.push(candidate);
+    else rejected += 1;
   }
 
   return { events, rejected };
