@@ -356,3 +356,60 @@ describe('frictionByNode', () => {
     expect(frictionByNode([])).toEqual([]);
   });
 });
+
+describe('detectFriction — service.version', () => {
+  const versioned = (sessionId: string, version: string, path: [string, number][]): Session => ({
+    sessionId,
+    steps: path.map(([fingerprint, activeMs], index) => ({
+      ...step(fingerprint, activeMs, index + 1),
+      serviceVersion: version,
+    })),
+  });
+
+  it('dates a rage click with the deploy of the step it fired on', () => {
+    const [signal] = rage(
+      detectFriction([versioned('s1', '4.2.1', [['Save', 0], ['Save', 100], ['Save', 100]])]),
+    );
+    expect(signal?.serviceVersion).toBe('4.2.1');
+  });
+
+  it('dates each abandonment with the deploy its session ended on', () => {
+    const signals = abandonment(
+      detectFriction([
+        versioned('s1', '4.2.1', [['Home', 0], ['Form', 500]]),
+        versioned('s2', '4.2.2', [['Home', 0], ['Form', 500]]),
+        versioned('s3', '4.2.2', [['Home', 0], ['Form', 500]]),
+      ]),
+    );
+    expect(signals.map((signal) => [signal.sessionId, signal.serviceVersion])).toEqual([
+      ['s1', '4.2.1'],
+      ['s2', '4.2.2'],
+      ['s3', '4.2.2'],
+    ]);
+  });
+
+  // Pins the caveat on FrictionSignal.serviceVersion. On its own, 4.2.2 has 1 of 3 sessions
+  // ending on Form: 33%, under the 50% threshold. Pooled with 4.2.1, where every session ended
+  // there, it is 4 of 6. The 4.2.2 occurrence fires, carrying a rate 4.2.2 never had.
+  it('pools the abandonment rate across deploys: the version dates the occurrence only', () => {
+    const signals = abandonment(
+      detectFriction([
+        versioned('a1', '4.2.1', [['Home', 0], ['Form', 500]]),
+        versioned('a2', '4.2.1', [['Home', 0], ['Form', 500]]),
+        versioned('a3', '4.2.1', [['Home', 0], ['Form', 500]]),
+        versioned('b1', '4.2.2', [['Home', 0], ['Form', 500]]),
+        versioned('b2', '4.2.2', [['Home', 0], ['Form', 500], ['Done', 300]]),
+        versioned('b3', '4.2.2', [['Home', 0], ['Form', 500], ['Done', 300]]),
+      ]),
+    );
+    const onNew = signals.find((signal) => signal.serviceVersion === '4.2.2');
+
+    expect(onNew?.fingerprint).toBe('Form');
+    expect(onNew?.magnitude).toBe(67);
+  });
+
+  it('omits serviceVersion when the steps carry none', () => {
+    const [signal] = rage(detectFriction([session('s1', [['Save', 0], ['Save', 100], ['Save', 100]])]));
+    expect(signal).not.toHaveProperty('serviceVersion');
+  });
+});

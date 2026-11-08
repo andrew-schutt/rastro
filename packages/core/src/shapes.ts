@@ -29,6 +29,17 @@ export interface Step {
    */
   activeMs?: number;
   interactionMethod?: 'mouse' | 'keyboard' | 'touch';
+  /**
+   * The deploy this step ran on: the record's `service.version` resource attribute. Absent
+   * when the app did not report one, which is Recommended, not Required.
+   *
+   * Per step rather than per session, deliberately. Sessions are per page load today, so a
+   * session cannot span a deploy, but that is a known hole (NOTES.md), not a guarantee. Once
+   * §4.5's idle-timeout rule lands, a deploy can fall inside a session, and a per-session
+   * version would silently pick one side. Every finding points at a step, so the step is the
+   * one place the version is always exact.
+   */
+  serviceVersion?: string;
 }
 
 /** All of one `session.id`'s steps, sorted by `ux.seq`. */

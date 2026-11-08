@@ -13,6 +13,7 @@ export interface EventOverrides {
   activeMs?: number;
   app?: string;
   interactionMethod?: 'mouse' | 'keyboard' | 'touch';
+  serviceVersion?: string;
 }
 
 /** Build one conforming UxEvent. Every Required attribute gets a default. */
@@ -26,6 +27,7 @@ export function makeEvent(overrides: EventOverrides = {}): UxEvent {
     activeMs,
     app = 'fixture-app',
     interactionMethod,
+    serviceVersion,
   } = overrides;
 
   return {
@@ -46,6 +48,7 @@ export function makeEvent(overrides: EventOverrides = {}): UxEvent {
     },
     resource: {
       'service.name': app,
+      ...(serviceVersion === undefined ? {} : { 'service.version': serviceVersion }),
       'ux.convention.version': UX_CONVENTION_VERSION,
     },
   };
