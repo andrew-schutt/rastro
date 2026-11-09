@@ -27,12 +27,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { homedir } from 'node:os';
-import { join, relative, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   BUILD_VARIANTS,
   CORPUS,
-  EXPOSED_COMMITS,
   findCommit,
   type AppId,
   type BuildVariant,
@@ -40,18 +38,14 @@ import {
   type CorpusCommit,
 } from './manifest.ts';
 import { PATCH_MARKER, patchViteConfig, type PatchPaths } from './patch.ts';
-
-const SPIKE_DIR = resolve(import.meta.dirname, '..');
-const REPO_DIR = resolve(SPIKE_DIR, '../..');
-
-function corpusRoot(): string {
-  const root = resolve(process.env.RASTRO_CORPUS ?? join(homedir(), 'rastro-corpus'));
-  // Third-party code must never sit where a `git add` or a pnpm workspace glob could reach it.
-  if (!relative(REPO_DIR, root).startsWith('..')) {
-    throw new Error(`RASTRO_CORPUS (${root}) is inside the rastro repo. Put it outside.`);
-  }
-  return root;
-}
+import {
+  AFTER_FREEZE_FLAG,
+  assertExposed,
+  commitDirectory,
+  corpusRoot,
+  rastroRevision,
+  SPIKE_DIR,
+} from './runtime.ts';
 
 function run(
   command: readonly string[],
@@ -142,13 +136,6 @@ function assertVariantsDiffer(commitDir: string): void {
   console.log('  ok: the mangled bundle differs from as-shipped');
 }
 
-function rastroRevision(): { commit: string; dirty: boolean } {
-  return {
-    commit: run(['git', 'rev-parse', 'HEAD'], { cwd: REPO_DIR }),
-    dirty: run(['git', 'status', '--porcelain'], { cwd: REPO_DIR }) !== '',
-  };
-}
-
 function buildVariant(
   app: CorpusApp,
   commit: CorpusCommit,
@@ -213,21 +200,15 @@ function buildVariant(
 }
 
 function main(argv: string[]): void {
-  const afterFreeze = argv.includes('--after-freeze');
-  const [appArg, commitArg, ...variantArgs] = argv.filter((arg) => arg !== '--after-freeze');
+  const afterFreeze = argv.includes(AFTER_FREEZE_FLAG);
+  const [appArg, commitArg, ...variantArgs] = argv.filter((arg) => arg !== AFTER_FREEZE_FLAG);
   if (appArg === undefined || commitArg === undefined || !(appArg in CORPUS)) {
     throw new Error('usage: build.ts <actual|react-admin> <commit> [as-shipped|mangled …] [--after-freeze]');
   }
   const app = CORPUS[appArg as AppId];
   const commit = findCommit(app, commitArg);
 
-  if (commit.sha !== EXPOSED_COMMITS[app.id] && !afterFreeze) {
-    throw new Error(
-      `${app.id} commit ${commit.index} has never been built. Until the runner is frozen, only ` +
-        `${EXPOSED_COMMITS[app.id].slice(0, 7)} may be (manifest.ts, EXPOSED_COMMITS). ` +
-        'Pass --after-freeze once it is.',
-    );
-  }
+  assertExposed(app, commit, afterFreeze);
 
   const variants = variantArgs.length === 0 ? BUILD_VARIANTS : variantArgs;
   for (const variant of variants) {
@@ -246,7 +227,7 @@ function main(argv: string[]): void {
     log: join(root, 'logs', `${app.id}-${commit.sha.slice(0, 7)}-install.log`),
   });
 
-  const commitDir = join(root, 'builds', app.id, `${String(commit.index).padStart(2, '0')}-${commit.sha.slice(0, 7)}`);
+  const commitDir = commitDirectory('builds', app, commit);
   for (const variant of variants as BuildVariant[]) {
     buildVariant(app, commit, variant, clone, join(commitDir, variant));
   }
