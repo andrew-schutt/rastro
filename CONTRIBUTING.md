@@ -13,6 +13,7 @@ Setup, the dev loop, and what is implemented vs. stubbed live in
 |---|---|
 | [`docs/DESIGN.md`](docs/DESIGN.md) | The seeding design document. Section numbers (`§4.2.1`, `§19.3`) referenced throughout the codebase point here. |
 | [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md) | The `ux.*` attribute and event spec. A contract others instrument against — versioned independently of the SDK. |
+| [`docs/OUTPUT-CONVENTIONS.md`](docs/OUTPUT-CONVENTIONS.md) | The output contract: the `rastro.finding` record Rastro derives. Versioned apart from the capture conventions, via `rastro.output.version`. |
 | [`docs/NOTES.md`](docs/NOTES.md) | The accurate record: what is implemented vs. stubbed, every deviation from the design and why, and the known holes. |
 | [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) | The current body of work and its sequencing. |
 | [`docs/IDENTITY-RESOLUTION.md`](docs/IDENTITY-RESOLUTION.md) | Design for surviving fingerprint drift across deploys. Unbuilt; folds into `DESIGN.md` at its next revision. |

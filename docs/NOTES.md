@@ -109,6 +109,11 @@ works). Delete it to start clean.
 - **`rastro-analysis/graph.ts`** — `buildGraph`: node hits, per-session transition counts,
   median dwell per edge, and drop-off rate. Pure, order-independent, and the only place any
   aggregate number is computed.
+- **Findings, typed and built, emitted nowhere.** `rastro-core/derived.ts` holds the `Finding`
+  record from [`OUTPUT-CONVENTIONS.md`](OUTPUT-CONVENTIONS.md) with `isFinding` and `findingId`;
+  `rastro-analysis/findings.ts` builds them from friction signals with `toFindings`. No endpoint
+  returns them yet ([`CONSUMERS.md`](CONSUMERS.md) item 6). The collector refuses one posted
+  back, by scope.
 - **`rastro-analysis/friction.ts`** — `detectFriction`: rage clicks and high abandonment,
   ranked, plus `frictionByNode` to roll them up per element.
 - **`rastro-react`** — provider, `useTelemetry().track()`, batching + flush lifecycle, and the

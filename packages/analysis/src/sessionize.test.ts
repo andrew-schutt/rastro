@@ -1,5 +1,6 @@
 // packages/analysis/src/sessionize.test.ts
 import { describe, expect, it } from 'vitest';
+import { UX_CONVENTION_VERSION } from 'rastro-core';
 import { makeEvent } from './fixtures.js';
 import { sessionize } from './sessionize.js';
 
@@ -43,6 +44,7 @@ describe('sessionize', () => {
       seq: 3,
       activeMs: 4200,
       interactionMethod: 'keyboard',
+      conventionVersion: UX_CONVENTION_VERSION,
     });
   });
 

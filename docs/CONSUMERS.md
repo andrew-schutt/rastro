@@ -62,8 +62,10 @@ it needs building.
 It also does **not** make every analysis output a natural record. A finding, or one session's
 summary, is a point-in-time fact and fits an Event well. The flow graph does not. It is an
 aggregate over a window, and it changes whenever a session arrives. Putting a whole graph in
-one LogRecord body is legal, but it is a snapshot dressed up as an event. Open question 1
-covers this.
+one LogRecord body is legal, but it is a snapshot dressed up as an event. **Settled
+2026-11-08:** the graph is a view over the interaction events, and findings are the only derived
+record ([`OUTPUT-CONVENTIONS.md`](OUTPUT-CONVENTIONS.md)). A session summary detailed enough to
+rebuild the graph would be a second copy of observed data.
 
 ### Four rules the output has to keep
 
@@ -75,7 +77,7 @@ covers this.
    values and `ux.event_id` values it rests on, so a person or an agent can check it against
    the raw stream. This is the one design principle from the sketch adopted without change.
 3. **The `ux.*` namespace stays a capture contract.** Output vocabulary is a separate, versioned
-   section of the conventions, or a sibling document. Mixing the two would make
+   document, [`OUTPUT-CONVENTIONS.md`](OUTPUT-CONVENTIONS.md). Mixing the two would make
    `ux.convention.version` move for reasons no emitter cares about.
 4. **A person can read what the agent reads, easily.** The records an agent receives must be
    readable by a person as they are, with no separate rendering that could drift from them. A
@@ -177,10 +179,9 @@ In order. None of these is scheduled, and the first two are already the plan.
 
 ## 6. Open questions
 
-1. **Is the flow graph an output record, or a view?** One option: emit findings and
-   per-session summaries as Events, and rebuild the graph from those on the consumer side. The
-   other: emit graph snapshots, with a window and a `service.version` range. The second is
-   simpler to read and harder to keep honest.
+1. ~~**Is the flow graph an output record, or a view?**~~ **Settled:** a view over the
+   interaction events. Findings are the only derived record. See §1 and
+   [`OUTPUT-CONVENTIONS.md`](OUTPUT-CONVENTIONS.md).
 2. **What is the person's view of the feed?** Rule 4 says it shows the same records the agent
    gets. Whether that is the dashboard, a collector `debug` exporter, or a plain log of what the
    query interface returned is open. The cheapest one that cannot drift wins.
@@ -238,7 +239,7 @@ to 8 wait for §3.2 to pass and Phase 0 to come back positive. Each item is one 
   **Caveat for item 6:** `high_abandonment`'s rate is pooled across deploys, so a signal's
   version dates the occurrence, not the rate. A test pins a 4.2.2 occurrence firing at 67%,
   a rate 4.2.2 never had on its own. Per-version rates are not computed anywhere yet.
-- [ ] **4. Write the output vocabulary, and type it.** A sibling to `SEMANTIC-CONVENTIONS.md`
+- [x] **4. Write the output vocabulary, and type it.** A sibling to `SEMANTIC-CONVENTIONS.md`
   with its own version: the derived scope name, event names (a finding, a session summary),
   their Required set, the evidence link shape (`session.id` + `ux.seq` pairs), and
   `service.version` on every record. This is where open question 1 is decided. The
@@ -248,6 +249,15 @@ to 8 wait for §3.2 to pass and Phase 0 to come back positive. Each item is one 
   that match it, with a stable finding id (`kind` + `fingerprint` + `service.version`).
   *How we know:* the type and the doc name the same fields; a test builds a finding from a
   `FrictionSignal` and validates it.
+  *As built:* [`OUTPUT-CONVENTIONS.md`](OUTPUT-CONVENTIONS.md) 0.1, `Finding` / `isFinding` /
+  `findingId` in `core/derived.ts`, and `toFindings` in `rastro-analysis`. Three decisions, the
+  maintainer's: **findings only**, with no session summary, and the graph as a view; **counts
+  only**, so occurrences and sessions are exact per deploy, and no pooled rate rides on a
+  per-deploy record; **the resource is the analyzed app**, and the scope says Rastro made it.
+  `ux.convention.version` is Recommended, not Required as first outlined, because it is only
+  Recommended on the evidence; `Step` now carries it so a finding can say which fingerprint
+  format it uses. The finding type is named `Finding`, not `DerivedRecord`, since it is the only
+  one.
 
 **After both gates**
 

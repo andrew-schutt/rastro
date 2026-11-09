@@ -19,6 +19,7 @@ emitted as OpenTelemetry Events. Open source, pre-alpha, one maintainer.
 |---|---|
 | Why is it designed this way? | `docs/DESIGN.md` |
 | What does an event have to contain? | `docs/SEMANTIC-CONVENTIONS.md` |
+| What does a finding (Rastro's output) have to contain? | `docs/OUTPUT-CONVENTIONS.md` |
 | What is actually built vs. stubbed? Where does it break? How do I run it? | `docs/NOTES.md` |
 | What should I work on, and what is deliberately not being worked on? | `docs/VALIDATION-PLAN.md` |
 | How do I commit / branch / merge / verify? | `CONTRIBUTING.md` |

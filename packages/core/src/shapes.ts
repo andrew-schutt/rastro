@@ -40,6 +40,13 @@ export interface Step {
    * one place the version is always exact.
    */
   serviceVersion?: string;
+  /**
+   * The capture-convention version the step's record conforms to: its `ux.convention.version`
+   * resource attribute. It pins the format of `fingerprint`, which changed in 0.3, so a finding
+   * about this step can say which format its fingerprint is in (OUTPUT-CONVENTIONS.md). Absent
+   * when not reported; it is Recommended.
+   */
+  conventionVersion?: string;
 }
 
 /** All of one `session.id`'s steps, sorted by `ux.seq`. */

@@ -14,7 +14,16 @@ export {
 
 export type { FlowEdge, FlowGraph, FlowNode, Session, Step } from './shapes.js';
 
-export { DERIVED_SCOPE_NAME, isDerivedScope } from './derived.js';
+export {
+  DERIVED_SCOPE_NAME,
+  FINDING_EVENT_NAME,
+  findingId,
+  isDerivedScope,
+  isFinding,
+  OUTPUT_VERSION,
+  UNKNOWN_VERSION,
+} from './derived.js';
+export type { EvidenceRef, Finding } from './derived.js';
 
 export { decodeOtlpLogs, encodeOtlpLogs } from './otlp.js';
 export type {
