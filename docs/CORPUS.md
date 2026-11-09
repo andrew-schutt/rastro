@@ -141,6 +141,47 @@ Identical for every commit, every strategy and both apps.
   the fix is recorded. Run-to-run noise counted as churn would fail rule 2 for a reason that
   has nothing to do with identity.
 
+### Amended 2026-11-09, before any corpus number
+
+Building the runner at the two exposed commits found conditions above that could not hold as
+written. Each change below was decided then, and nothing here was chosen with a result in view.
+
+**What had been seen when this was written.** Only the two exposed commits (Actual's pin,
+react-admin's commit 10) had been loaded. Seen: element counts per screen, rebuild-control
+verdicts, and, while investigating failed controls, the fingerprints that differed between two
+loads of one build. No fingerprint had been compared across commits. No collision, churn or
+proposer number had been computed.
+
+- **Crypto is seeded too.** `crypto.getRandomValues` and `crypto.randomUUID` draw from a second
+  seeded generator, so `Math.random`'s sequence is the one it always was. Actual's demo data
+  takes its ids from `crypto.randomUUID()`, and transactions that tie on date are ordered by
+  them. With only `Math.random` seeded, its screens differed on every load and the rebuild
+  control failed under all six strategies.
+- **The clock is frozen, not started.** Every read of the clock in a load returns
+  `2026-10-30T12:00:00Z`. A clock left running would make relative dates depend on how long a
+  load took.
+- **The time zone is UTC.** Otherwise the dates the apps render depend on the machine.
+- **The run conditions reach workers.** A page-level script does not, and Actual builds its demo
+  budget in its backend worker. The corpus server prepends the conditions to every script the
+  browser requests as a worker (`Sec-Fetch-Dest`), and each load checks every worker that
+  answers. A worker that answers without them fails the capture. One that does not answer is
+  recorded: at Actual's pin that is its IndexedDB helper, which blocks in `Atomics.wait`, and
+  whose decoded source uses no `Math.random`, `Date` or `crypto`.
+- **Service workers, per app.** Actual's is a precache that fetches the app's files itself, so a
+  cached worker script would run without the conditions. Its requests go past it, as on a first
+  visit. The react-admin demo's is Mock Service Worker, its data backend, so it is kept, and is
+  served with the conditions like any worker.
+- **Every screen is a real load.** The react-admin demo routes by hash, and a hash change is not
+  a load, so each of its screens is reached through `about:blank`.
+- **The user agent** is Chrome's own, with `HeadlessChrome` reported as `Chrome`.
+- **The rebuild control judges strategies 1 and 3 to 6.** Strategy 2, the selector path, keeps
+  element ids, as PostHog's `$elements_chain` does. Actual's react-aria components take theirs
+  from React's `useId`, which numbers by mount order, so the same button on the same build has a
+  different strategy 2 fingerprint on a reload. That is the strategy's behaviour, not the
+  runner's noise, so strategy 2's load-to-load stability is measured and reported beside the
+  control instead of judging it. **Open:** whether PostHog's autocapture keeps generated ids
+  like these. Check its source before this is reported as anything about the incumbents.
+
 ## Screens
 
 **The rule:** every destination in the app's primary navigation that is visible by default at
