@@ -276,3 +276,55 @@ delivered, and save. Then check the "delivered" tab.
 
 The tab labels carry live counts, so their names depend on the data. The seeded run
 conditions above are what keep them fixed across commits.
+
+### Amended 2026-11-09, before any flow was driven
+
+Capturing the screens settled how a screen is reached and judged. It said nothing about the
+states a flow passes through, and the runner cannot be written without deciding them. Each
+rule below was decided before either flow was driven by any code, at any commit.
+
+**What had been seen when this was written.** Everything the 2026-11-09 run-conditions amendment
+lists, and nothing since. No flow state had been captured. One line of Actual's source at the
+pin was read to decide the clock (below).
+
+- **A flow is one walk per load, after the screens.** Each load captures every screen first and
+  then walks the flow, so nothing the flow writes can reach a screen capture. The walk starts
+  from a real load of its first screen: Actual's `/budget`, the react-admin demo's `/`. After
+  that it moves only by the flow's own interactions. Clicking "Orders" or an account link is
+  the flow, and a real load would skip what it is measuring.
+- **Every state in the tables is captured,** in the order the flow reaches it, whole document,
+  like a screen. A state is captured once even when several rows name it.
+- **Interactions are real input.** Clicks and keys are dispatched through CDP's `Input` domain
+  at the element's on-screen position, never `element.click()` or a synthetic event. Apps
+  handle synthetic events differently, and capture listens for the real ones.
+- **The flow's inputs are fixed.** Actual: the date is left as the app fills it (the frozen
+  clock makes it `2026-10-30`), the payee and the category are the first suggestion in each
+  list as it opens with nothing typed, the payment is `12.34`, and Notes and Deposit are left
+  empty. The react-admin demo: the order is the first row of the "ordered" tab as it loads, and
+  the only edit is Status to "delivered". These are inputs, not results, and their values carry
+  no meaning.
+- **"First" is recorded.** Where a row says "first", the capture records the visible label of
+  the item it got. A first item that differs between the two loads is caught by the rebuild
+  control. One that differs between commits is reported beside the rule and not substituted.
+- **A state counts as reached** when it settles, by the same rule as a screen, and shows what
+  defines it: the suggestion list or the Status menu is open, the new row is in the register,
+  or the route is `/orders/:id`. If a state is not reached, the walk stops there. That state
+  and every later one are reported as not reached, and their rows are reported, not
+  substituted. A flow that stops is a finding about the app or the runner, recorded with
+  the step that failed. The step is not retried with a different interaction.
+- **The clock stays frozen through the flow.** Adding a transaction at Actual's pin sets
+  `sort_order = Date.now()` (`transactions/TransactionList.tsx`). A frozen clock keeps that,
+  and so the register's order, the same on every load. A running clock would not. The cost is
+  that code waiting for the clock to move would never finish. Such a step stops the walk as
+  above. The clock is not switched mid-run without another dated amendment.
+- **Flows run on both build variants,** like the screens, so strategy 3 is judged on the
+  mangled build.
+- **The rebuild control covers flow states.** Each state is held to the same strict, positional
+  comparison as a screen: strategies 1 and 3 to 6 are judged, and strategy 2 is reported. A
+  state that is not reached on either load fails the control, as an uncaptured screen does.
+  Both loads start from fresh contexts. So if one load's transaction or saved order were
+  still there on the next, the control would see it.
+- **Collisions are judged in the state the table names.** A row's element is compared with
+  every distinct element in that state's capture, which is the whole document at that moment.
+  Rows A3 to A8 are judged in the register as loaded, and the same buttons are not judged
+  again in a later state.
