@@ -4,8 +4,9 @@ Builds and (later) drives the two corpus apps pre-registered in
 [`docs/CORPUS.md`](../../../docs/CORPUS.md). **Run by hand, locally, never in CI.** These are
 third-party apps with their own install scripts.
 
-This is the runner's first piece: checkout, harness patch and build. The browser driver and
-the rule 3 flow drivers come next, each in its own PR.
+Two pieces so far: **building** (checkout, harness patch, both variants) and **capturing**
+(every pre-registered screen, under all six strategies, twice, under the run conditions). The
+rule 3 flow drivers come next, then the freeze.
 
 ## The one rule while it is being written
 
@@ -44,6 +45,58 @@ workspace glob can ever reach third-party code.
     vite.config.patched              the exact config it was built with
     build.log
 ```
+
+## Capturing
+
+```bash
+node scripts/identity-spike/corpus/capture.ts react-admin 10   # needs the build first
+```
+
+Each build variant is served on localhost and loaded **twice**, each time in a fresh browser
+context (its own storage, like a first visit). In each load the driver enters the app (Actual:
+"Try the demo"; react-admin: sign in) and reaches every screen in `manifest.ts` by a real load.
+Once the screen settles, it bundles `src/page.ts` with esbuild, evaluates it in the page, and
+records every element matching `INTERACTIVE_SELECTOR`: its six fingerprints, and whether it is
+visible. Visibility is recorded, never filtered on.
+
+```
+~/rastro-corpus/captures/<app>/<nn>-<sha7>/<variant>/
+  load-1.json  load-2.json   every screen's elements, the workers checked, page errors
+  rebuild-control.json       per screen: judged strategies that differed, reported ones that did
+  capture.json               run conditions, browser, rastro commit (and whether dirty)
+  load-N-<screen>.png        only when something failed, to look at
+```
+
+It prints counts and verdicts, never a fingerprint, so a capture can be checked without its
+output being read.
+
+**One annotated build serves all six strategies.** The smoke test builds once per strategy;
+the corpus is built once per variant with stamps, files and marks all present, so
+`fingerprint()` would read the attribute chain under every strategy. `src/strategies.ts` names
+each strategy's walk explicitly instead, and `continuity/strategies.test.ts` proves it gives the
+smoke test's per-build fingerprints on the base app and every scenario.
+
+### The run conditions, and where each one is enforced
+
+`CORPUS.md` lists them, with the 2026-11-09 amendment. In the code:
+
+| Condition | Where |
+|---|---|
+| Seeded `Math.random`, seeded `crypto`, frozen clock | `conditions.ts`, one script for the page and every worker |
+| …in workers | `serve.ts` prepends it to every script requested as a worker; `browser.ts` checks each worker that answers, and a worker without it fails the capture |
+| Viewport, locale, UTC, user agent | `browser.ts` |
+| Service workers | per app in `apps.ts`: bypassed for Actual (a precache), kept for react-admin (its backend) |
+| A real load per screen | `apps.ts` (react-admin goes through `about:blank`, since a hash change is not a load) |
+| The rebuild control | `rebuild.ts`: strict, positional, judged against the full screen list |
+
+**Settling** is quiet DOM for 1.5 s with no response still open, timed out at 30 s and recorded.
+Open responses come from the corpus server, not CDP: CDP reports a worker script's request
+starting on the page and finishing on the worker, so a page would wait on it forever. Every CDP
+command has a deadline, so a stuck target fails with an error instead of hanging the runner.
+
+**The rebuild control** judges strategies 1 and 3 to 6. Strategy 2's stability across loads is
+measured and reported beside it, never judged: it keeps element ids, and Actual's come from
+React's `useId`, which numbers by mount order. See `CORPUS.md`'s amendment.
 
 ## What a build is
 
