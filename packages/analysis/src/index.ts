@@ -14,6 +14,9 @@ export {
   detectFriction,
   frictionByNode,
 } from './friction.js';
+export { toFindings } from './findings.js';
+export type { ToFindingsOptions } from './findings.js';
+
 export type {
   DetectFrictionOptions,
   FrictionByNode,

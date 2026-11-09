@@ -1,6 +1,7 @@
 // apps/collector/src/ingest.test.ts
 import { describe, expect, it } from 'vitest';
 import { DERIVED_SCOPE_NAME, encodeOtlpLogs, type UxEvent } from 'rastro-core';
+import { detectFriction, sessionize, toFindings } from 'rastro-analysis';
 import { createMemoryEventStore } from './db.ts';
 import { decodeOtlpLogs } from './ingest.ts';
 import { buildServer } from './server.ts';
@@ -111,6 +112,33 @@ describe('derived records (CONSUMERS.md, rule 1)', () => {
 });
 
 describe('POST /v1/logs', () => {
+  // The loop CONSUMERS.md rule 1 exists to break: a real finding, built from real signals,
+  // posted back to the collector it was derived from.
+  it('refuses a real finding posted back to it', async () => {
+    const clicks = [1, 2, 3].map((seq) =>
+      event({ 'ux.event_id': `c${seq}`, 'ux.seq': seq, 'ux.active_ms': 100 }),
+    );
+    const sessions = sessionize(clicks);
+    const findings = toFindings(detectFriction(sessions), sessions, {
+      app: 'app',
+      timeUnixNano: OBSERVED,
+    });
+    expect(findings).toHaveLength(1);
+
+    const store = createMemoryEventStore();
+    const app = buildServer({ store, logger: false });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/logs',
+      payload: encodeOtlpLogs(findings, { name: DERIVED_SCOPE_NAME }),
+    });
+
+    expect(response.json<{ partialSuccess: { rejectedLogRecords?: string } }>().partialSuccess
+      .rejectedLogRecords).toBe('1');
+    expect(await store.listByApp('app')).toEqual([]);
+    await app.close();
+  });
+
   it('stores nothing from a derived record, and says why in partialSuccess', async () => {
     const store = createMemoryEventStore();
     const app = buildServer({ store, logger: false });
