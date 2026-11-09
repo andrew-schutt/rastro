@@ -178,7 +178,10 @@ In the order agreed for §3.2:
 
 1. **The corpus runner**, which walks `CORPUS.md`'s commits under its run conditions,
    including the same-commit rebuild control. It builds and drives each app, and feeds
-   `snapshotDocument` and the proposers.
+   `snapshotDocument` and the proposers. **Building is done** ([`corpus/`](corpus)): checkout,
+   harness patch and both build variants, proven on the two exposed commits. Still to come:
+   the browser driver, then the rule 3 flow drivers, then the freeze. Until the freeze, only the
+   exposed commits are built, and `corpus/build.ts` refuses the rest.
 2. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
    missing are the per-JSX-site oracle and the shared-design-system case.
 3. **The run:** blind labels, scores, and the gate PR.
