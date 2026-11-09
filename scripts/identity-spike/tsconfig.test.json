@@ -1,12 +1,15 @@
 {
   // Same settings, WITH the test files — see packages/react/tsconfig.test.json for why the
   // split exists. `typecheck` runs this one. It also covers continuity/, the smoke test's
-  // harness and base app, which run under Node and jsdom and are never part of src/.
+  // harness and base app, which run under Node and jsdom and are never part of src/, and corpus/,
+  // the corpus runner, which runs under Node by hand.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
-    "types": ["node"]
+    "types": ["node"],
+    // corpus/ runs directly under Node's type stripping, which needs real `.ts` specifiers.
+    "allowImportingTsExtensions": true
   },
-  "include": ["src", "continuity"],
+  "include": ["src", "continuity", "corpus"],
   "exclude": []
 }
