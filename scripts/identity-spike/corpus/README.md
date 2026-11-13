@@ -1,12 +1,12 @@
 # corpus/ — the §3.2 corpus runner
 
-Builds and (later) drives the two corpus apps pre-registered in
+Builds and drives the two corpus apps pre-registered in
 [`docs/CORPUS.md`](../../../docs/CORPUS.md). **Run by hand, locally, never in CI.** These are
 third-party apps with their own install scripts.
 
-Two pieces so far: **building** (checkout, harness patch, both variants) and **capturing**
-(every pre-registered screen, under all six strategies, twice, under the run conditions). The
-rule 3 flow drivers come next, then the freeze.
+Three pieces: **building** (checkout, harness patch, both variants), **capturing** (every
+pre-registered screen, under all six strategies, twice, under the run conditions) and **walking
+rule 3's flow** in each of those loads. The freeze comes next.
 
 ## The one rule while it is being written
 
@@ -57,24 +57,55 @@ context (its own storage, like a first visit). In each load the driver enters th
 "Try the demo"; react-admin: sign in) and reaches every screen in `manifest.ts` by a real load.
 Once the screen settles, it bundles `src/page.ts` with esbuild, evaluates it in the page, and
 records every element matching `INTERACTIVE_SELECTOR`: its six fingerprints, and whether it is
-visible. Visibility is recorded, never filtered on.
+visible. Visibility is recorded, never filtered on. Then it walks rule 3's flow (below).
 
 ```
 ~/rastro-corpus/captures/<app>/<nn>-<sha7>/<variant>/
-  load-1.json  load-2.json   every screen's elements, the workers checked, page errors
-  rebuild-control.json       per screen: judged strategies that differed, reported ones that did
+  load-1.json  load-2.json   every screen's elements, the flow's states and "first" labels,
+                             the workers checked, page errors
+  rebuild-control.json       per screen and per flow state: judged strategies that differed,
+                             reported ones that did; "first" labels that differed
   capture.json               run conditions, browser, rastro commit (and whether dirty)
-  load-N-<screen>.png        only when something failed, to look at
+  load-N-<kind>-<name>.png   only when something failed, to look at
 ```
 
-It prints counts and verdicts, never a fingerprint, so a capture can be checked without its
-output being read.
+It prints counts, verdicts and the "first" labels, never a fingerprint, so a capture can be
+checked without its output being read.
 
 **One annotated build serves all six strategies.** The smoke test builds once per strategy;
 the corpus is built once per variant with stamps, files and marks all present, so
 `fingerprint()` would read the attribute chain under every strategy. `src/strategies.ts` names
 each strategy's walk explicitly instead, and `continuity/strategies.test.ts` proves it gives the
 smoke test's per-build fingerprints on the base app and every scenario.
+
+### Walking the flow
+
+`flows.ts` is rule 3's two flows as fixed lists of steps, walked once per load after every screen
+is captured. CORPUS.md has two amendments on how a flow is walked: the 2026-11-09 one is the
+spec, and the 2026-11-13 one records what walking the flows at the exposed commits settled.
+Each step is:
+
+- a real interaction (`Input` events at the element's on-screen centre; `click` refuses an
+  element with no box rather than clicking its corner),
+- then a settle, by the same rule as a screen,
+- then the in-page condition that defines the state it reaches.
+
+A step whose state the table names captures the whole document, exactly as a screen is
+captured. A step whose condition is false stops the walk, and every state after it is reported
+as not reached. Steps are never retried or swapped for another interaction.
+
+| | Actual | react-admin demo |
+|---|---|---|
+| Starts from | a real load of `/budget` (the sidebar state) | a real load of `/` (the sidebar state) |
+| States captured | register, new transaction row, payee suggestions open, category suggestions open, after Add | `/orders`, `/orders` ordered tab, `/orders/:id`, Status menu open |
+| Walked, not captured | the first payee and category picked, `12.34` typed, then Budget | delivered picked, Save, the delivered tab |
+
+**Which elements are judged is not this file's call.** `manifest.ts` transcribes both rule 3
+tables, and `manifest.test.ts` holds them to CORPUS.md. `flows.test.ts` holds the drivers to
+the manifest: every state the table names is captured exactly once, in order, and a "first"
+label is recorded for exactly the rows that say "first". It also runs every in-page
+expression in jsdom, so a typo fails CI and not a corpus run. Matching each row to a captured
+element is done by hand, as CORPUS.md says.
 
 ### The run conditions, and where each one is enforced
 
@@ -87,7 +118,7 @@ smoke test's per-build fingerprints on the base app and every scenario.
 | Viewport, locale, UTC, user agent | `browser.ts` |
 | Service workers | per app in `apps.ts`: bypassed for Actual (a precache), kept for react-admin (its backend) |
 | A real load per screen | `apps.ts` (react-admin goes through `about:blank`, since a hash change is not a load) |
-| The rebuild control | `rebuild.ts`: strict, positional, judged against the full screen list |
+| The rebuild control | `rebuild.ts`: strict, positional, judged against the full screen list, and for the flow against its full state list plus its "first" labels |
 
 **Settling** is quiet DOM for 1.5 s with no response still open, timed out at 30 s and recorded.
 Open responses come from the corpus server, not CDP: CDP reports a worker script's request
@@ -131,7 +162,7 @@ the bundle. It is not a measurement.
 
 ## Tests
 
-`manifest.test.ts` holds `manifest.ts` to `CORPUS.md`: commits, pins, build commands and
-screens. If the doc and the transcription ever disagree, CI fails without cloning anything.
+`manifest.test.ts` holds `manifest.ts` to `CORPUS.md`: commits, pins, build commands,
+screens and rule 3's rows. If the doc and the transcription ever disagree, CI fails without cloning anything.
 `patch.test.ts` runs the patch on configs written in the test, shaped like the real ones at
 their anchors.

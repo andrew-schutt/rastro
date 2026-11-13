@@ -181,10 +181,11 @@ In the order agreed for §3.2:
    `snapshotDocument` and the proposers. **Building and capturing are done**
    ([`corpus/`](corpus)): both variants of both apps build, and every pre-registered screen is
    captured twice under all six strategies, passing the rebuild control at the two exposed
-   commits. Still to come: the rule 3 flow drivers, pre-registered in `CORPUS.md`'s
-   2026-11-09 amendment on how flows are walked. Then settle the question the run-conditions
-   amendment left open: whether PostHog's autocapture keeps generated ids like React's
-   `useId`. Strategy 2 keeps them, so it differs between two loads of one build. Its definition
+   commits. **The rule 3 flow drivers are done too**: both flows are walked in every load, on
+   both variants, and pass the rebuild control at the exposed commits. What walking them
+   settled is `CORPUS.md`'s 2026-11-13 amendment. Still to come: settle the question the
+   run-conditions amendment left open, whether PostHog's autocapture keeps generated ids
+   like React's `useId`. Strategy 2 keeps them, so it differs between two loads of one build. Its definition
    is part of what the freeze fixes, so this is settled from PostHog's source before the
    freeze, not after a number is seen. Then the freeze. Until the freeze, only the exposed
    commits are built or captured, and both commands refuse the rest.
