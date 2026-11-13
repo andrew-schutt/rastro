@@ -328,3 +328,45 @@ pin was read to decide the clock (below).
   every distinct element in that state's capture, which is the whole document at that moment.
   Rows A3 to A8 are judged in the register as loaded, and the same buttons are not judged
   again in a later state.
+
+### Amended 2026-11-13, after both flows were walked at the exposed commits
+
+Writing the flow drivers meant walking both flows, at the two exposed commits only. The steps
+the amendment above defines left some questions open, and walking them answered these.
+Nothing here was decided with a fingerprint, a collision or a cross-commit difference in view,
+and none had been computed.
+
+**What had been seen when this was written.** Everything the two 2026-11-09 amendments list.
+Also, at the two exposed commits only: the visible text, roles and test ids of the elements
+along each flow, per-state element counts, rebuild-control verdicts, and the labels the
+"first" rows got (below). No fingerprint was printed or read.
+
+- **A18 skips "Split Transaction".** Actual's category list opens with "Split Transaction"
+  above every category. It is an action on the transaction, not a category, and choosing it
+  splits the transaction. A18 is "the first suggested category", so the walk takes the first
+  item that is a category. Group headings in either list ("Suggested Payees", "Usual
+  Expenses") are not items either. "Split Transaction" is still an element of that state, and
+  rule 3 compares A18 against it like any other.
+- **The payment replaces the field's text.** Actual's Payment field holds `0.00` and does not
+  select it on focus, so typed text is appended to it. The walk selects the field's text with
+  the platform's select-all keystroke, through CDP's `Input` like every other key, then types
+  `12.34`.
+- **The react-admin walk does not click "Sales" (R1).** The Sales menu is open by default, so
+  its Orders link is already the click. Clicking "Sales" would close it. R1 is still judged in
+  the sidebar state. At a commit where the menu starts closed, the Orders click finds nothing
+  on screen and the walk stops there, as the amendment above requires. The walk does not adapt.
+- **`/orders` and "`/orders`, ordered tab" are two states, so the walk captures both.** The
+  table names them apart, so the walk clicks the "ordered" tab, the tab the flow opens its
+  order from, and captures again. It is the default tab, so the click may change nothing, and
+  then both captures should agree.
+- **The first row is clicked on its date cell.** The row's centre is its customer link (R11),
+  which opens the customer instead of the order.
+- **Steps after the last named state are walked and checked, not captured.** These are
+  Actual's return to the budget, and react-admin's Save and its "delivered" tab. No row of
+  either table is judged after them. If one is not reached, the walk is still reported as
+  stopped.
+- **How "first" labels are recorded.** An item that shows a name and then a balance (Actual's
+  sidebar accounts and suggestions) is recorded by its name. Anything else is recorded by its
+  whole visible text. At the exposed commits these were A1 "Bank of America", A17 "Deposit",
+  A18 "Food", R10 "VJ0ZOKQE" (the order's reference), R11 "Sherwood Paucek" and R18
+  "Forgotten Strawberries". They were the same on both loads and both build variants.
