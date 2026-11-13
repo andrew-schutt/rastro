@@ -20,13 +20,28 @@ export interface AppDriver {
 }
 
 /** An in-page expression for the first button whose trimmed text is exactly `label`. */
-const button = (label: string) =>
+export const button = (label: string) =>
   `[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)})`;
 
 async function expectLocation(page: Page, test: string, what: string): Promise<void> {
   const ok = await page.evaluate<boolean>(test);
   if (!ok) throw new Error(`${what} (at ${await page.evaluate<string>('location.href')})`);
 }
+
+/**
+ * Actual's first account listed under "On budget", as an in-page expression. The sidebar lists
+ * the section's link, then its accounts, so it is the first account link after the section's.
+ * The register screen and rule 3's flow (row A1) both open it, so there is one definition.
+ */
+export const FIRST_ON_BUDGET_ACCOUNT = `(() => {
+  const links = [...document.querySelectorAll('a[href^="/accounts/"]')];
+  const section = links.findIndex((a) => a.getAttribute('href') === '/accounts/onbudget');
+  const first = links.slice(section + 1)[0];
+  return section === -1 || !first || first.getAttribute('href') === '/accounts/offbudget' ? null : first;
+})()`;
+
+/** The route of one account's register. */
+export const ACCOUNT_REGISTER = `/^\\/accounts\\/[0-9a-f-]{36}$/.test(location.pathname)`;
 
 const actual: AppDriver = {
   crossOriginIsolated: true,
@@ -42,27 +57,17 @@ const actual: AppDriver = {
   open: async (page, base, screen) => {
     if (screen.startsWith('/')) return page.goto(`${base}${screen}`);
     if (screen !== 'first on-budget account register') throw new Error(`actual: no driver for ${screen}`);
-    // "The register of the first account listed under 'On budget'": the sidebar lists the
-    // section's link, then its accounts, so it is the first account link after the section's.
-    // Clicked, as a user would open it, after the budget's own full load.
+    // "The register of the first account listed under 'On budget'", clicked as a user would
+    // open it, after the budget's own full load.
     await page.goto(`${base}/budget`);
-    await page.click(`(() => {
-      const links = [...document.querySelectorAll('a[href^="/accounts/"]')];
-      const section = links.findIndex((a) => a.getAttribute('href') === '/accounts/onbudget');
-      const first = links.slice(section + 1)[0];
-      return section === -1 || !first || first.getAttribute('href') === '/accounts/offbudget' ? null : first;
-    })()`);
+    await page.click(FIRST_ON_BUDGET_ACCOUNT);
     const settled = await page.settle();
-    await expectLocation(
-      page,
-      `/^\\/accounts\\/[0-9a-f-]{36}$/.test(location.pathname)`,
-      'the first on-budget account did not open its register',
-    );
+    await expectLocation(page, ACCOUNT_REGISTER, 'the first on-budget account did not open its register');
     return settled;
   },
 };
 
-const SIGNED_IN = `document.querySelector('.RaLayout-appFrame') && !document.querySelector('input[name=username]')`;
+export const SIGNED_IN = `document.querySelector('.RaLayout-appFrame') && !document.querySelector('input[name=username]')`;
 
 const reactAdmin: AppDriver = {
   crossOriginIsolated: false,

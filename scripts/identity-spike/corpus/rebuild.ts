@@ -82,3 +82,29 @@ export function rebuildControl(
     screens,
   };
 }
+
+export interface FlowVerdict extends RebuildVerdict {
+  /** Rows whose "first" item had a different label on the two loads. None on both is not noise. */
+  firsts: { row: string; labels: [string | null, string | null] }[];
+}
+
+/**
+ * The control over a flow's states (CORPUS.md, 2026-11-09 amendment on how flows are walked):
+ * each state is held to the same strict, positional comparison as a screen, and a state not
+ * reached on either load fails it. "A first item that differs between the two loads is caught
+ * by the rebuild control", so the labels the walk recorded must match too.
+ */
+export function flowControl(
+  expected: readonly string[],
+  first: { states: readonly ScreenCapture[]; firsts: Readonly<Record<string, string | null>> },
+  second: { states: readonly ScreenCapture[]; firsts: Readonly<Record<string, string | null>> },
+  strategies: readonly CorpusStrategy[],
+  reportedOnly: readonly CorpusStrategy[] = [],
+): FlowVerdict {
+  const states = rebuildControl(expected, first.states, second.states, strategies, reportedOnly);
+  const rows = [...new Set([...Object.keys(first.firsts), ...Object.keys(second.firsts)])];
+  const firsts = rows
+    .map((row) => ({ row, labels: [first.firsts[row] ?? null, second.firsts[row] ?? null] as [string | null, string | null] }))
+    .filter(({ labels: [a, b] }) => a !== b);
+  return { ...states, passed: states.passed && firsts.length === 0, firsts };
+}
