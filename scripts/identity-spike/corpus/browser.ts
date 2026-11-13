@@ -105,10 +105,12 @@ export interface Page {
   settle: () => Promise<Settle>;
   /** Wait until an in-page expression is truthy, or throw after the settle timeout. */
   waitFor: (expression: string, what: string) => Promise<void>;
-  /** Click the centre of the first element matching the in-page expression. */
+  /** Click the centre of the element the in-page expression returns. Throws if it has no box. */
   click: (elementExpression: string) => Promise<void>;
   /** Type into the focused element. */
   type: (text: string) => Promise<void>;
+  /** Select all of the focused field's text, by the platform's own keystroke, so typing replaces it. */
+  selectAll: () => Promise<void>;
   /** Uncaught exceptions and console errors so far, from the page and its workers. */
   errors: () => string[];
   /** A PNG of the viewport, for a failure someone has to look at. */
@@ -300,15 +302,25 @@ export async function launch(chromePath: string = process.env.CHROME ?? DEFAULT_
           if (!element) return null;
           element.scrollIntoView({ block: 'center', inline: 'center' });
           const rect = element.getBoundingClientRect();
+          // A box with no area is not on screen: a click there lands on whatever is at its corner.
+          if (rect.width === 0 || rect.height === 0) return null;
           return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
         })()`);
-        if (box === null) throw new Error(`nothing to click: ${elementExpression}`);
+        if (box === null) throw new Error(`nothing on screen to click: ${elementExpression}`);
         for (const type of ['mousePressed', 'mouseReleased']) {
           await send('Input.dispatchMouseEvent', { type, ...box, button: 'left', clickCount: 1 });
         }
       },
       type: async (text) => {
         await send('Input.insertText', { text });
+      },
+      selectAll: async () => {
+        // The keystroke a user would press. `commands` makes Chrome run the editing command the
+        // shortcut is bound to, which a bare key event does not do on macOS.
+        const modifiers = process.platform === 'darwin' ? 4 : 2;
+        const key = { key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers };
+        await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...key, commands: ['selectAll'] });
+        await send('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
       },
       errors: () => [...errors],
       screenshot: async () => Buffer.from(String((await send('Page.captureScreenshot', { format: 'png' })).data), 'base64'),
