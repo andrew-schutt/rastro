@@ -32,7 +32,7 @@ emitted as OpenTelemetry Events. Open source, pre-alpha, one maintainer.
 intended; NOTES records what shipped, every deviation and why. Where they disagree about the
 code, NOTES is right. Trust it over your own reading of the design, and over assumptions.
 
-## State, as of 2026-11-02
+## State, as of 2026-11-13
 
 **Active again since 2026-10-29, on §3.2 (the identity spike).** Work had paused on
 2026-09-02.
@@ -46,11 +46,15 @@ number for the fingerprint has been measured yet. That asymmetry is the whole po
 before planning anything: it is why the restart point is §3.2, which never needed anyone's
 permission, and not §3.1. Recruiting a host is the maintainer's to do, not a code task.
 
-**§3.2's measuring tooling is built, and its inputs are pre-registered. The corpus runner is
-next.** All six of rule 1's strategies exist and run in the continuity smoke test, and so do
-rule 4's three proposers. The corpus is two third-party apps, built by hand and never in CI.
-Its commits, screens, run conditions and rule 3 flows are fixed in `docs/CORPUS.md`. What is
-still to build is listed in `scripts/identity-spike/README.md`. Samples of both apps, taken
+**§3.2's corpus runner builds and captures both apps. The rule 3 flow drivers are next.** All
+six of rule 1's strategies and rule 4's three proposers exist. The corpus is two third-party
+apps, built by hand and never in CI. Its commits, screens, run conditions and rule 3 flows are
+fixed in `docs/CORPUS.md`, including two amendments made before any corpus number: the run
+conditions, and how a flow is walked, which is the spec for the flow drivers. The runner
+(`scripts/identity-spike/corpus/`) builds both variants of both apps and captures every screen
+twice under all six strategies, passing its rebuild control. Until the runner is frozen it
+touches only the two exposed commits, and refuses the rest. What is still to build, in order,
+is listed in `scripts/identity-spike/README.md`. Samples of both apps, taken
 before any run, already show the attribute chain carrying little identity in design-system
 apps. That is the "reopened" entry in `docs/NOTES.md`, and why strategy 6, the marked fiber
 walk, exists.
@@ -61,6 +65,11 @@ the build step. It is documented as a development diagnostic only, and §3.2 rul
 unless it beats role + accessible name on the corpus. Strategy is chosen once per document, never per
 element. **Next.js is the open gap.** It compiles with SWC, and that port is the open half of
 §17 #4.
+
+**Output has a direction and a first record, and nothing emits it.** `docs/CONSUMERS.md` names
+AI agents as the first consumer. `docs/OUTPUT-CONVENTIONS.md` defines the one derived record,
+the finding, which is typed and built. Work-list items 1 to 4 needed no gate and are done.
+Items 5 to 8, which emit findings, wait for both gates.
 
 ## Traps that are written nowhere else
 

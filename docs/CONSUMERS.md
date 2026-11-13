@@ -74,8 +74,10 @@ rebuild the graph would be a second copy of observed data.
    will also re-ingest its own output. Derived records need their own instrumentation scope,
    their own event names, and an ingest path that rejects them as input.
 2. **Every claim links back to the events that support it.** A finding carries the `session.id`
-   values and `ux.event_id` values it rests on, so a person or an agent can check it against
-   the raw stream. This is the one design principle from the sketch adopted without change.
+   and `ux.seq` of every interaction it rests on (its `evidence`, in
+   [`OUTPUT-CONVENTIONS.md`](OUTPUT-CONVENTIONS.md)), so a person or an agent can check it
+   against the raw stream. This is the one design principle from the sketch adopted without
+   change.
 3. **The `ux.*` namespace stays a capture contract.** Output vocabulary is a separate, versioned
    document, [`OUTPUT-CONVENTIONS.md`](OUTPUT-CONVENTIONS.md). Mixing the two would make
    `ux.convention.version` move for reasons no emitter cares about.
