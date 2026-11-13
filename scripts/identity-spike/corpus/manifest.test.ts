@@ -68,6 +68,19 @@ describe('manifest.ts against docs/CORPUS.md', () => {
     ]);
   });
 
+  it("rule 3's rows match each flow's table, in order", () => {
+    const rows = (prefix: string) =>
+      [...section('## Rule 3: the flow that matters').matchAll(new RegExp(`^\\| (${prefix}\\d+) \\| (.*?) \\| (.*?) \\| .*\\|$`, 'gm'))].map(
+        ([, id, state, element]) => ({ id, state: state?.replaceAll('`', ''), element }),
+      );
+    expect(rows('A')).toHaveLength(20);
+    expect(CORPUS.actual.flow.rows).toEqual(rows('A'));
+    expect(rows('R')).toHaveLength(20);
+    expect(CORPUS['react-admin'].flow.rows).toEqual(rows('R'));
+    expect(DOC).toContain(`### Actual: ${CORPUS.actual.flow.name}`);
+    expect(DOC).toContain(`### react-admin demo: ${CORPUS['react-admin'].flow.name}`);
+  });
+
   it('the exposed commits are the ones the 2026-10-30 build check built, or stand in for', () => {
     // Actual's pin is its commit 10. React-admin's pin is not in its list; CORPUS.md says
     // commit 10 builds the same app, so it stands in.
