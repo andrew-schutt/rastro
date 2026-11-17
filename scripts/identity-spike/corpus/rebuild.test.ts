@@ -8,7 +8,8 @@ import { flowControl, rebuildControl, type ScreenCapture } from './rebuild.ts';
 function element(name: string, overrides: Partial<CapturedElement['fingerprints']> = {}): CapturedElement {
   const fingerprints = Object.fromEntries(RULE_1_STRATEGIES.map((s) => [s, name])) as CapturedElement['fingerprints'];
   const description = { tag: 'button', role: null, label: null, text: name, attributes: {}, within: null, box: { x: 0, y: 0, width: 1, height: 1 } };
-  return { visible: true, fingerprints: { ...fingerprints, ...overrides }, description };
+  const parts = Object.fromEntries(RULE_1_STRATEGIES.map((s) => [s, { role: 'button' }])) as CapturedElement['parts'];
+  return { visible: true, fingerprints: { ...fingerprints, ...overrides }, parts, ancestry: [], site: null, description };
 }
 
 const screen = (name: string, elements: CapturedElement[]): ScreenCapture => ({
