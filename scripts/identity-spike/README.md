@@ -183,12 +183,10 @@ In the order agreed for §3.2:
    captured twice under all six strategies, passing the rebuild control at the two exposed
    commits. **The rule 3 flow drivers are done too**: both flows are walked in every load, on
    both variants, and pass the rebuild control at the exposed commits. What walking them
-   settled is `CORPUS.md`'s 2026-11-13 amendment. Still to come: settle the question the
-   run-conditions amendment left open, whether PostHog's autocapture keeps generated ids
-   like React's `useId`. Strategy 2 keeps them, so it differs between two loads of one build. Its definition
-   is part of what the freeze fixes, so this is settled from PostHog's source before the
-   freeze, not after a number is seen. Then the freeze. Until the freeze, only the exposed
-   commits are built or captured, and both commands refuse the rest.
+   settled is `CORPUS.md`'s 2026-11-13 amendment. The question the run-conditions amendment
+   left open is settled too, from PostHog's source: its autocapture keeps generated ids like
+   React's `useId`, so strategy 2 stands as defined. Still to come: the freeze. Until then,
+   only the exposed commits are built or captured, and both commands refuse the rest.
 2. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
    missing are the per-JSX-site oracle and the shared-design-system case.
 3. **The run:** blind labels, scores, and the gate PR.
