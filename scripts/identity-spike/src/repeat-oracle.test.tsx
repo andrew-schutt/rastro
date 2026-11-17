@@ -9,7 +9,7 @@
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { classifyPair, groupByRepeat, repeatSiteOf } from './repeat-oracle.js';
+import { classifyPair, groupByRepeat, groupSites, recordSites, repeatSiteOf } from './repeat-oracle.js';
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -370,5 +370,58 @@ describe('groupByRepeat', () => {
   it('widens the range by exactly what the key merged', () => {
     const q = render(<Table />);
     expect(groupByRepeat(q('button')).distinctElements).toEqual({ atLeast: 1, atMost: 3 });
+  });
+});
+
+// The corpus runs the referee offline, on sites the runner recorded while the page was live and
+// saved as JSON. The verdicts must be the ones the live referee gives.
+describe('recordSites and groupSites', () => {
+  it('give the live grouping, by index, after a JSON round trip', () => {
+    const q = render(
+      <div>
+        <Table />
+        <ul>
+          {ROWS.map((r) => (
+            <li key={r.id}>
+              <button type="button">Act</button>
+              <button type="button">Act</button>
+            </li>
+          ))}
+        </ul>
+        <button type="button">Loose</button>
+      </div>,
+    );
+    const buttons = q('button');
+    const live = groupByRepeat(buttons);
+    const offline = groupSites(JSON.parse(JSON.stringify(recordSites(buttons))) as ReturnType<typeof recordSites>);
+
+    expect(offline.groups.map((group) => group.map((i) => buttons[i]))).toEqual(live.groups);
+    expect({ ...offline, groups: undefined }).toEqual({ ...live, groups: undefined });
+    expect(offline.groups).toHaveLength(4);
+  });
+
+  it('numbers fibers per call: one row shares an item, rows share a list, a loose button has no site', () => {
+    const q = render(
+      <div>
+        <ul>
+          {ROWS.map((r) => (
+            <li key={r.id}>
+              <button type="button">A</button>
+              <button type="button">B</button>
+            </li>
+          ))}
+        </ul>
+        <button type="button">Loose</button>
+      </div>,
+    );
+    const [a1, b1, a2, , , , loose] = recordSites(q('button'));
+
+    expect(a1?.item).toBe(b1?.item);
+    expect(a1?.item).not.toBe(a2?.item);
+    expect(a1?.list).toBe(a2?.list);
+    expect([a1?.key, a2?.key]).toEqual(['a1', 'b2']);
+    expect(a1?.slot).not.toBe(b1?.slot);
+    expect(a1?.slot).toBe(a2?.slot);
+    expect(loose).toBeNull();
   });
 });

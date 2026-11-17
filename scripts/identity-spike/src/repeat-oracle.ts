@@ -116,7 +116,10 @@ export function classifyPair(a: Element, b: Element): CollisionVerdict {
  * safer one: React double-buffers, so a second walk can land on a different tree than the
  * one the positions came from, and the two halves of one verdict would then disagree.
  */
-function classifySites(siteA: RepeatSite | null, siteB: RepeatSite | null): CollisionVerdict {
+function classifySites(
+  siteA: Pick<RepeatSite, 'item' | 'list'> | Pick<RecordedSite, 'item' | 'list'> | null,
+  siteB: Pick<RepeatSite, 'item' | 'list'> | Pick<RecordedSite, 'item' | 'list'> | null,
+): CollisionVerdict {
   if (siteA === null && siteB === null) {
     return { verdict: 'undecided', reason: 'no-keyed-ancestor' };
   }
@@ -140,13 +143,52 @@ function classifySites(siteA: RepeatSite | null, siteB: RepeatSite | null): Coll
   return { verdict: 'distinct', reason: 'different-lists' };
 }
 
+/**
+ * A `RepeatSite` as plain data, so the referee can rule on a capture after the page is gone.
+ *
+ * The corpus runner records one per element while the page is live, then the referee runs
+ * offline, on the same grouping code (`groupSites`). The fiber objects become numbers that
+ * are unique within ONE `recordSites` call: equal numbers mean the same fiber, exactly where
+ * `===` said so, and nothing across calls. That is all the referee ever compared.
+ */
+export interface RecordedSite {
+  key: string;
+  /** The keyed item fiber, as a number unique within its `recordSites` call. */
+  item: number;
+  /** The list fiber (the item's parent), likewise. */
+  list: number;
+  /** `slotWithinItem`. Null when the item is not an ancestor, which is no evidence. */
+  slot: string | null;
+}
+
+/**
+ * Every element's site, from ONE pass over one snapshot of the fiber tree, so the numbers are
+ * comparable across all of `elements`. Null for an element in no keyed list.
+ */
+export function recordSites(elements: readonly Element[]): (RecordedSite | null)[] {
+  const ids = new Map<object, number>();
+  const idOf = (fiber: object): number => {
+    let id = ids.get(fiber);
+    if (id === undefined) {
+      id = ids.size;
+      ids.set(fiber, id);
+    }
+    return id;
+  };
+  return elements.map((element) => {
+    const site = repeatSiteOf(element);
+    if (site === null) return null;
+    return { key: site.key, item: idOf(site.item), list: idOf(site.list), slot: slotWithinItem(element, site.item) };
+  });
+}
+
 /** What the referee made of one fingerprint's worth of colliding elements. */
-export interface RepeatGrouping {
+export interface RepeatGrouping<T = Element> {
   /**
    * Elements clustered so that each group is ONE logical element. A group count above 1 is a
    * false merge: that many distinct things wearing one identity.
    */
-  groups: Element[][];
+  groups: T[][];
   /**
    * How many distinct logical elements wear this fingerprint, as a RANGE.
    *
@@ -234,46 +276,49 @@ function slotWithinItem(element: Element, item: object): string | null {
  * range rather than pretending the merge was proven.
  */
 export function groupByRepeat(elements: readonly Element[]): RepeatGrouping {
-  // Resolved once. Every verdict and every slot below reads from these, so the whole function
-  // rules on ONE snapshot of the fiber tree (see `classifySites`).
-  const sites = elements.map((element) => repeatSiteOf(element));
-  const slots = sites.map((site, i) =>
-    site === null ? null : slotWithinItem(elements[i] as Element, site.item),
-  );
+  // Recorded once. Every verdict and every slot reads from these, so the whole function rules
+  // on ONE snapshot of the fiber tree (see `classifySites`).
+  const { groups, ...counts } = groupSites(recordSites(elements));
+  return { ...counts, groups: groups.map((group) => group.map((i) => elements[i] as Element)) };
+}
 
+/**
+ * `groupByRepeat` over recorded sites, which is how the corpus runs it: offline, on what the
+ * runner saved. Groups hold indices into `sites`. One implementation serves both, so the
+ * referee the corpus is judged by is the one these tests pin.
+ */
+export function groupSites(sites: readonly (RecordedSite | null)[]): RepeatGrouping<number> {
   let undecidedPairs = 0;
   let slotSeparatedPairs = 0;
 
-  for (let i = 0; i < elements.length; i += 1) {
-    for (let j = i + 1; j < elements.length; j += 1) {
+  for (let i = 0; i < sites.length; i += 1) {
+    for (let j = i + 1; j < sites.length; j += 1) {
       const { verdict } = classifySites(sites[i] ?? null, sites[j] ?? null);
       if (verdict === 'undecided') undecidedPairs += 1;
       // A key-repeat pair that the slots hold apart. Counted here rather than inferred from
       // the groups, because two elements can land in different groups for either reason.
-      if (verdict === 'repeated-siblings' && slots[i] !== slots[j]) slotSeparatedPairs += 1;
+      if (verdict === 'repeated-siblings' && sites[i]?.slot !== sites[j]?.slot) slotSeparatedPairs += 1;
     }
   }
 
-  const groups: Element[][] = [];
-  const bySlot = new Map<object, Map<string, Element[]>>();
+  const groups: number[][] = [];
+  const bySlot = new Map<number, Map<string, number[]>>();
 
-  for (let i = 0; i < elements.length; i += 1) {
+  for (let i = 0; i < sites.length; i += 1) {
     const site = sites[i];
-    const slot = slots[i];
-    const element = elements[i] as Element;
 
     // Outside any keyed list there is no evidence of repetition, and silence is not evidence.
     // Same for an item that is not an ancestor of its own element, which should not happen and
     // is not worth guessing about if it does.
-    if (site === null || site === undefined || slot === null || slot === undefined) {
-      groups.push([element]);
+    if (site === null || site === undefined || site.slot === null) {
+      groups.push([i]);
       continue;
     }
 
-    const inList = bySlot.get(site.list) ?? new Map<string, Element[]>();
-    const group = inList.get(slot) ?? [];
-    group.push(element);
-    inList.set(slot, group);
+    const inList = bySlot.get(site.list) ?? new Map<string, number[]>();
+    const group = inList.get(site.slot) ?? [];
+    group.push(i);
+    inList.set(site.slot, group);
     bySlot.set(site.list, inList);
   }
 
@@ -281,7 +326,7 @@ export function groupByRepeat(elements: readonly Element[]): RepeatGrouping {
 
   return {
     groups,
-    distinctElements: { atLeast: groups.length, atMost: elements.length },
+    distinctElements: { atLeast: groups.length, atMost: sites.length },
     undecidedPairs,
     slotSeparatedPairs,
   };
