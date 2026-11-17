@@ -2,7 +2,14 @@
 // The init script, run in fresh V8 contexts the way a page and a worker would run it.
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { assertPinnedBrowser, CHROME_VERSION, FIXED_TIME_MS, initScript } from './conditions.ts';
+import {
+  assertPinnedBrowser,
+  CHROME_VERSION,
+  FIXED_TIME_MS,
+  hostResolverRules,
+  initScript,
+  isRefusedRequest,
+} from './conditions.ts';
 
 /** A fresh global, as a new page or worker would have, with the script installed. */
 function context(script = initScript()): Record<string, unknown> {
@@ -93,5 +100,19 @@ describe('assertPinnedBrowser', () => {
     expect(() => assertPinnedBrowser(CHROME_VERSION)).not.toThrow();
     expect(() => assertPinnedBrowser('Chrome/157.0.8103.80')).toThrow(/runs in Chrome\/157\.0\.8103\.79/);
     expect(() => assertPinnedBrowser('HeadlessChrome/157.0.8103.79')).toThrow();
+  });
+});
+
+describe('the local-only network', () => {
+  it('maps every host to nothing except the local server', () => {
+    expect(hostResolverRules()).toBe('MAP * ~NOTFOUND , EXCLUDE 127.0.0.1 , EXCLUDE localhost');
+  });
+
+  it('counts a refused outside request, and nothing local or failed for another reason', () => {
+    const github = 'https://api.github.com/repos/actualbudget/actual/releases/latest';
+    expect(isRefusedRequest(github, 'net::ERR_NAME_NOT_RESOLVED')).toBe(true);
+    expect(isRefusedRequest(github, 'net::ERR_ABORTED')).toBe(false);
+    expect(isRefusedRequest('http://127.0.0.1:5173/x', 'net::ERR_NAME_NOT_RESOLVED')).toBe(false);
+    expect(isRefusedRequest('not a url', 'net::ERR_NAME_NOT_RESOLVED')).toBe(false);
   });
 });

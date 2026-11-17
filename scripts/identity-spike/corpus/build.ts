@@ -38,6 +38,7 @@ import {
   type CorpusApp,
   type CorpusCommit,
 } from './manifest.ts';
+import { installDifference } from './lockfile.ts';
 import { PATCH_MARKER, patchViteConfig, type PatchPaths } from './patch.ts';
 import {
   AFTER_FREEZE_FLAG,
@@ -182,6 +183,7 @@ function buildVariant(
         node: process.version,
         command: app.build.command,
         env: app.build.env,
+        lockfile: commit.lockfileOutOfStep === undefined ? 'immutable' : `rewritten, same packages: ${commit.lockfileOutOfStep}`,
         startedAt: startedAt.toISOString(),
         durationMs: Date.now() - startedAt.getTime(),
         patchMarker: patched.includes(PATCH_MARKER),
@@ -198,6 +200,28 @@ function buildVariant(
     );
   }
   console.log(`  ok: ${join(outDir, 'app')}`);
+}
+
+/**
+ * `--immutable`, except at a commit whose lockfile is out of step (manifest.ts says which). There
+ * yarn may rewrite the lockfile, and the build is refused unless what it installs is unchanged.
+ * The committed lockfile is restored afterwards, so the clone is back at the commit.
+ */
+function install(commit: CorpusCommit, clone: string, log: string): void {
+  if (commit.lockfileOutOfStep === undefined) {
+    run(['corepack', 'yarn', 'install', '--immutable'], { cwd: clone, log });
+    return;
+  }
+  console.log(`  the lockfile is out of step (${commit.lockfileOutOfStep}); installing without --immutable`);
+  const lockfile = join(clone, 'yarn.lock');
+  const committed = readFileSync(lockfile, 'utf8');
+  run(['corepack', 'yarn', 'install'], { cwd: clone, log });
+  const difference = installDifference(committed, readFileSync(lockfile, 'utf8'));
+  run(['git', 'checkout', '--quiet', '--', 'yarn.lock'], { cwd: clone });
+  if (difference.length > 0) {
+    throw new Error(`the rewritten lockfile installs different packages than the committed one:\n${difference.join('\n')}`);
+  }
+  console.log('  ok: the rewrite changed no resolved package or checksum');
 }
 
 function main(argv: string[]): void {
@@ -223,10 +247,7 @@ function main(argv: string[]): void {
   checkout(app, commit, clone);
   console.log('  installing');
   mkdirSync(join(root, 'logs'), { recursive: true });
-  run(['corepack', 'yarn', 'install', '--immutable'], {
-    cwd: clone,
-    log: join(root, 'logs', `${app.id}-${commit.sha.slice(0, 7)}-install.log`),
-  });
+  install(commit, clone, join(root, 'logs', `${app.id}-${commit.sha.slice(0, 7)}-install.log`));
 
   const commitDir = commitDirectory('builds', app, commit);
   for (const variant of variants as BuildVariant[]) {

@@ -47,6 +47,7 @@ function fakePage(reachable: (expression: string) => boolean, log: string[]): Pa
     type: fail,
     selectAll: fail,
     errors: () => [],
+    refused: () => [],
     screenshot: fail,
     workers: fail,
     close: fail,

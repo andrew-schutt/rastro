@@ -36,7 +36,7 @@ describe('manifest.ts against docs/CORPUS.md', () => {
     it(`${id}: the ten commits match, in order`, () => {
       const rows = commitRows(section(HEADINGS[id]));
       expect(rows).toHaveLength(10);
-      expect(app.commits).toEqual(rows);
+      expect(app.commits.map(({ index, sha, date }) => ({ index, sha, date }))).toEqual(rows);
     });
   }
 

@@ -24,6 +24,13 @@ export interface CorpusCommit {
   sha: string;
   /** Committer date, as CORPUS.md lists it. */
   date: string;
+  /**
+   * Set only where the committed lockfile is out of step with the manifests, so
+   * `yarn install --immutable` refuses it. The install may then rewrite the lockfile, and
+   * build.ts refuses unless every resolved package and checksum is unchanged (CORPUS.md,
+   * amended 2026-11-17). The text is why, as recorded there.
+   */
+  lockfileOutOfStep?: string;
 }
 
 export interface CorpusApp {
@@ -136,7 +143,12 @@ export const CORPUS: Readonly<Record<AppId, CorpusApp>> = {
       { index: 6, sha: 'a13cab504a42fb7888f9ede38cbc32a2e60ff69c', date: '2026-10-19' },
       { index: 7, sha: '089ad1bf6d55500eab228f3833d12a5dbaf530cb', date: '2026-10-24' },
       { index: 8, sha: 'fa22e2db862a6ea85941fa88cb294622c3012df4', date: '2026-10-25' },
-      { index: 9, sha: '679e5e17cd6803abf722acdfb0d1add34067a65f', date: '2026-10-25' },
+      {
+        index: 9,
+        sha: '679e5e17cd6803abf722acdfb0d1add34067a65f',
+        date: '2026-10-25',
+        lockfileOutOfStep: 'two zod entries resolving to zod@4.6.7, same checksum, are merged into one',
+      },
       { index: 10, sha: '61acd3f62174b9c2d3c1aa5856c7411d7713aaab', date: '2026-10-25' },
     ],
     buildDirectory: 'examples/demo',
