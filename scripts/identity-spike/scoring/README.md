@@ -61,3 +61,35 @@ Already fixed elsewhere and applied unchanged: strategy 3 is judged on the `mang
 the five others on `as-shipped` (§3.2 rule 1). A flow state listed as void at a commit has no
 rule 3 verdict there (`CORPUS.md`, 2026-11-17). A screen absent at a commit is reported absent,
 not replaced. Run 1 uses the `key` referee alone.
+
+## Running it
+
+Once every commit is built and captured under the freeze:
+
+```bash
+node scripts/identity-spike/scoring/report.ts                     # rules 1 and 2; 3 and 4 once their inputs exist
+node scripts/identity-spike/scoring/worksheets.ts rule3 actual    # sheet for matching rows at commit 10
+node scripts/identity-spike/scoring/worksheets.ts rule4 actual    # one sheet per pair, to label blind
+```
+
+Reports go to `$RASTRO_CORPUS/scores/<timestamp>/`, worksheets to `$RASTRO_CORPUS/worksheets/`. The
+human inputs live here, so the gate PR can show them:
+
+- **`matches/<app>.json`**: commit index → row id → `{ state, element, by, matcher, note? }`. Match
+  commit 10 by hand first. `rule3` then writes proposals for the other nine commits, each to be
+  confirmed. A `null` proposal is matched by hand. `element: null` with a `note` means the row's
+  element is not there, or capture cannot see it, which is reported and not substituted.
+- **`labels/<app>.json`**: pair (`"1-2"`) → fingerprint → `{ kind, as?, evidence }`. Copy the
+  template `rule4` writes, and fill every entry from the diff before running the report. The
+  proposers refuse to run while any subject is unlabelled.
+
+| File | What it does |
+|---|---|
+| `captures.ts` | Reads load 1 of a capture, and picks each strategy's judged variant |
+| `collisions.ts` | False merges per screen, through the frozen referee |
+| `touched.ts`, `git.ts` | Component-level touching, from the pair's diff in the corpus clone |
+| `churn.ts` | Rule 2's churn instances and rule 1c's false splits |
+| `dominance.ts` | Rule 1's domination, undecided when the merge bounds disagree |
+| `flow-rule.ts` | Rule 3's row judgement, and proposals by identical description |
+| `drift.ts` | Rule 4's records, the blind worksheet, the scores and the verdict |
+| `report.ts`, `worksheets.ts` | The two commands |
