@@ -86,6 +86,14 @@ export function rebuildControl(
 export interface FlowVerdict extends RebuildVerdict {
   /** Rows whose "first" item had a different label on the two loads. None on both is not noise. */
   firsts: { row: string; labels: [string | null, string | null] }[];
+  /**
+   * Flow states reached on both loads whose judged fingerprints differed between them. Each one
+   * voids that state's rule 3 verdict at this commit, and nothing else, PROVIDED a person traces
+   * the difference to the app's own data and records the evidence (CORPUS.md, 2026-11-17).
+   * Traced to the runner instead, it voids the commit, as any failed control does. The code
+   * cannot tell the two apart, so it never decides: every entry here needs a trace.
+   */
+  voidStates: string[];
 }
 
 /**
@@ -93,6 +101,11 @@ export interface FlowVerdict extends RebuildVerdict {
  * each state is held to the same strict, positional comparison as a screen, and a state not
  * reached on either load fails it. "A first item that differs between the two loads is caught
  * by the rebuild control", so the labels the walk recorded must match too.
+ *
+ * An unstable state is the one narrowing (2026-11-17): it is listed in `voidStates` rather
+ * than failing the commit, because Actual's "after Add" showed one caused by the app's own
+ * stale sidebar balance. `passed` is therefore "the commit stands, once every void state is
+ * traced", never "nothing is wrong".
  */
 export function flowControl(
   expected: readonly string[],
@@ -106,5 +119,10 @@ export function flowControl(
   const firsts = rows
     .map((row) => ({ row, labels: [first.firsts[row] ?? null, second.firsts[row] ?? null] as [string | null, string | null] }))
     .filter(({ labels: [a, b] }) => a !== b);
-  return { ...states, passed: states.passed && firsts.length === 0, firsts };
+  const voidStates = states.screens
+    .filter((state) => state.uncaptured !== true && state.unstable.length > 0)
+    .map((state) => state.screen);
+  const judged = strategies.some((strategy) => !reportedOnly.includes(strategy));
+  const reached = states.screens.length > 0 && states.screens.every((state) => state.uncaptured !== true);
+  return { ...states, passed: judged && reached && firsts.length === 0, firsts, voidStates };
 }

@@ -389,3 +389,65 @@ or read.
   whole visible text. At the exposed commits these were A1 "Bank of America", A17 "Deposit",
   A18 "Food", R10 "VJ0ZOKQE" (the order's reference), R11 "Sherwood Paucek" and R18
   "Forgotten Strawberries". They were the same on both loads and both build variants.
+
+### Amended 2026-11-17, before the freeze: what every capture records
+
+The runner's freeze fixes what a capture records, so the capture was checked against what each
+§3.2 rule needs, and completed first. Each element now also records: each strategy's parts
+(rule 4), its full first-party component ancestry with files (rule 2's "touched"), and the
+collision referee's input (rules 1 and 3). The runner's README lists them. None of these
+changes a fingerprint, and the continuity snapshots did not move.
+
+**What had been seen when this was written.** Everything the earlier amendments list. Also, at
+the two exposed commits only: that every new field is filled in, the deepest ancestry (60
+components on Actual, 6 on react-admin), that react-admin's ancestries hold only the demo's own
+`src/` files, and that every captured element on both apps has a keyed ancestor. No referee
+verdict, collision count or cross-commit difference was computed.
+
+**Run 1 uses the `key` referee alone**, as `VALIDATION-PLAN.md` §3.2 now records. Pairs it
+cannot rule on are reported as `undecided` and inspected by hand.
+
+### Amended 2026-11-17, before the freeze: an unstable flow state voids that state, once traced
+
+Completing the capture found a flow state that fails the rebuild control because of the app,
+not the runner. Before this amendment, any failed control voided the whole commit's numbers.
+
+**The rule.** A flow state reached on both loads, whose judged fingerprints differ between
+them, voids **that state's rule 3 verdict at that commit, and nothing else**. This holds only
+when a person traces the difference to the app's own data and records the evidence here. A
+difference that is not traced, or that is traced to the runner, voids the commit as before.
+Nothing is substituted for a void state, and nothing is retried. Screens are unaffected, and
+so are states not reached and "first" labels that differ: each still fails the control as the
+2026-11-09 amendment says. The runner lists every unstable state as void and exits unclean
+until it is traced. It never decides the cause.
+
+**The case that prompted it, and the first trace.** Actual, "after Add", mangled build at the
+pin. Only three elements differed between the loads: the sidebar links for Capital One
+Checking, All accounts and On budget, whose names include their balances. Capital One reads
+1,679.09 on every screen and state until the transaction is added to Bank of America. In
+"after Add" it read 1,743.52 on three loads and 1,693.86 on one. Those are 1,679.09 plus
+64.43 and plus 14.77, which are exactly two of Capital One's own transactions (Kroger on 10/22
+and on 10/26). Walking the same steps by hand showed 1,679.09 after the Add, with Capital
+One's register unchanged. So the sidebar briefly shows a balance missing one of that account's
+transactions, and which one depends on timing. That is the app's data, not the runner's
+nondeterminism. Rows A19 and A20, the only rows judged in that state, are a checkbox and a
+payee cell. Neither has a link's role, and every strategy includes the role, so neither can
+collide with those links on either load.
+
+**Also seen, not captured:** the Notes value Actual auto-fills on the new transaction differed
+between runs ("#groceries" and "#home-improvement"). Notes is not an interactive element's
+label, so no fingerprint reads it.
+
+**What had been seen when this was written.** Everything the earlier amendments list. Also, at
+Actual's pin only: the descriptions of the "after Add" state on all four loads, and the
+balances of Capital One Checking in every capture of each load. No collision, churn or
+proposer number was computed.
+
+### Amended 2026-11-17, before the freeze: the browser build is pinned
+
+The run conditions said "Chromium" and named no version. Chrome updates itself, so a run
+spread over days could change browser partway through, and the browser's own changes would
+show up as churn between commits. **Every capture runs in Chrome `157.0.8103.79`**, the build
+every capture so far has used, and the runner refuses any other. Changing the pin after the
+freeze makes a different run. To keep the build through the run, point the runner at a copy
+that does not update itself, such as Chrome for Testing at this version.

@@ -12,13 +12,13 @@ import { act } from 'react';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { describe, expect, it } from 'vitest';
-import { INTERACTIVE_SELECTOR, resetAnnotationProbe } from 'rastro-core';
-import { CORPUS_FINGERPRINT, RULE_1_STRATEGIES } from '../src/strategies.js';
+import { INTERACTIVE_SELECTOR, resetAnnotationProbe, UNKNOWN_CHAIN } from 'rastro-core';
+import { CORPUS_PARTS, RULE_1_STRATEGIES, type CorpusStrategy, type StrategyParts } from '../src/strategies.js';
 import { loadApp, loadBaseApp, snapshotVariant, STRATEGIES, type Files } from './harness.js';
 import { SCENARIOS } from './scenarios.js';
 
-/** Render the single corpus-style build once and fingerprint it under every strategy. */
-function singleBuild(files: Files): Record<string, string[]> {
+/** Render the single corpus-style build once and take every strategy's parts. */
+function singleBuild(files: Files): Record<string, StrategyParts[]> {
   const App = loadApp(files, 'marked-fiber');
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -30,7 +30,7 @@ function singleBuild(files: Files): Record<string, string[]> {
     return Object.fromEntries(
       RULE_1_STRATEGIES.map((strategy) => [
         strategy,
-        elements.map((element) => CORPUS_FINGERPRINT[strategy](element)),
+        elements.map((element) => CORPUS_PARTS[strategy](element)),
       ]),
     );
   } finally {
@@ -54,8 +54,35 @@ describe('one annotated build, six explicit walks', () => {
       const single = singleBuild(files);
       for (const strategy of STRATEGIES) {
         const perBuild = snapshotVariant(files, strategy).map((entry) => entry.fingerprint);
-        expect(single[strategy], strategy).toEqual(perBuild);
+        expect(single[strategy]?.map((parts) => parts.fingerprint), strategy).toEqual(perBuild);
       }
+    },
+  );
+});
+
+/** A fingerprint rebuilt from its recorded parts, by each strategy's composition rule. */
+function recompose(strategy: CorpusStrategy, parts: StrategyParts): string {
+  if (parts.fingerprint.startsWith('id:')) return parts.fingerprint;
+  const head =
+    strategy === 'role+name' ? [] : strategy === 'selector-path' ? [parts.chain ?? ''] : [
+      `${parts.chain ?? UNKNOWN_CHAIN}${parts.file === undefined ? '' : `@${parts.file}`}`,
+    ];
+  return [...head, parts.role, ...(parts.name === undefined ? [] : [`"${parts.name}"`])].join('|');
+}
+
+// Rule 4's proposers read the parts, never the string. If the two ever disagreed, a proposer
+// would be judged on an identity the fingerprint does not carry.
+describe('the recorded parts', () => {
+  it.each([{ name: 'base', edit: (files: Files) => new Map(files) }, ...SCENARIOS])(
+    '$name: recompose to the fingerprint under every strategy',
+    ({ edit }) => {
+      const single = singleBuild(edit(base));
+      for (const strategy of RULE_1_STRATEGIES) {
+        for (const parts of single[strategy] ?? []) expect(recompose(strategy, parts), strategy).toBe(parts.fingerprint);
+      }
+      // Not vacuous: the chain strategies carry chains and files on this app.
+      expect(single['attribute+file']?.some((parts) => parts.chain !== undefined && parts.file !== undefined)).toBe(true);
+      expect(single['selector-path']?.every((parts) => parts.fingerprint.startsWith('id:') || parts.chain !== undefined)).toBe(true);
     },
   );
 });

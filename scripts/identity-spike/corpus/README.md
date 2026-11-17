@@ -56,9 +56,20 @@ Each build variant is served on localhost and loaded **twice**, each time in a f
 context (its own storage, like a first visit). In each load the driver enters the app (Actual:
 "Try the demo"; react-admin: sign in) and reaches every screen in `manifest.ts` by a real load.
 Once the screen settles, it bundles `src/page.ts` with esbuild, evaluates it in the page, and
-records every element matching `INTERACTIVE_SELECTOR`: its six fingerprints, whether it is
-visible, and a description. Visibility is recorded, never filtered on. Then it walks rule 3's
-flow (below).
+records every element matching `INTERACTIVE_SELECTOR`, then walks rule 3's flow (below). Per
+element it records:
+
+| Field | What it is for |
+|---|---|
+| `fingerprints` | All six strategies. What every rule counts. |
+| `parts` | Each fingerprint's role, chain, file and name, from the same computation. Rule 4's proposers compare these (`DriftRecord`), and they are never parsed back out of the string, since a name can contain the separators. |
+| `ancestry` | Every first-party component above the element, with its file, uncapped and unfiltered (`src/ancestry.ts`). Rule 2's "touched" means a change to *any* of them, and the fingerprint walks stop at depth 4 and drop `NOISE`. |
+| `site` | The collision referee's input (`recordSites`): keyed list and item as numbers that compare within one capture, React's `key`, and the JSX slot. Fibers exist only in the live page, so the referee runs offline on these (`groupSites`), with the same code the live referee uses. |
+| `description` | What rule 3's rows are matched against by hand (below). |
+| `visible` | Recorded, never filtered on. |
+
+**The freeze fixes what is recorded**, so this table is everything the analysis can ever read.
+That is why it was checked against each §3.2 rule before the freeze, not after.
 
 **The description is what rule 3's rows are matched against by hand** (`src/describe.ts`):
 the tag, the `role` attribute as written, an author label, the rendered text, `type`, `name`,
@@ -126,9 +137,10 @@ element is done by hand, as CORPUS.md says, against each element's description.
 | Seeded `Math.random`, seeded `crypto`, frozen clock | `conditions.ts`, one script for the page and every worker |
 | …in workers | `serve.ts` prepends it to every script requested as a worker; `browser.ts` checks each worker that answers, and a worker without it fails the capture |
 | Viewport, locale, UTC, user agent | `browser.ts` |
+| The browser build, pinned | `conditions.ts` (`CHROME_VERSION`); `capture.ts` refuses any other |
 | Service workers | per app in `apps.ts`: bypassed for Actual (a precache), kept for react-admin (its backend) |
 | A real load per screen | `apps.ts` (react-admin goes through `about:blank`, since a hash change is not a load) |
-| The rebuild control | `rebuild.ts`: strict, positional, judged against the full screen list, and for the flow against its full state list plus its "first" labels |
+| The rebuild control | `rebuild.ts`: strict, positional, judged against the full screen list, and for the flow against its full state list plus its "first" labels. An unstable flow state is listed as void, needing a trace, not failed (`CORPUS.md`, 2026-11-17) |
 
 **Settling** is quiet DOM for 1.5 s with no response still open, timed out at 30 s and recorded.
 Open responses come from the corpus server, not CDP: CDP reports a worker script's request

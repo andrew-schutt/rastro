@@ -4,17 +4,26 @@
 // they are composed with does ship, so they take it from core: the override, the role, the
 // accessible name and its redaction, all exactly as `fingerprint()` uses them.
 import { accName, defaultRedactor, overrideOf, roleOf, type Redactor } from 'rastro-core';
+import type { StrategyParts } from './strategies.js';
 
-/** `<path>|<role>|"<name>"` around any path, the way `fingerprint()` composes its chain. */
-function compose(element: Element, path: string | null, redactor: Redactor): string {
+/**
+ * `<path>|<role>|"<name>"` around any path, the way `fingerprint()` composes its chain, with
+ * the parts it was composed from. An override is the whole identity, as in `describeElement`.
+ */
+function compose(element: Element, path: string | null, redactor: Redactor): StrategyParts {
+  const role = roleOf(element);
   const override = overrideOf(element);
-  if (override !== undefined) return `id:${override}`;
+  if (override !== undefined) return { fingerprint: `id:${override}`, role };
 
-  const parts = path === null ? [] : [path];
-  parts.push(roleOf(element));
   const name = accName(element, redactor);
-  if (name !== undefined) parts.push(`"${name}"`);
-  return parts.join('|');
+  const segments = path === null ? [role] : [path, role];
+  if (name !== undefined) segments.push(`"${name}"`);
+  return {
+    fingerprint: segments.join('|'),
+    role,
+    ...(path === null ? {} : { chain: path }),
+    ...(name === undefined ? {} : { name }),
+  };
 }
 
 /**
@@ -24,6 +33,11 @@ function compose(element: Element, path: string | null, redactor: Redactor): str
  * every pair of controls that look alike to a screen reader: two "Save" buttons anywhere.
  */
 export function roleNameFingerprint(element: Element, redactor: Redactor = defaultRedactor): string {
+  return roleNameParts(element, redactor).fingerprint;
+}
+
+/** Strategy 1, with the parts it is composed from. */
+export function roleNameParts(element: Element, redactor: Redactor = defaultRedactor): StrategyParts {
   return compose(element, null, redactor);
 }
 
@@ -86,6 +100,11 @@ export function selectorPath(element: Element): string {
 
 /** Strategy 2: the selector path, composed with role and accessible name. */
 export function selectorPathFingerprint(element: Element, redactor: Redactor = defaultRedactor): string {
+  return selectorPathParts(element, redactor).fingerprint;
+}
+
+/** Strategy 2, with the parts it is composed from: the path is its chain. */
+export function selectorPathParts(element: Element, redactor: Redactor = defaultRedactor): StrategyParts {
   return compose(element, selectorPath(element), redactor);
 }
 
