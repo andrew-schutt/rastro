@@ -7,7 +7,8 @@ import { flowControl, rebuildControl, type ScreenCapture } from './rebuild.ts';
 /** An element whose fingerprint is `name` under every strategy, or `overrides` where given. */
 function element(name: string, overrides: Partial<CapturedElement['fingerprints']> = {}): CapturedElement {
   const fingerprints = Object.fromEntries(RULE_1_STRATEGIES.map((s) => [s, name])) as CapturedElement['fingerprints'];
-  return { visible: true, fingerprints: { ...fingerprints, ...overrides } };
+  const description = { tag: 'button', role: null, label: null, text: name, attributes: {}, within: null, box: { x: 0, y: 0, width: 1, height: 1 } };
+  return { visible: true, fingerprints: { ...fingerprints, ...overrides }, description };
 }
 
 const screen = (name: string, elements: CapturedElement[]): ScreenCapture => ({

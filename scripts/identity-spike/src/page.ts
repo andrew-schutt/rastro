@@ -2,6 +2,7 @@
 // The corpus runner's in-page entry. Bundled with esbuild and evaluated in a loaded corpus app,
 // after the app has settled, never before it loads: nothing here touches the app's own start.
 import { documentIsAnnotated, INTERACTIVE_SELECTOR, resetAnnotationProbe } from 'rastro-core';
+import { describeForMatching, type ElementDescription } from './describe.js';
 import { CORPUS_FINGERPRINT, RULE_1_STRATEGIES, type CorpusStrategy } from './strategies.js';
 
 export interface CapturedElement {
@@ -12,6 +13,11 @@ export interface CapturedElement {
   visible: boolean;
   /** The element's fingerprint under each of rule 1's six strategies. */
   fingerprints: Record<CorpusStrategy, string>;
+  /**
+   * What a person matches rule 3's rows against, read from the DOM and never from a strategy
+   * (see describe.ts). Recorded, not judged: the rebuild control compares fingerprints only.
+   */
+  description: ElementDescription;
 }
 
 export interface PageCapture {
@@ -36,7 +42,7 @@ export function capturePage(): PageCapture {
     for (const strategy of RULE_1_STRATEGIES) {
       fingerprints[strategy] = CORPUS_FINGERPRINT[strategy](element);
     }
-    return { visible: isVisible(element), fingerprints };
+    return { visible: isVisible(element), fingerprints, description: describeForMatching(element) };
   });
   return { annotated, elements };
 }
