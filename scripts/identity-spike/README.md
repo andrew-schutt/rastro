@@ -185,11 +185,18 @@ In the order agreed for §3.2:
    both variants, and pass the rebuild control at the exposed commits. What walking them
    settled is `CORPUS.md`'s 2026-11-13 amendment. The question the run-conditions amendment
    left open is settled too, from PostHog's source: its autocapture keeps generated ids like
-   React's `useId`, so strategy 2 stands as defined. Still to come: the freeze. Until then,
-   only the exposed commits are built or captured, and both commands refuse the rest.
-2. **The rest of the referee.** `repeat-oracle.ts` is one input to it, not the whole. Still
-   missing are the per-JSX-site oracle and the shared-design-system case.
-3. **The run:** blind labels, scores, and the gate PR.
+   React's `useId`, so strategy 2 stands as defined. **The capture is complete**: besides
+   the fingerprints, every element records what the analysis needs and only a live page has
+   (the referee's sites, the full component ancestry, each strategy's parts). The freeze can
+   remove nothing the rules need. Still to come: the freeze, with a guard that refuses a
+   runner differing from the frozen commit. Until then, only the exposed commits are built
+   or captured, and both commands refuse the rest.
+2. **The run and its scoring:** every commit built and captured, then the scores computed
+   offline from the captures, the blind labels for rule 4, and the gate PR. The scoring code
+   is written while the run proceeds, since it only reads what the frozen runner recorded.
+   **The referee is `repeat-oracle.ts` alone for run 1** (`VALIDATION-PLAN.md` §3.2, settled
+   2026-11-17). The per-JSX-site oracle and the shared-design-system case wait for run 1's
+   `undecided` bucket to say whether they are needed. If they are, they are a separate run.
 
 ## Running it
 
