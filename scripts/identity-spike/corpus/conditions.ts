@@ -25,6 +25,26 @@ export const FIXED_TIME_MS = Date.UTC(2026, 9, 30, 12, 0, 0);
  */
 export const TIME_ZONE = 'UTC';
 
+/**
+ * The one browser build every capture runs in, as CDP's `Browser.getVersion` reports it.
+ * Pinned 2026-11-17, before the freeze (CORPUS.md). Chrome updates itself, and an update
+ * partway through the run would put the browser's own changes (layout, accessibility, the
+ * DOM it exposes) into the churn between commits. Capture refuses any other version.
+ *
+ * Changing it after the freeze makes a different run. To keep it, point `CHROME` at a copy
+ * that does not update itself, such as Chrome for Testing at this exact version.
+ */
+export const CHROME_VERSION = 'Chrome/157.0.8103.79';
+
+/** Throws unless `reported` is the pinned build. */
+export function assertPinnedBrowser(reported: string): void {
+  if (reported === CHROME_VERSION) return;
+  throw new Error(
+    `the browser is ${reported}, but every capture runs in ${CHROME_VERSION} (conditions.ts, CHROME_VERSION). ` +
+      'Point CHROME at that build. Changing the pin after the freeze makes a different run.',
+  );
+}
+
 /** One seed for every load. Its value is arbitrary; that it never changes is the point. */
 export const SEED = 0x5eed_c0de;
 

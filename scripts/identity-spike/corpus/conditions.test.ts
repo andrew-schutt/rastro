@@ -2,7 +2,7 @@
 // The init script, run in fresh V8 contexts the way a page and a worker would run it.
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { FIXED_TIME_MS, initScript } from './conditions.ts';
+import { assertPinnedBrowser, CHROME_VERSION, FIXED_TIME_MS, initScript } from './conditions.ts';
 
 /** A fresh global, as a new page or worker would have, with the script installed. */
 function context(script = initScript()): Record<string, unknown> {
@@ -85,5 +85,13 @@ describe('initScript', () => {
     expect(a1).not.toBe(a2);
     expect(a1).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(evaluate(run(true), 'Math.random()')).toBe(evaluate(run(false), 'Math.random()'));
+  });
+});
+
+describe('assertPinnedBrowser', () => {
+  it('accepts exactly the pinned build, and refuses even a patch release', () => {
+    expect(() => assertPinnedBrowser(CHROME_VERSION)).not.toThrow();
+    expect(() => assertPinnedBrowser('Chrome/157.0.8103.80')).toThrow(/runs in Chrome\/157\.0\.8103\.79/);
+    expect(() => assertPinnedBrowser('HeadlessChrome/157.0.8103.79')).toThrow();
   });
 });

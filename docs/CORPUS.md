@@ -442,3 +442,12 @@ label, so no fingerprint reads it.
 Actual's pin only: the descriptions of the "after Add" state on all four loads, and the
 balances of Capital One Checking in every capture of each load. No collision, churn or
 proposer number was computed.
+
+### Amended 2026-11-17, before the freeze: the browser build is pinned
+
+The run conditions said "Chromium" and named no version. Chrome updates itself, so a run
+spread over days could change browser partway through, and the browser's own changes would
+show up as churn between commits. **Every capture runs in Chrome `157.0.8103.79`**, the build
+every capture so far has used, and the runner refuses any other. Changing the pin after the
+freeze makes a different run. To keep the build through the run, point the runner at a copy
+that does not update itself, such as Chrome for Testing at this version.

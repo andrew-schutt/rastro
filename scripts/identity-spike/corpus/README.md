@@ -137,6 +137,7 @@ element is done by hand, as CORPUS.md says, against each element's description.
 | Seeded `Math.random`, seeded `crypto`, frozen clock | `conditions.ts`, one script for the page and every worker |
 | …in workers | `serve.ts` prepends it to every script requested as a worker; `browser.ts` checks each worker that answers, and a worker without it fails the capture |
 | Viewport, locale, UTC, user agent | `browser.ts` |
+| The browser build, pinned | `conditions.ts` (`CHROME_VERSION`); `capture.ts` refuses any other |
 | Service workers | per app in `apps.ts`: bypassed for Actual (a precache), kept for react-admin (its backend) |
 | A real load per screen | `apps.ts` (react-admin goes through `about:blank`, since a hash change is not a load) |
 | The rebuild control | `rebuild.ts`: strict, positional, judged against the full screen list, and for the flow against its full state list plus its "first" labels. An unstable flow state is listed as void, needing a trace, not failed (`CORPUS.md`, 2026-11-17) |

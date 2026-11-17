@@ -17,7 +17,7 @@ import type { CapturedElement, PageCapture } from '../src/page.ts';
 import type { CorpusStrategy } from '../src/strategies.ts';
 import { DRIVERS } from './apps.ts';
 import { launch, type Browser, type Page, type Settle, type WorkerCheck } from './browser.ts';
-import { FIXED_TIME_MS, initScript, LOCALE, SEED, TIME_ZONE, VIEWPORT } from './conditions.ts';
+import { assertPinnedBrowser, FIXED_TIME_MS, initScript, LOCALE, SEED, TIME_ZONE, VIEWPORT } from './conditions.ts';
 import { BUILD_VARIANTS, CORPUS, findCommit, flowStates, type AppId, type BuildVariant, type CorpusApp, type CorpusCommit } from './manifest.ts';
 import { FLOWS, walkFlow, type FlowRecord, type StateRecord } from './flows.ts';
 import { flowControl, rebuildControl, type RebuildVerdict } from './rebuild.ts';
@@ -292,6 +292,7 @@ async function main(argv: string[]): Promise<boolean> {
   const browser = await launch();
   let ok = true;
   try {
+    assertPinnedBrowser(browser.version);
     for (const variant of variants) ok = (await captureVariant(browser, app, commit, variant, bundle)) && ok;
   } finally {
     await browser.close();
