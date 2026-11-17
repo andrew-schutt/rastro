@@ -137,7 +137,8 @@ command has a deadline, so a stuck target fails with an error instead of hanging
 
 **The rebuild control** judges strategies 1 and 3 to 6. Strategy 2's stability across loads is
 measured and reported beside it, never judged: it keeps element ids, and Actual's come from
-React's `useId`, which numbers by mount order. See `CORPUS.md`'s amendment.
+React's `useId`, which numbers by mount order. PostHog keeps them too, checked in its source,
+so this is the incumbent's behaviour and not the runner's. See `CORPUS.md`'s amendment.
 
 ## What a build is
 

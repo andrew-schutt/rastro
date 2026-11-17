@@ -46,11 +46,12 @@ number for the fingerprint has been measured yet. That asymmetry is the whole po
 before planning anything: it is why the restart point is §3.2, which never needed anyone's
 permission, and not §3.1. Recruiting a host is the maintainer's to do, not a code task.
 
-**§3.2's corpus runner builds, captures and walks both apps. Settling strategy 2's ids, then
-the freeze, are next.** All six of rule 1's strategies and rule 4's three proposers exist. The
-corpus is two third-party apps, built by hand and never in CI. Its commits, screens, run
-conditions and rule 3 flows are fixed in `docs/CORPUS.md`, with amendments made before any
-corpus number: the run conditions, how a flow is walked, and what walking the flows settled.
+**§3.2's corpus runner builds, captures and walks both apps. The freeze is next.** All six
+of rule 1's strategies and rule 4's three proposers exist. The corpus is two third-party apps,
+built by hand and never in CI. Its commits, screens, run conditions and rule 3 flows are fixed
+in `docs/CORPUS.md`, with amendments made before any corpus number: the run conditions, how a
+flow is walked, what walking the flows settled, and strategy 2's generated ids (PostHog keeps
+them, so the strategy stands as defined).
 The runner (`scripts/identity-spike/corpus/`) builds both variants of both apps. In each of two
 loads it captures every screen, then walks rule 3's flow and captures its states, under all
 six strategies, passing its rebuild control. Until the runner is frozen it touches only the
