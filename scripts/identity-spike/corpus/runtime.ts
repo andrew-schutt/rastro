@@ -104,11 +104,12 @@ export function freezeVerdict(input: {
   }
   if (commit.sha === EXPOSED_COMMITS[app]) return null;
   if (!afterFreeze) {
-    return (
-      `${app} commit ${commit.index} has never been built. Until the runner is frozen, only ` +
-      `${EXPOSED_COMMITS[app].slice(0, 7)} may be (manifest.ts, EXPOSED_COMMITS). ` +
-      `Pass ${AFTER_FREEZE_FLAG} once it is.`
-    );
+    return freeze === null
+      ? `${app} commit ${commit.index} has never been built. Until the runner is frozen, only ` +
+          `${EXPOSED_COMMITS[app].slice(0, 7)} may be (manifest.ts, EXPOSED_COMMITS). ` +
+          `Pass ${AFTER_FREEZE_FLAG} once it is.`
+      : `${app} commit ${commit.index} is not an exposed commit. The runner is frozen at ` +
+          `${freeze.commit.slice(0, 7)}; pass ${AFTER_FREEZE_FLAG} to build or capture it.`;
   }
   if (freeze === null) return `${AFTER_FREEZE_FLAG} was passed, but the runner is not frozen (${FREEZE_FILE} is missing).`;
   return null;

@@ -27,7 +27,7 @@ describe('freezeVerdict', () => {
   it('after the freeze: any commit runs, the unexposed ones only with the flag', () => {
     expect(verdict({ freeze: FREEZE })).toBeNull();
     expect(verdict({ freeze: FREEZE, commit: unexposed, afterFreeze: true })).toBeNull();
-    expect(verdict({ freeze: FREEZE, commit: unexposed })).toContain(AFTER_FREEZE_FLAG);
+    expect(verdict({ freeze: FREEZE, commit: unexposed })).toMatch(new RegExp(`frozen at fffffff; pass ${AFTER_FREEZE_FLAG}`));
   });
 
   // The point of the freeze: no number in the run from a runner other than the recorded one,
