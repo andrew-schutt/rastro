@@ -10,9 +10,10 @@
 // THIRD-PARTY CODE. This clones the app and runs its own install scripts. It is run by hand,
 // locally, and never in CI: nothing in the test suite imports or spawns it.
 //
-// Until the runner is frozen, only the commits the 2026-10-30 build check had already built may
-// be built (manifest.ts, EXPOSED_COMMITS). `--after-freeze` lifts that, and exists so that
-// lifting it is a deliberate act that shows up in the command line, not a default.
+// The freeze guard (runtime.ts, `prepareRunner`) runs first. Before the freeze, only the exposed
+// commits may be built. After it, every build runs the frozen runner or is refused, and the other
+// commits also need `--after-freeze`, so lifting the rule is a deliberate act that shows up in
+// the command line, not a default.
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -40,7 +41,7 @@ import {
 import { PATCH_MARKER, patchViteConfig, type PatchPaths } from './patch.ts';
 import {
   AFTER_FREEZE_FLAG,
-  assertExposed,
+  prepareRunner,
   commitDirectory,
   corpusRoot,
   rastroRevision,
@@ -208,7 +209,7 @@ function main(argv: string[]): void {
   const app = CORPUS[appArg as AppId];
   const commit = findCommit(app, commitArg);
 
-  assertExposed(app, commit, afterFreeze);
+  prepareRunner(app, commit, afterFreeze);
 
   const variants = variantArgs.length === 0 ? BUILD_VARIANTS : variantArgs;
   for (const variant of variants) {

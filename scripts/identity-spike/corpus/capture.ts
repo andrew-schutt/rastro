@@ -8,8 +8,8 @@
 // rebuild-control.json. Prints counts and verdicts only, never a fingerprint, so a capture can be
 // checked for having worked without its output being read.
 //
-// THIRD-PARTY CODE runs in the browser. By hand, locally, never in CI. Same freeze rule as
-// build.ts: only the exposed commits until `--after-freeze`.
+// THIRD-PARTY CODE runs in the browser. By hand, locally, never in CI. Same freeze guard as
+// build.ts (runtime.ts, `prepareRunner`).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { build as esbuild } from 'esbuild';
@@ -21,7 +21,7 @@ import { assertPinnedBrowser, FIXED_TIME_MS, initScript, LOCALE, SEED, TIME_ZONE
 import { BUILD_VARIANTS, CORPUS, findCommit, flowStates, type AppId, type BuildVariant, type CorpusApp, type CorpusCommit } from './manifest.ts';
 import { FLOWS, walkFlow, type FlowRecord, type StateRecord } from './flows.ts';
 import { flowControl, rebuildControl, type RebuildVerdict } from './rebuild.ts';
-import { AFTER_FREEZE_FLAG, assertExposed, commitDirectory, rastroRevision, SPIKE_DIR } from './runtime.ts';
+import { AFTER_FREEZE_FLAG, prepareRunner, commitDirectory, rastroRevision, SPIKE_DIR } from './runtime.ts';
 import { serve } from './serve.ts';
 
 /** The rebuild control: each build is loaded this many times, each in a fresh browser context. */
@@ -281,7 +281,7 @@ async function main(argv: string[]): Promise<boolean> {
   }
   const app = CORPUS[appArg as AppId];
   const commit = findCommit(app, commitArg);
-  assertExposed(app, commit, afterFreeze);
+  prepareRunner(app, commit, afterFreeze);
   const variants = (variantArgs.length === 0 ? BUILD_VARIANTS : variantArgs) as BuildVariant[];
   for (const variant of variants) {
     if (!BUILD_VARIANTS.includes(variant)) throw new Error(`unknown variant ${variant}`);
