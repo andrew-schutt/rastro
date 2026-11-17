@@ -199,6 +199,13 @@ so the rate can say how much of it rests on evidence.
 shipped in the identity) as the second referee for pairs the key cannot rule on, and the
 shared-design-system case where every button in an app comes from one JSX site.
 
+**Settled for the first run, 2026-11-17, before any corpus number: the `key` referee alone.**
+Neither of those is built, and the per-JSX-site oracle would change how the corpus apps are
+*built*, which the runner's freeze fixes. So run 1 uses the `key` referee only. Every pair it
+cannot rule on stays `undecided`, is reported as its own number, and is inspected by hand, as
+above. If that bucket turns out too large to inspect, the second oracle is built then and
+reported as a separate run. It does not replace run 1's numbers.
+
 **Done:** `scripts/identity-spike/`, plus a written report carrying all three numbers across
 ≥2 real apps and ≥10 commits. The apps, the commits, the screens, the run conditions and rule
 3's flow elements are pre-registered in [`CORPUS.md`](CORPUS.md), resolved by rule before the

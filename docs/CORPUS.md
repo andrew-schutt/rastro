@@ -389,3 +389,20 @@ or read.
   whole visible text. At the exposed commits these were A1 "Bank of America", A17 "Deposit",
   A18 "Food", R10 "VJ0ZOKQE" (the order's reference), R11 "Sherwood Paucek" and R18
   "Forgotten Strawberries". They were the same on both loads and both build variants.
+
+### Amended 2026-11-17, before the freeze: what every capture records
+
+The runner's freeze fixes what a capture records, so the capture was checked against what each
+§3.2 rule needs, and completed first. Each element now also records: each strategy's parts
+(rule 4), its full first-party component ancestry with files (rule 2's "touched"), and the
+collision referee's input (rules 1 and 3). The runner's README lists them. None of these
+changes a fingerprint, and the continuity snapshots did not move.
+
+**What had been seen when this was written.** Everything the earlier amendments list. Also, at
+the two exposed commits only: that every new field is filled in, the deepest ancestry (60
+components on Actual, 6 on react-admin), that react-admin's ancestries hold only the demo's own
+`src/` files, and that every captured element on both apps has a keyed ancestor. No referee
+verdict, collision count or cross-commit difference was computed.
+
+**Run 1 uses the `key` referee alone**, as `VALIDATION-PLAN.md` §3.2 now records. Pairs it
+cannot rule on are reported as `undecided` and inspected by hand.
