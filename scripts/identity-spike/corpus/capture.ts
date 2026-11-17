@@ -263,6 +263,12 @@ async function captureVariant(
   for (const { row, labels } of flow.firsts) {
     console.log(`    ${row}: FIRST DIFFERS between loads: ${JSON.stringify(labels[0])} / ${JSON.stringify(labels[1])}`);
   }
+  // CORPUS.md, 2026-11-17: each voids only its state's rule 3 verdict, once a person traces it
+  // to the app's own data. Untraced, it may be the runner, so the command does not exit clean.
+  if (flow.voidStates.length > 0) {
+    ok = false;
+    console.log(`    flow states VOID, trace required: ${flow.voidStates.join(', ')}`);
+  }
   console.log(`  ${variant}: rebuild control ${verdict.passed ? 'passed' : 'FAILED'}${ok ? '' : ', with failures above'}`);
   return ok;
 }

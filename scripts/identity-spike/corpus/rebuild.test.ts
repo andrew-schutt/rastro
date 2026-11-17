@@ -125,7 +125,7 @@ describe('flowControl', () => {
 
   it('passes when every state and every first label matches', () => {
     const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), walked({ A1: 'Bank' }), RULE_1_STRATEGIES);
-    expect(verdict).toMatchObject({ passed: true, firsts: [] });
+    expect(verdict).toMatchObject({ passed: true, firsts: [], voidStates: [] });
   });
 
   it('fails when a first item differs between the loads, even with every fingerprint stable', () => {
@@ -137,6 +137,19 @@ describe('flowControl', () => {
   it('fails when one load never recorded a first the other did', () => {
     const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), walked({}), RULE_1_STRATEGIES);
     expect(verdict.firsts).toEqual([{ row: 'A1', labels: ['Bank', null] }]);
+  });
+
+  it('voids an unstable state for a trace instead of failing the commit', () => {
+    const changed = { states: [states[0]!, screen('menu open', [element('y', { fiber: 'y2' })])], firsts: { A1: 'Bank' } };
+    const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), changed, RULE_1_STRATEGIES);
+    expect(verdict).toMatchObject({ passed: true, voidStates: ['menu open'] });
+    expect(verdict.screens[1]?.unstable).toEqual(['fiber']);
+  });
+
+  it('still fails the commit when an unstable state comes with a differing first', () => {
+    const changed = { states: [states[0]!, screen('menu open', [element('y', { fiber: 'y2' })])], firsts: { A1: 'Ally' } };
+    const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), changed, RULE_1_STRATEGIES);
+    expect(verdict.passed).toBe(false);
   });
 
   it('fails a state that was not reached on either load', () => {
