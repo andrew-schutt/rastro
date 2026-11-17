@@ -47,7 +47,6 @@ seen makes a different score, reported separately.**
    false merges only if it does so under both bounds. If the bounds disagree, that comparison is
    reported as undecided, never decided on whichever bound favours one side. `undecided` pairs
    are reported and inspected by hand, as §3.2 requires.
-
 9. **Rules 1 and 2 read the screens. Rule 3 reads the flow states.** Rule 1 counts "every
    interactive element" of a commit, which is what the screens hold. Rule 3's rows name flow
    states. Counting the states in rule 1 as well would count every element on both a screen and
