@@ -56,12 +56,22 @@ Each build variant is served on localhost and loaded **twice**, each time in a f
 context (its own storage, like a first visit). In each load the driver enters the app (Actual:
 "Try the demo"; react-admin: sign in) and reaches every screen in `manifest.ts` by a real load.
 Once the screen settles, it bundles `src/page.ts` with esbuild, evaluates it in the page, and
-records every element matching `INTERACTIVE_SELECTOR`: its six fingerprints, and whether it is
-visible. Visibility is recorded, never filtered on. Then it walks rule 3's flow (below).
+records every element matching `INTERACTIVE_SELECTOR`: its six fingerprints, whether it is
+visible, and a description. Visibility is recorded, never filtered on. Then it walks rule 3's
+flow (below).
+
+**The description is what rule 3's rows are matched against by hand** (`src/describe.ts`):
+the tag, the `role` attribute as written, an author label, the rendered text, `type`, `name`,
+`href` and `data-testid`, the nearest ancestor that names itself, and the element's box. It is
+read straight from the DOM and never from rastro-core's `roleOf` or `accName`. Those are
+strategy 1's inputs, so a description built from them would be blind wherever strategy 1 is,
+and matching through it would favour the strategy being judged. Input values are never read.
+Descriptions are recorded and not judged: the rebuild control compares fingerprints only.
 
 ```
 ~/rastro-corpus/captures/<app>/<nn>-<sha7>/<variant>/
-  load-1.json  load-2.json   every screen's elements, the flow's states and "first" labels,
+  load-1.json  load-2.json   every screen's elements (fingerprints and descriptions), the
+                             flow's states and "first" labels,
                              the workers checked, page errors
   rebuild-control.json       per screen and per flow state: judged strategies that differed,
                              reported ones that did; "first" labels that differed
@@ -69,8 +79,8 @@ visible. Visibility is recorded, never filtered on. Then it walks rule 3's flow 
   load-N-<kind>-<name>.png   only when something failed, to look at
 ```
 
-It prints counts, verdicts and the "first" labels, never a fingerprint, so a capture can be
-checked without its output being read.
+It prints counts, verdicts and the "first" labels, never a fingerprint or a description, so a
+capture can be checked without its output being read.
 
 **One annotated build serves all six strategies.** The smoke test builds once per strategy;
 the corpus is built once per variant with stamps, files and marks all present, so
@@ -105,7 +115,7 @@ tables, and `manifest.test.ts` holds them to CORPUS.md. `flows.test.ts` holds th
 the manifest: every state the table names is captured exactly once, in order, and a "first"
 label is recorded for exactly the rows that say "first". It also runs every in-page
 expression in jsdom, so a typo fails CI and not a corpus run. Matching each row to a captured
-element is done by hand, as CORPUS.md says.
+element is done by hand, as CORPUS.md says, against each element's description.
 
 ### The run conditions, and where each one is enforced
 

@@ -339,7 +339,13 @@ and none had been computed.
 **What had been seen when this was written.** Everything the two 2026-11-09 amendments list.
 Also, at the two exposed commits only: the visible text, roles and test ids of the elements
 along each flow, per-state element counts, rebuild-control verdicts, and the labels the
-"first" rows got (below). No fingerprint was printed or read.
+"first" rows got (below). Once the capture recorded a description of every element (see the
+runner's README), those descriptions were read for some flow states. That showed one rule 3
+result early. In Actual's new transaction row, capture sees the Date field (A9) and the Add
+and Cancel buttons (A15, A16), but not the Payee, Notes, Category, Payment or Deposit fields
+(A10 to A14). Those are `<div>`s until they are edited, which is the case "How elements are
+matched" anticipates, and they will be reported, not substituted. No fingerprint was printed
+or read.
 
 - **A18 skips "Split Transaction".** Actual's category list opens with "Split Transaction"
   above every category. It is an action on the transaction, not a category, and choosing it
