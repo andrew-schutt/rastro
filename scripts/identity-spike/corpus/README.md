@@ -8,23 +8,43 @@ Three pieces: **building** (checkout, harness patch, both variants), **capturing
 pre-registered screen, under all six strategies, twice, under the run conditions) and **walking
 rule 3's flow** in each of those loads. The freeze comes next.
 
-## The one rule while it is being written
+## The freeze
 
-**Only the commits the 2026-10-30 build check already built may be built**, until the runner
-is frozen at a recorded commit. A runner debugged on the commits it measures is a runner tuned
-on its own numbers, which is what pre-registration exists to prevent. `build.ts` enforces it:
-any other commit is refused unless `--after-freeze` is passed, so lifting it shows up in the
-command line.
+A runner debugged on the commits it measures is a runner tuned on its own numbers, which is
+what pre-registration exists to prevent. So the runner was written and checked on two exposed
+commits only, then **frozen at a recorded commit** before any other was built.
 
-| App | May be built now | Why |
+| App | Exposed commit | Why |
 |---|---|---|
 | Actual | commit 10, `e82ea4d` | It is the pin. |
 | react-admin | commit 10, `61acd3f` | The pin is not in the list, but commit 10 builds the same app: no build input changes between them (`CORPUS.md`). |
 
+**`freeze.json` records the frozen commit.** Both commands run the guard (`runtime.ts`,
+`prepareRunner`) before anything else:
+
+- **Not frozen** (no `freeze.json`): only the exposed commits.
+- **Frozen:** every build and capture must run the frozen runner, the exposed commits
+  included. Any file under `RUNNER_PATHS` that differs from the frozen commit is refused,
+  whether committed since, edited and not committed, or new and untracked. Those paths are the
+  runner, the strategies and referee it bundles, `rastro-core` and `babel-plugin-rastro`, how
+  they compile, and `pnpm-lock.yaml`. Tests and `.md` files are excluded because they change no
+  capture. The guard then rebuilds `rastro-core` and `babel-plugin-rastro`, because both are
+  loaded from `dist`, and a stale `dist` would run code the frozen source does not contain.
+- **The other eight commits per app** also need `--after-freeze`, so lifting the rule shows in
+  the command line. The flag is refused when nothing is frozen.
+
+Every `build.json` and `capture.json` records the freeze it ran under (`rastro.frozen`).
+
+**What the freeze costs.** A lockfile change for any reason trips the guard, so dependency
+bumps wait until the run ends. Scoring code is written alongside the run, in a directory the
+guard does not cover. It may import the frozen referee and proposers, but never change them.
+Changing anything guarded and recording a new freeze makes a different run, reported
+separately.
+
 ## Building
 
 ```bash
-pnpm -r build                                                  # the plugin must be built first
+pnpm -r build                                                  # before the freeze, build the plugin first
 node scripts/identity-spike/corpus/build.ts react-admin 10     # both variants
 node scripts/identity-spike/corpus/build.ts actual 10 mangled  # one variant
 ```

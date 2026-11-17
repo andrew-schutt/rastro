@@ -451,3 +451,17 @@ show up as churn between commits. **Every capture runs in Chrome `157.0.8103.79`
 every capture so far has used, and the runner refuses any other. Changing the pin after the
 freeze makes a different run. To keep the build through the run, point the runner at a copy
 that does not update itself, such as Chrome for Testing at this version.
+
+## The runner is frozen, 2026-11-17
+
+**At rastro commit `1d99a9d41b102b609e9e8059a56743ebf2cf9a57`**, recorded in `scripts/identity-spike/corpus/freeze.json`.
+From here, every build and capture in the run must come from that runner, the exposed
+commits included, or it is refused. The runner's README says what the guard compares and why.
+The other eight commits per app may now be built and captured, with `--after-freeze`.
+
+Before the freeze, only the two exposed commits had been built or captured. Everything seen
+on them is listed in the amendments above, dated. No collision, churn or proposer number had
+been computed on any commit.
+
+**Any change to the runner from here makes a different run, reported separately.** That
+covers code, the lockfile and the pinned browser. The same goes for anything this file fixes.
