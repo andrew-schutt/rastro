@@ -48,6 +48,16 @@ seen makes a different score, reported separately.**
    reported as undecided, never decided on whichever bound favours one side. `undecided` pairs
    are reported and inspected by hand, as §3.2 requires.
 
+9. **Rules 1 and 2 read the screens. Rule 3 reads the flow states.** Rule 1 counts "every
+   interactive element" of a commit, which is what the screens hold. Rule 3's rows name flow
+   states. Counting the states in rule 1 as well would count every element on both a screen and
+   a state twice. *Added while writing the code, before any number. It is the reading the docs
+   already imply, and it was flagged to the maintainer.*
+10. **A churned fingerprint worn by several elements is untouched if any of them was.** Every
+    element wearing a vanished fingerprint changed, so an untouched one changed without cause.
+    Otherwise it is undetermined if any was, otherwise touched. This applies item 1 in the strict
+    direction. *Added while writing the code, before any number.*
+
 Already fixed elsewhere and applied unchanged: strategy 3 is judged on the `mangled` build and
 the five others on `as-shipped` (§3.2 rule 1). A flow state listed as void at a commit has no
 rule 3 verdict there (`CORPUS.md`, 2026-11-17). A screen absent at a commit is reported absent,
