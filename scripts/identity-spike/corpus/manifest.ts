@@ -49,6 +49,29 @@ export interface CorpusApp {
   pluginRoot: string;
   /** The screens CORPUS.md lists, by route or by the name it gives them. */
   screens: readonly string[];
+  /** Rule 3's flow: the one CORPUS.md lists for this app. */
+  flow: CorpusFlow;
+}
+
+/**
+ * One row of a rule 3 table. Described by screen, role and visible label, never by fingerprint,
+ * so the list is the same under every strategy. Matched to captured elements by hand.
+ */
+export interface FlowRow {
+  id: string;
+  /** The screen or state the row is judged in, as the table names it (backticks dropped). */
+  state: string;
+  element: string;
+}
+
+export interface CorpusFlow {
+  name: string;
+  rows: readonly FlowRow[];
+}
+
+/** A flow's states, each once, in the order its table first names them. */
+export function flowStates(flow: CorpusFlow): string[] {
+  return [...new Set(flow.rows.map((row) => row.state))];
 }
 
 export const CORPUS: Readonly<Record<AppId, CorpusApp>> = {
@@ -74,6 +97,31 @@ export const CORPUS: Readonly<Record<AppId, CorpusApp>> = {
     viteConfig: 'packages/desktop-client/vite.config.mts',
     pluginRoot: '.',
     screens: ['/budget', '/reports', '/schedules', '/settings', '/accounts', 'first on-budget account register'],
+    flow: {
+      name: 'add a transaction to an account',
+      rows: [
+        { id: 'A1', state: 'sidebar', element: 'link: the first account under "On budget"' },
+        { id: 'A2', state: 'sidebar', element: 'link: "Budget"' },
+        { id: 'A3', state: 'register', element: 'button: "Add New"' },
+        { id: 'A4', state: 'register', element: 'button: "Import"' },
+        { id: 'A5', state: 'register', element: 'button: filter' },
+        { id: 'A6', state: 'register', element: 'search input: "Search"' },
+        { id: 'A7', state: 'register', element: 'button: "Account menu"' },
+        { id: 'A8', state: 'register', element: 'button: "Reconcile"' },
+        { id: 'A9', state: 'new transaction row', element: 'Date field' },
+        { id: 'A10', state: 'new transaction row', element: 'Payee field' },
+        { id: 'A11', state: 'new transaction row', element: 'Notes field' },
+        { id: 'A12', state: 'new transaction row', element: 'Category field' },
+        { id: 'A13', state: 'new transaction row', element: 'Payment field' },
+        { id: 'A14', state: 'new transaction row', element: 'Deposit field' },
+        { id: 'A15', state: 'new transaction row', element: 'button: "Add"' },
+        { id: 'A16', state: 'new transaction row', element: 'button: "Cancel"' },
+        { id: 'A17', state: 'payee suggestions open', element: 'the first suggested payee' },
+        { id: 'A18', state: 'category suggestions open', element: 'the first suggested category' },
+        { id: 'A19', state: 'after Add', element: "the new transaction's select checkbox" },
+        { id: 'A20', state: 'after Add', element: "the new transaction's Payee cell" },
+      ],
+    },
   },
   'react-admin': {
     id: 'react-admin',
@@ -100,6 +148,31 @@ export const CORPUS: Readonly<Record<AppId, CorpusApp>> = {
     viteConfig: 'examples/demo/vite.config.ts',
     pluginRoot: 'examples/demo',
     screens: ['/', '/orders', '/invoices', '/products', '/categories', '/customers', '/segments', '/reviews'],
+    flow: {
+      name: 'mark a pending order delivered',
+      rows: [
+        { id: 'R1', state: 'sidebar', element: 'menu toggle: "Sales"' },
+        { id: 'R2', state: 'sidebar', element: 'link: "Orders"' },
+        { id: 'R3', state: '/orders', element: 'tab: "ordered (n)"' },
+        { id: 'R4', state: '/orders', element: 'tab: "delivered (n)"' },
+        { id: 'R5', state: '/orders', element: 'tab: "cancelled (n)"' },
+        { id: 'R6', state: '/orders', element: 'search input' },
+        { id: 'R7', state: '/orders', element: 'button: add filter' },
+        { id: 'R8', state: '/orders', element: 'button: columns' },
+        { id: 'R9', state: '/orders', element: 'button: "Export"' },
+        { id: 'R10', state: '/orders, ordered tab', element: 'the first row (its click opens the order)' },
+        { id: 'R11', state: '/orders, ordered tab', element: "the first row's customer link" },
+        { id: 'R12', state: '/orders/:id', element: 'button: previous order' },
+        { id: 'R13', state: '/orders/:id', element: 'button: next order' },
+        { id: 'R14', state: '/orders/:id', element: 'select: "Status"' },
+        { id: 'R15', state: 'Status menu open', element: 'option: "delivered"' },
+        { id: 'R16', state: '/orders/:id', element: 'switch: "Returned"' },
+        { id: 'R17', state: '/orders/:id', element: "link: the customer's name" },
+        { id: 'R18', state: '/orders/:id', element: "link: the first basket item's product" },
+        { id: 'R19', state: '/orders/:id', element: 'button: "Save"' },
+        { id: 'R20', state: '/orders/:id', element: 'button: "Delete"' },
+      ],
+    },
   },
 };
 

@@ -2,12 +2,13 @@
 import { describe, expect, it } from 'vitest';
 import type { CapturedElement } from '../src/page.ts';
 import { RULE_1_STRATEGIES } from '../src/strategies.ts';
-import { rebuildControl, type ScreenCapture } from './rebuild.ts';
+import { flowControl, rebuildControl, type ScreenCapture } from './rebuild.ts';
 
 /** An element whose fingerprint is `name` under every strategy, or `overrides` where given. */
 function element(name: string, overrides: Partial<CapturedElement['fingerprints']> = {}): CapturedElement {
   const fingerprints = Object.fromEntries(RULE_1_STRATEGIES.map((s) => [s, name])) as CapturedElement['fingerprints'];
-  return { visible: true, fingerprints: { ...fingerprints, ...overrides } };
+  const description = { tag: 'button', role: null, label: null, text: name, attributes: {}, within: null, box: { x: 0, y: 0, width: 1, height: 1 } };
+  return { visible: true, fingerprints: { ...fingerprints, ...overrides }, description };
 }
 
 const screen = (name: string, elements: CapturedElement[]): ScreenCapture => ({
@@ -114,5 +115,33 @@ describe('rebuildControl', () => {
   it('cannot pass when every strategy is reported-only', () => {
     const load = [screen('/a', [element('x')])];
     expect(rebuildControl(['/a'], load, load, ['selector-path'], ['selector-path']).passed).toBe(false);
+  });
+});
+
+describe('flowControl', () => {
+  const states = [screen('sidebar', [element('x')]), screen('menu open', [element('y')])];
+  const walked = (firsts: Record<string, string | null>) => ({ states: structuredClone(states), firsts });
+
+  it('passes when every state and every first label matches', () => {
+    const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), walked({ A1: 'Bank' }), RULE_1_STRATEGIES);
+    expect(verdict).toMatchObject({ passed: true, firsts: [] });
+  });
+
+  it('fails when a first item differs between the loads, even with every fingerprint stable', () => {
+    const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), walked({ A1: 'Ally' }), RULE_1_STRATEGIES);
+    expect(verdict.passed).toBe(false);
+    expect(verdict.firsts).toEqual([{ row: 'A1', labels: ['Bank', 'Ally'] }]);
+  });
+
+  it('fails when one load never recorded a first the other did', () => {
+    const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), walked({}), RULE_1_STRATEGIES);
+    expect(verdict.firsts).toEqual([{ row: 'A1', labels: ['Bank', null] }]);
+  });
+
+  it('fails a state that was not reached on either load', () => {
+    const stopped = { states: [states[0]!, { screen: 'menu open', captured: false, elements: [] }], firsts: {} };
+    const verdict = flowControl(['sidebar', 'menu open'], stopped, stopped, RULE_1_STRATEGIES);
+    expect(verdict.passed).toBe(false);
+    expect(verdict.screens[1]?.uncaptured).toBe(true);
   });
 });

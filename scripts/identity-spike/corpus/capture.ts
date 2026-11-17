@@ -18,8 +18,9 @@ import type { CorpusStrategy } from '../src/strategies.ts';
 import { DRIVERS } from './apps.ts';
 import { launch, type Browser, type Page, type Settle, type WorkerCheck } from './browser.ts';
 import { FIXED_TIME_MS, initScript, LOCALE, SEED, TIME_ZONE, VIEWPORT } from './conditions.ts';
-import { BUILD_VARIANTS, CORPUS, findCommit, type AppId, type BuildVariant, type CorpusApp, type CorpusCommit } from './manifest.ts';
-import { rebuildControl, type ScreenCapture } from './rebuild.ts';
+import { BUILD_VARIANTS, CORPUS, findCommit, flowStates, type AppId, type BuildVariant, type CorpusApp, type CorpusCommit } from './manifest.ts';
+import { FLOWS, walkFlow, type FlowRecord, type StateRecord } from './flows.ts';
+import { flowControl, rebuildControl, type RebuildVerdict } from './rebuild.ts';
 import { AFTER_FREEZE_FLAG, assertExposed, commitDirectory, rastroRevision, SPIKE_DIR } from './runtime.ts';
 import { serve } from './serve.ts';
 
@@ -34,16 +35,13 @@ const LOADS = 2;
  */
 const REPORTED_ONLY: readonly CorpusStrategy[] = ['selector-path'];
 
-interface ScreenRecord extends ScreenCapture {
-  location?: string;
-  settle?: Settle;
-}
-
 interface LoadRecord {
   load: number;
   entered: boolean;
   entryError?: string;
-  screens: ScreenRecord[];
+  screens: StateRecord[];
+  /** Rule 3's flow, walked after every screen is captured. Absent if the app was never entered. */
+  flow?: FlowRecord;
   workers: WorkerCheck[];
   errors: string[];
 }
@@ -62,6 +60,9 @@ async function pageBundle(): Promise<string> {
   if (file === undefined) throw new Error('esbuild produced no page bundle');
   return file.text;
 }
+
+/** `<screen or state>` as a file name. */
+const slug = (name: string) => name.replace(/[^a-z0-9]+/gi, '_');
 
 /** Best effort: a failed screenshot must not hide the failure it was taken for. */
 async function saveScreenshot(page: Page, path: string): Promise<void> {
@@ -98,9 +99,9 @@ async function captureLoad(
       record.entryError = error instanceof Error ? error.message : String(error);
       await saveScreenshot(page, join(out, `load-${load}-entry.png`));
     }
-    for (const screen of record.entered ? app.screens : []) {
+    /** The whole document as it stands, like a screen. Never throws: a failure is recorded. */
+    const captureDocument = async (name: string, kind: 'screen' | 'flow'): Promise<StateRecord> => {
       try {
-        const settle = await driver.open(page, base, screen);
         await page.evaluate(bundle);
         const capture = await page.evaluate<PageCapture & { strategies: CorpusStrategy[] }>(
           '({ ...window.__rastroCorpus.capturePage(), strategies: window.__rastroCorpus.strategies })',
@@ -109,22 +110,35 @@ async function captureLoad(
           throw new Error('the page carries no stamps: strategy 5 would read fibers. Not the pre-registered build.');
         }
         strategies = capture.strategies;
-        record.screens.push({
-          screen,
+        return {
+          screen: name,
           captured: true,
           location: await page.evaluate<string>('location.href.replace(location.origin, "")'),
-          settle,
           elements: capture.elements,
-        });
+        };
       } catch (error) {
-        await saveScreenshot(page, join(out, `load-${load}-${screen.replace(/[^a-z0-9]+/gi, '_')}.png`));
-        record.screens.push({
-          screen,
-          captured: false,
-          error: error instanceof Error ? error.message : String(error),
-          elements: [] as CapturedElement[],
-        });
+        await saveScreenshot(page, join(out, `load-${load}-${kind}-${slug(name)}.png`));
+        return { screen: name, captured: false, error: error instanceof Error ? error.message : String(error), elements: [] as CapturedElement[] };
       }
+    };
+
+    for (const screen of record.entered ? app.screens : []) {
+      let settle: Settle;
+      try {
+        settle = await driver.open(page, base, screen);
+      } catch (error) {
+        await saveScreenshot(page, join(out, `load-${load}-screen-${slug(screen)}.png`));
+        record.screens.push({ screen, captured: false, error: error instanceof Error ? error.message : String(error), elements: [] });
+        continue;
+      }
+      record.screens.push({ ...(await captureDocument(screen, 'screen')), settle });
+    }
+
+    // CORPUS.md: "Each load captures every screen first and then walks the flow, so nothing the
+    // flow writes can reach a screen capture."
+    if (record.entered) {
+      record.flow = await walkFlow(page, base, FLOWS[app.id], flowStates(app.flow), (state) => captureDocument(state, 'flow'));
+      if (record.flow.stopped !== undefined) await saveScreenshot(page, join(out, `load-${load}-flow-stopped.png`));
     }
     record.workers = await page.workers();
     record.errors = page.errors();
@@ -132,6 +146,14 @@ async function captureLoad(
     await page.close().catch(() => {});
   }
   return { record, strategies };
+}
+
+function printVerdict(verdict: RebuildVerdict): void {
+  for (const screen of verdict.screens) {
+    const state = screen.uncaptured === true ? 'uncaptured' : screen.unstable.length === 0 ? 'stable' : `UNSTABLE: ${screen.unstable.join(', ')}`;
+    const reported = screen.reported.length === 0 ? '' : `; reported, not judged: ${screen.reported.join(', ')} differs between loads`;
+    console.log(`    ${screen.screen}: ${screen.elements[0]}/${screen.elements[1]} elements, ${state}${reported}`);
+  }
 }
 
 async function captureVariant(
@@ -171,7 +193,10 @@ async function captureVariant(
   }
 
   const [first, second] = loads;
-  const verdict = rebuildControl(app.screens, first?.screens ?? [], second?.screens ?? [], strategies, REPORTED_ONLY);
+  const screens = rebuildControl(app.screens, first?.screens ?? [], second?.screens ?? [], strategies, REPORTED_ONLY);
+  const noFlow = { states: [], firsts: {} };
+  const flow = flowControl(flowStates(app.flow), first?.flow ?? noFlow, second?.flow ?? noFlow, strategies, REPORTED_ONLY);
+  const verdict = { passed: screens.passed && flow.passed, screens, flow };
   writeFileSync(join(out, 'rebuild-control.json'), `${JSON.stringify(verdict, null, 2)}\n`);
   writeFileSync(
     join(out, 'capture.json'),
@@ -220,15 +245,23 @@ async function captureVariant(
       console.log(`    load ${load.load}: workers that did not answer (recorded): ${unreachable.map((w) => w.url).join(', ')}`);
     }
     if (load.errors.length > 0) console.log(`    load ${load.load}: ${load.errors.length} page error(s), in load-${load.load}.json`);
-    for (const screen of load.screens) {
+    for (const screen of [...load.screens, ...(load.flow?.states ?? [])]) {
       if (!screen.captured) console.log(`    load ${load.load}: ${screen.screen}: NOT CAPTURED: ${screen.error}`);
       else if (screen.settle?.settled === false) console.log(`    load ${load.load}: ${screen.screen}: did not settle, captured anyway`);
     }
+    if (load.flow?.stopped !== undefined) {
+      ok = false;
+      console.log(`    load ${load.load}: the flow stopped at "${load.flow.stopped.step}": ${load.flow.stopped.error}`);
+    }
+    // Visible labels, not fingerprints: what "first" got, for CORPUS.md to compare across commits.
+    const firsts = Object.entries(load.flow?.firsts ?? {}).map(([row, label]) => `${row} ${JSON.stringify(label)}`);
+    if (firsts.length > 0) console.log(`    load ${load.load}: firsts: ${firsts.join(', ')}`);
   }
-  for (const screen of verdict.screens) {
-    const state = screen.uncaptured === true ? 'uncaptured' : screen.unstable.length === 0 ? 'stable' : `UNSTABLE: ${screen.unstable.join(', ')}`;
-    const reported = screen.reported.length === 0 ? '' : `; reported, not judged: ${screen.reported.join(', ')} differs between loads`;
-    console.log(`    ${screen.screen}: ${screen.elements[0]}/${screen.elements[1]} elements, ${state}${reported}`);
+  printVerdict(screens);
+  console.log(`    flow, ${app.flow.name}:`);
+  printVerdict(flow);
+  for (const { row, labels } of flow.firsts) {
+    console.log(`    ${row}: FIRST DIFFERS between loads: ${JSON.stringify(labels[0])} / ${JSON.stringify(labels[1])}`);
   }
   console.log(`  ${variant}: rebuild control ${verdict.passed ? 'passed' : 'FAILED'}${ok ? '' : ', with failures above'}`);
   return ok;
