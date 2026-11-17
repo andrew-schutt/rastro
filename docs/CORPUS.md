@@ -524,3 +524,12 @@ per screen and state, and the elements that differed between loads where a contr
 Also, to establish when the notice was present, how often "Open changelog" appeared in each
 Actual load file. No fingerprint was compared across commits. No collision, churn, split or
 proposer number was computed, and the scoring code has not read a run-1 capture.
+
+## The runner is frozen again, 2026-11-17, for run 2
+
+**At rastro commit `452fc46bb34c6238aa552d2353bf40999a656b5d`**, recorded in
+`scripts/identity-spike/corpus/freeze.json`. It replaces the first freeze. That freeze's
+runner made run 1, which is void. Run 2 is every commit of both apps, rebuilt and recaptured
+from this runner, and it is the run the gate reads. Run 1's captures carry the first freeze,
+and the scoring refuses them. Everything the first freeze section says still holds, with this
+commit in place of `1d99a9d`.

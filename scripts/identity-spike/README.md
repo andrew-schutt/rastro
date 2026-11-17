@@ -189,7 +189,10 @@ In the order agreed for §3.2:
    the fingerprints, every element records what the analysis needs and only a live page has
    (the referee's sites, the full component ancestry, each strategy's parts). The freeze can
    remove nothing the rules need. **The runner is frozen** (2026-11-17, `corpus/freeze.json`),
-   and both commands refuse a runner that differs from the frozen commit.
+   and both commands refuse a runner that differs from the frozen commit. Run 1 was void by
+   its own rebuild control, and never scored: Actual asks GitHub for its latest release on
+   every load. The runner now reaches only the local server, and is frozen again for run 2
+   (`CORPUS.md`, "Run 1 is void").
 2. **The run and its scoring:** every commit built and captured, then the scores computed
    offline from the captures, the blind labels for rule 4, and the gate PR. The scoring code
    is written while the run proceeds, since it only reads what the frozen runner recorded.

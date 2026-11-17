@@ -46,7 +46,8 @@ number for the fingerprint has been measured yet. That asymmetry is the whole po
 before planning anything: it is why the restart point is §3.2, which never needed anyone's
 permission, and not §3.1. Recruiting a host is the maintainer's to do, not a code task.
 
-**§3.2's corpus runner is frozen (2026-11-17). The run is next.** All six
+**§3.2's corpus runner is frozen again (2026-11-17), for run 2. Run 1 is void:** a live
+GitHub call reached its captures, and nothing was scored from it (`docs/CORPUS.md`). All six
 of rule 1's strategies and rule 4's three proposers exist. The corpus is two third-party apps,
 built by hand and never in CI. Its commits, screens, run conditions and rule 3 flows are fixed
 in `docs/CORPUS.md`, with amendments made before any corpus number: the run conditions, how a
