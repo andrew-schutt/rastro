@@ -44,6 +44,8 @@ interface LoadRecord {
   flow?: FlowRecord;
   workers: WorkerCheck[];
   errors: string[];
+  /** Requests to hosts other than the local server, refused by the run conditions (CORPUS.md). */
+  refused: string[];
 }
 
 async function pageBundle(): Promise<string> {
@@ -90,7 +92,7 @@ async function captureLoad(
     bypassServiceWorker: driver.bypassServiceWorker,
   });
   let strategies: CorpusStrategy[] = [];
-  const record: LoadRecord = { load, entered: false, screens: [], workers: [], errors: [] };
+  const record: LoadRecord = { load, entered: false, screens: [], workers: [], errors: [], refused: [] };
   try {
     try {
       await driver.enter(page, base);
@@ -142,6 +144,7 @@ async function captureLoad(
     }
     record.workers = await page.workers();
     record.errors = page.errors();
+    record.refused = page.refused();
   } finally {
     await page.close().catch(() => {});
   }

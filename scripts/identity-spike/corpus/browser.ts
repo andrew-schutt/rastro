@@ -8,7 +8,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { LOCALE, TIME_ZONE, VIEWPORT } from './conditions.ts';
+import { hostResolverRules, isRefusedRequest, LOCALE, TIME_ZONE, VIEWPORT } from './conditions.ts';
 
 export const DEFAULT_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
@@ -113,6 +113,11 @@ export interface Page {
   selectAll: () => Promise<void>;
   /** Uncaught exceptions and console errors so far, from the page and its workers. */
   errors: () => string[];
+  /**
+   * Requests from the page to any host but the local server, which the run conditions refused.
+   * The page's own only: a worker's are refused too, but not seen here.
+   */
+  refused: () => string[];
   /** A PNG of the viewport, for a failure someone has to look at. */
   screenshot: () => Promise<Buffer>;
   /** Every live worker, and whether the run conditions are installed in it. */
@@ -187,7 +192,7 @@ export async function launch(chromePath: string = process.env.CHROME ?? DEFAULT_
   const chrome: ChildProcess = spawn(
     chromePath,
     ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
-      '--no-default-browser-check', `--lang=${LOCALE}`, 'about:blank'],
+      '--no-default-browser-check', `--lang=${LOCALE}`, `--host-resolver-rules=${hostResolverRules()}`, 'about:blank'],
     { stdio: ['ignore', 'ignore', 'pipe'] },
   );
   const endpoint = await new Promise<string>((resolve, reject) => {
@@ -213,6 +218,8 @@ export async function launch(chromePath: string = process.env.CHROME ?? DEFAULT_
     const send = (method: string, params: Params = {}) => connection.send(method, params, page);
 
     const errors: string[] = [];
+    const refused: string[] = [];
+    const requests = new Map<string, string>();
     const workers = new Map<string, { type: string; url: string }>();
     const off = connection.on((message) => {
       if (message.method === 'Page.javascriptDialogOpening' && message.sessionId === page) {
@@ -230,6 +237,17 @@ export async function launch(chromePath: string = process.env.CHROME ?? DEFAULT_
             .map((arg) => (typeof arg.value === 'string' ? arg.value : (arg.description ?? JSON.stringify(arg.value) ?? '')))
             .join(' '),
         );
+      }
+      if (message.method === 'Network.requestWillBeSent' && message.sessionId === page && message.params !== undefined) {
+        requests.set(message.params.requestId as string, (message.params.request as { url: string }).url);
+      }
+      if (message.method === 'Network.loadingFailed' && message.sessionId === page && message.params !== undefined) {
+        const url = requests.get(message.params.requestId as string);
+        requests.delete(message.params.requestId as string);
+        if (url !== undefined && isRefusedRequest(url, message.params.errorText as string)) refused.push(url);
+      }
+      if (message.method === 'Network.loadingFinished' && message.sessionId === page && message.params !== undefined) {
+        requests.delete(message.params.requestId as string);
       }
       if (message.method === 'Target.attachedToTarget' && message.params !== undefined) {
         const child = message.params.sessionId as string;
@@ -323,6 +341,7 @@ export async function launch(chromePath: string = process.env.CHROME ?? DEFAULT_
         await send('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
       },
       errors: () => [...errors],
+      refused: () => [...refused],
       screenshot: async () => Buffer.from(String((await send('Page.captureScreenshot', { format: 'png' })).data), 'base64'),
       workers: async () =>
         Promise.all(

@@ -60,11 +60,16 @@ workspace glob can ever reach third-party code.
   builds/<app>/<nn>-<sha7>/<variant>/
     app/                             the built app, copied out of the clone
     build.json                       commit, variant, rastro commit (and whether it was dirty),
-                                     Node version, duration, and whether stamps and marks
-                                     reached the bundle
+                                     Node version, duration, how the lockfile was installed,
+                                     and whether stamps and marks reached the bundle
     vite.config.patched              the exact config it was built with
     build.log
 ```
+
+**Every install is `yarn install --immutable`, except at react-admin commit 9**, whose
+committed lockfile is out of step (`lockfileOutOfStep` in `manifest.ts`). There yarn may rewrite
+the lockfile, and `lockfile.ts` refuses the build unless every resolved package and checksum is
+unchanged. The committed lockfile is restored afterwards (`CORPUS.md`, "Run 1 is void").
 
 ## Capturing
 
@@ -103,7 +108,7 @@ Descriptions are recorded and not judged: the rebuild control compares fingerpri
 ~/rastro-corpus/captures/<app>/<nn>-<sha7>/<variant>/
   load-1.json  load-2.json   every screen's elements (fingerprints and descriptions), the
                              flow's states and "first" labels,
-                             the workers checked, page errors
+                             the workers checked, page errors, refused requests
   rebuild-control.json       per screen and per flow state: judged strategies that differed,
                              reported ones that did; "first" labels that differed
   capture.json               run conditions, browser, rastro commit (and whether dirty)
@@ -158,6 +163,7 @@ element is done by hand, as CORPUS.md says, against each element's description.
 | …in workers | `serve.ts` prepends it to every script requested as a worker; `browser.ts` checks each worker that answers, and a worker without it fails the capture |
 | Viewport, locale, UTC, user agent | `browser.ts` |
 | The browser build, pinned | `conditions.ts` (`CHROME_VERSION`); `capture.ts` refuses any other |
+| The local server and nothing else | `conditions.ts` (`hostResolverRules`), passed to Chrome by `browser.ts`; each load records the page's refused requests as `refused` (`CORPUS.md`, "Run 1 is void") |
 | Service workers | per app in `apps.ts`: bypassed for Actual (a precache), kept for react-admin (its backend) |
 | A real load per screen | `apps.ts` (react-admin goes through `about:blank`, since a hash change is not a load) |
 | The rebuild control | `rebuild.ts`: strict, positional, judged against the full screen list, and for the flow against its full state list plus its "first" labels. An unstable flow state is listed as void, needing a trace, not failed (`CORPUS.md`, 2026-11-17) |

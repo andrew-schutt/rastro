@@ -125,6 +125,8 @@ measured nine times. Two consequences, predicted here rather than discovered lat
 
 Identical for every commit, every strategy and both apps.
 
+- **The page reaches the local server and nothing else.** Added after run 1, which this
+  voided. See "Run 1 is void" below.
 - **Browser:** Chromium, desktop viewport 1280 × 800, English locale. Mobile layouts are out
   of scope, so every screen below is its desktop layout.
 - **The user agent does not identify the runner as Playwright.** Actual switches to a
@@ -465,3 +467,60 @@ been computed on any commit.
 
 **Any change to the runner from here makes a different run, reported separately.** That
 covers code, the lockfile and the pinned browser. The same goes for anything this file fixes.
+
+## Run 1 is void, 2026-11-17, and nothing was scored from it
+
+Run 1 built and captured every commit of both apps at the frozen runner. Its own rebuild
+control voided it, and no score was computed from any of it. The fixes below make the next
+run a different run, as the line above requires. Run 1 is reported as void, never scored.
+
+**What failed.** Actual's rebuild control failed at commits 5, 7, 8 and 10, on one build
+each. Each time, the two loads differed by the same two elements: an "Open changelog" button
+and its "Close" button. React-admin passed at every commit it built, but commit 9 did not
+install.
+
+**The trace: Actual asks GitHub, live, on every load.** `getLatestVersion`
+(`packages/desktop-client/src/util/versions.ts`) fetches
+`https://api.github.com/repos/actualbudget/actual/releases/latest`, unauthenticated. If the
+answer is newer than the build, a notice with those two buttons is shown. Whether it was on
+screen at capture depended on GitHub's answer, how long it took, and GitHub's limit of 60
+unauthenticated requests an hour, which a run of hundreds of loads exhausts. That is data from
+outside reaching the page through the runner. It is not the app's own data, so the void-state
+rule above does not apply, and the 2026-11-09 rule does: void until the runner is fixed.
+
+**Why all of run 1, not four commits.** Captures that passed the control had the notice on
+both loads, or on neither. It was on screen through commit 4, then on and off from commit 5.
+Between commits it would have counted as two elements vanishing on untouched code under every
+strategy: churn that rule 2 cannot tell from identity loss. A passing control did not make a
+capture clean.
+
+**Fix 1, a run condition: the page reaches the local server and nothing else.** Chrome is
+launched with `--host-resolver-rules` mapping every host except `127.0.0.1` and `localhost`
+to nothing. Every other request fails at once, the same way on every load. That holds in the
+page and in every worker, since it is the browser's resolver and not request interception.
+Each load records the refused requests the page made (`refused` in `load-N.json`). Two
+loads of Actual commit 1, with the fix in place, showed no notice and refused two hosts: the
+GitHub releases call, and `raw.githubusercontent.com/.../master/.../news.json`, which Actual
+reads live from its `master` branch. That second call had reached every run-1 capture too.
+Two loads of react-admin commit 10 refused six Google Fonts stylesheets (Roboto, Inter,
+Gabarito, Pixelify Sans, Open Sans, Geist), the theme fonts, and nothing else. Its text now
+renders in the browser's fallback font, the same on every load and every commit. That changes
+the layout boxes descriptions record. It changes no fingerprint, since none reads a box, and it
+removes a second outside dependency: when a font arrived.
+
+**Fix 2: react-admin commit 9 installs without `--immutable`, if nothing installed changes.**
+At `679e5e1` the committed lockfile is out of step with the manifests, so
+`yarn install --immutable` refuses it. Yarn's only rewrite merges two entries,
+`zod@npm:^4.3.6` and `zod@npm:^4.5.4`, which both resolve to `zod@npm:4.6.7` with the same
+checksum. The runner allows that commit, and only that commit, to install without
+`--immutable`. It refuses the build unless every resolved package and checksum is unchanged,
+then restores the committed lockfile. `build.json` records it. This builds exactly the code
+that was committed, so it is not a substitution. The alternative, dropping the commit, would
+have lost two of react-admin's nine pairs.
+
+**What had been seen when this was written.** Everything the earlier amendments list. From
+run 1, at every commit of both apps: build results, rebuild-control verdicts, element counts
+per screen and state, and the elements that differed between loads where a control failed.
+Also, to establish when the notice was present, how often "Open changelog" appeared in each
+Actual load file. No fingerprint was compared across commits. No collision, churn, split or
+proposer number was computed, and the scoring code has not read a run-1 capture.

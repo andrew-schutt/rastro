@@ -45,6 +45,32 @@ export function assertPinnedBrowser(reported: string): void {
   );
 }
 
+/**
+ * The page reaches the local server and nothing else. Added 2026-11-17, after run 1 and before
+ * any score (CORPUS.md). Actual asks GitHub for its latest release on every load and shows an
+ * update notice if one is newer, so whether two buttons existed depended on GitHub's answer,
+ * its timing, and its rate limit. Every other host fails to resolve, in the page and in every
+ * worker, and so fails the same way, at once, on every load.
+ *
+ * A Chrome switch, not request interception: it reaches workers and service workers without
+ * attaching to them, and it cannot be undone by anything the page does.
+ */
+export const LOCAL_ONLY_HOSTS = ['127.0.0.1', 'localhost'] as const;
+
+export function hostResolverRules(allowed: readonly string[] = LOCAL_ONLY_HOSTS): string {
+  return ['MAP * ~NOTFOUND', ...allowed.map((host) => `EXCLUDE ${host}`)].join(' , ');
+}
+
+/** Is this a request the page could only have made to a host other than the local server? */
+export function isRefusedRequest(url: string, errorText: string): boolean {
+  if (errorText !== 'net::ERR_NAME_NOT_RESOLVED') return false;
+  try {
+    return !(LOCAL_ONLY_HOSTS as readonly string[]).includes(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 /** One seed for every load. Its value is arbitrary; that it never changes is the point. */
 export const SEED = 0x5eed_c0de;
 
