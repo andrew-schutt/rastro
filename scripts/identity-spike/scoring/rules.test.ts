@@ -7,6 +7,7 @@ import type { DriftScore } from '../src/drift-proposers.ts';
 import type { RecordedSite } from '../src/repeat-oracle.ts';
 import { RULE_1_STRATEGIES } from '../src/strategies.ts';
 import { driftRecords, ruleFourVerdict, scoreProposers, worksheet } from './drift.ts';
+import { beats } from './dominance.ts';
 import { judgeRow, propose } from './flow-rule.ts';
 
 function el(print: string, text = print, site: RecordedSite | null = null, x = 0): CapturedElement {
@@ -84,5 +85,23 @@ describe('rule 4', () => {
     expect(ruleFourVerdict({ naive: s(3, 1), anchor: s(4, 0), resolution: s(3, 1) })).toMatch(/Anchor dominates naive/);
     expect(ruleFourVerdict({ naive: s(4, 3), anchor: s(1, 1), resolution: s(3, 1) })).toMatch(/^Neither dominates nor loses/);
     expect(ruleFourVerdict({ naive: s(0, 0, 0), anchor: s(0, 0, 0), resolution: s(0, 0, 0) })).toMatch(/unanswered/);
+  });
+});
+
+describe('beats', () => {
+  const t = (atLeast: number, atMost: number, untouchedChurn: number, falseSplits: number) => ({
+    merges: { atLeast, atMost },
+    untouchedChurn,
+    falseSplits,
+  });
+
+  it('is domination: no worse on every count, better on one', () => {
+    expect(beats(t(1, 2, 0, 3), t(1, 2, 0, 4))).toBe('beats');
+    expect(beats(t(1, 2, 0, 3), t(1, 2, 0, 3))).toBe('does not beat');
+    expect(beats(t(0, 0, 1, 0), t(5, 5, 0, 5))).toBe('does not beat');
+  });
+
+  it('is undecided when the merge bounds disagree, never settled on the favourable one', () => {
+    expect(beats(t(1, 9, 0, 3), t(2, 5, 0, 3))).toBe('undecided');
   });
 });
