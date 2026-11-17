@@ -181,6 +181,19 @@ proposer number had been computed.
   runner's noise, so strategy 2's load-to-load stability is measured and reported beside the
   control instead of judging it. **Open:** whether PostHog's autocapture keeps generated ids
   like these. Check its source before this is reported as anything about the incumbents.
+  **Settled 2026-11-17, from source, before any corpus number: it keeps them, so strategy 2
+  stands as defined.** posthog-js (`8c832754`, the commit `baselines.ts` cites, and `fce957b9a`,
+  2026-11-16) copies every attribute of every element in the chain, `id` included. It filters
+  only values shaped like card or social security numbers, Angular's `_ngcontent`/`_nghost`
+  attributes ("these update on each build and lead to noise"), and an ignore list that is
+  empty by default. On sensitive elements it still keeps `id`. Nothing recognises React's ids.
+  `elementsToString` writes the id into `$elements_chain` as `attr_id`, and the server's
+  `nodejs/src/common/utils/elements-chain.ts` (posthog `be0a6f2`) parses it back out unchanged.
+  Not read: every ingestion transformation a customer can install. Nor is the instability the
+  runner's doing. React's client-side `useId` takes `globalClientIdCounter++`, one counter for
+  the page's life, never reset (react-dom 19.2.8; Actual ships 19.3.0). So an id depends on
+  everything mounted before it, and a real user's session moves it as the two loads here do.
+  Strategy 2's load-to-load instability is reported as the incumbent's behaviour.
 
 ## Screens
 

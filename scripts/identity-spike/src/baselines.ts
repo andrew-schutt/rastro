@@ -43,7 +43,11 @@ export function roleNameFingerprint(element: Element, redactor: Redactor = defau
  *   instability is part of what the baseline is meant to measure.
  * - **Position:** `nth-child` and `nth-of-type`, both 1-based, counted over element
  *   siblings, on every entry.
- * - **The `id` attribute,** as `attr_id`.
+ * - **The `id` attribute,** as `attr_id`, verbatim. Generated ids (React's `useId`, react-aria's)
+ *   are kept: PostHog recognises none, and filters only Angular's per-build `_ngcontent` and
+ *   `_nghost` attributes. Checked again at posthog-js `fce957b9a` (2026-11-16), unchanged.
+ *   PostHog writes the id twice per entry, as `attr_id` and again as `attr__id`. One copy here
+ *   carries the same value, so nothing about stability is lost.
  *
  * What is dropped, with the reason for each:
  *
