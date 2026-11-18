@@ -10,6 +10,6 @@
     // corpus/ runs directly under Node's type stripping, which needs real `.ts` specifiers.
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "continuity", "corpus"],
+  "include": ["src", "continuity", "corpus", "scoring"],
   "exclude": []
 }

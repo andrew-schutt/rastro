@@ -157,12 +157,12 @@ The choices it settles:
 
 `score` tallies one proposer's run against the blind labels, and refuses an unlabelled
 subject rather than letting it drop out. `dominates` is rule 4's comparison. Turning the three
-scores into rule 4's verdict is left to the gate PR. See "Still to build".
+scores into rule 4's verdict is `scoring/drift.ts` (`ruleFourVerdict`).
 
 Any change to a proposer after a corpus number is seen makes it a different proposer,
 reported separately, as with strategy 6.
 
-## Still to build
+## Where it stands
 
 All six of rule 1's strategies now exist and run in `continuity/`. Strategy 6, the marked
 fiber walk, is `rastro-core`'s `markedComponentChain`, reading the marks that
@@ -193,12 +193,13 @@ In the order agreed for §3.2:
    its own rebuild control, and never scored: Actual asks GitHub for its latest release on
    every load. The runner now reaches only the local server, and is frozen again for run 2
    (`CORPUS.md`, "Run 1 is void").
-2. **The run and its scoring:** every commit built and captured, then the scores computed
-   offline from the captures, the blind labels for rule 4, and the gate PR. The scoring code
-   is written while the run proceeds, since it only reads what the frozen runner recorded.
-   **The referee is `repeat-oracle.ts` alone for run 1** (`VALIDATION-PLAN.md` §3.2, settled
-   2026-11-17). The per-JSX-site oracle and the shared-design-system case wait for run 1's
-   `undecided` bucket to say whether they are needed. If they are, they are a separate run.
+2. **The run and its scoring: done for rules 1 and 2.** Run 2 built and captured every commit
+   of both apps, and `scoring/` computed rules 1 and 2 from the captures. **Rule 1 failed and
+   rule 2 passed** ([`scoring/results/run-2.md`](scoring/results/run-2.md)). The referee was
+   `repeat-oracle.ts` alone, as settled 2026-11-17. No pair came out `undecided`, but the
+   referee misreads nested lists, which the report records.
+3. **Still open: rules 3 and 4.** Rule 3 needs the flow rows matched by hand, and rule 4 needs
+   8 fingerprints labelled blind. Both worksheets are written (`scoring/worksheets.ts`).
 
 ## Running it
 

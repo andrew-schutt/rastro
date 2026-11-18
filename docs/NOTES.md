@@ -254,6 +254,19 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 
 ## Decisions worth knowing about
 
+**§3.2's first scored run failed rule 1 and passed rule 2 (2026-11-18).** Run 2 captured all
+ten commits of both corpus apps. React-admin commit 3 is void because one load's entry timed
+out, so 16 of 18 pairs were scored. The shipped default, attribute chain + file, beats none of
+the five alternatives. It barely differs from role + accessible name alone: identical on
+react-admin, and on Actual a few fewer merges for 3 more false splits. Selector paths never
+merge, by construction, but they churned on untouched code at 5 of Actual's 9 pairs. What held
+is the thing rule 2 tests: the default never changed fingerprint on untouched code. The
+pre-registered sub-rules remove the fiber walk (1,199 untouched churn instances once minified)
+and keep strategy 5 over 6.
+The full report, with the referee's nested-list caveat, is
+`scripts/identity-spike/scoring/results/run-2.md`. Under VALIDATION-PLAN §3.2 the next step is
+fingerprint redesign. The corpus and `scoring/` are kept as the measure it is judged by.
+
 **The collision referee uses React's `key`, which is the opposite of an identity.** §3.2
 cannot produce a collision number until something decides whether two elements sharing a
 fingerprint are a right merge (50 rows of one list) or a false one (two separately-written

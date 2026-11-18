@@ -2,10 +2,10 @@
 // The corpus runner's in-page entry. Bundled with esbuild and evaluated in a loaded corpus app,
 // after the app has settled, never before it loads: nothing here touches the app's own start.
 import { documentIsAnnotated, INTERACTIVE_SELECTOR, resetAnnotationProbe, type ComponentMark } from 'rastro-core';
-import { markedAncestry } from './ancestry.js';
-import { describeForMatching, type ElementDescription } from './describe.js';
-import { recordSites, type RecordedSite } from './repeat-oracle.js';
-import { CORPUS_PARTS, RULE_1_STRATEGIES, type CorpusStrategy, type StrategyParts } from './strategies.js';
+import { markedAncestry } from './ancestry.ts';
+import { describeForMatching, type ElementDescription } from './describe.ts';
+import { recordSites, type RecordedSite } from './repeat-oracle.ts';
+import { CORPUS_PARTS, RULE_1_STRATEGIES, type CorpusStrategy, type StrategyParts } from './strategies.ts';
 
 export interface CapturedElement {
   /**
