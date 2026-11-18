@@ -6,6 +6,13 @@ the freeze guard's paths on purpose: it is written while the run proceeds. It ma
 frozen referee (`src/repeat-oracle.ts`) and proposers (`src/drift-proposers.ts`), and never
 changes them.
 
+**The corpus and this scoring are the standing measure of identity.** Every later change to
+the fingerprint is judged on them the same way, as a new run under a new freeze, with
+definitions fixed before its numbers are seen. Each run's written report goes in
+[`results/`](results/). **[Run 2](results/run-2.md) is the first scored run: rule 1 failed and
+rule 2 passed.** A candidate designed after seeing run 2 has to be judged on corpus commits that
+nobody has seen. The run 2 apps can be reported alongside, labelled as seen.
+
 ## Pre-registered 2026-11-17, before any corpus number
 
 The plan leaves the definitions below open, and each one moves a number. They were fixed here,
@@ -76,8 +83,9 @@ node scripts/identity-spike/scoring/worksheets.ts rule3 actual    # sheet for ma
 node scripts/identity-spike/scoring/worksheets.ts rule4 actual    # one sheet per pair, to label blind
 ```
 
-Reports go to `$RASTRO_CORPUS/scores/<timestamp>/`, worksheets to `$RASTRO_CORPUS/worksheets/`. The
-human inputs live here, so the gate PR can show them:
+Reports go to `$RASTRO_CORPUS/scores/<timestamp>/`, worksheets to `$RASTRO_CORPUS/worksheets/`.
+Copy each run's numbers into `results/run-N.md`, with what they decide and how far to trust
+them. The human inputs live here, so they are reviewed with the results:
 
 - **`matches/<app>.json`**: commit index → row id → `{ state, element, by, matcher, note? }`. Match
   commit 10 by hand first. `rule3` then writes proposals for the other nine commits, each to be
@@ -97,3 +105,4 @@ human inputs live here, so the gate PR can show them:
 | `flow-rule.ts` | Rule 3's row judgement, and proposals by identical description |
 | `drift.ts` | Rule 4's records, the blind worksheet, the scores and the verdict |
 | `report.ts`, `worksheets.ts` | The two commands |
+| `results/` | Each scored run's written report |

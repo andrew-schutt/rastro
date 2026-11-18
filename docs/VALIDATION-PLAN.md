@@ -209,8 +209,8 @@ reported as a separate run. It does not replace run 1's numbers.
 **Done:** `scripts/identity-spike/`, plus a written report carrying all three numbers across
 ≥2 real apps and ≥10 commits. The apps, the commits, the screens, the run conditions and rule
 3's flow elements are pre-registered in [`CORPUS.md`](CORPUS.md), resolved by rule before the
-runner exists. *(In progress. The package README's "Still to build" is the
-current list.)* Use apps we do not control — OSS React products with real
+runner exists. *(Rules 1 and 2 scored 2026-11-18, on run 2: see the outcome below. Rules 3
+and 4 await their hand steps.)* Use apps we do not control — OSS React products with real
 history work fine.
 
 **How we know it worked — four rules, pre-committed before any number is seen.**
@@ -381,6 +381,19 @@ a far stronger README line than today's adjectival caveat.
 
 **If rule 1 or 2 fails:** stop here. That is the §19 existence condition failing, and the fix
 is fingerprint redesign, not more product.
+
+**Outcome, 2026-11-18: rule 1 failed, rule 2 passed.** On run 2 (run 1 was void), the shipped
+default, strategy 5, beats none of the alternatives on either app. It has zero untouched churn
+on both. Strategy 3 is removed by its own pre-registered test, and strategy 6 does not replace
+5. Two caveats are recorded and do not reverse the verdict:
+- the `key` referee misreads nested lists, which inflates every merge count;
+- selector path cannot merge by construction, so rule 1 could never be won against it.
+
+The numbers, the verdicts and the caveats are in
+[`scripts/identity-spike/scoring/results/run-2.md`](../scripts/identity-spike/scoring/results/run-2.md).
+§3.2 therefore stops at fingerprint redesign. The corpus and its scoring stay as the standing
+measure: a redesigned fingerprint is judged on them as a new run, pre-registered, on commits
+nobody has seen.
 
 ---
 
