@@ -40,7 +40,7 @@ most. It applies only to Phase 1, and only to Phase 1's production half.
 
 *Minified production builds destroy fingerprints* is correctly stated in the README as the
 tool's single most important limitation. It is **not** a Phase 0 blocker. §4.2.1's
-`data-telemetry-id` override wins over everything, skips the fiber walk entirely, and is
+`data-telemetry-id` override wins over everything, skips derivation entirely, and is
 immune to minification. Hand-placing it on the 20–40 elements of one flow *is* the "manually
 instrument it" that §16 asks for.
 
@@ -394,6 +394,15 @@ The numbers, the verdicts and the caveats are in
 §3.2 therefore stops at fingerprint redesign. The corpus and its scoring stay as the standing
 measure: a redesigned fingerprint is judged on them as a new run, pre-registered, on commits
 nobody has seen.
+
+**Acted on, 2026-11-18: identity narrowed to one fingerprint.** Strategies 3, 5 and 6 are cut
+from the code, and the fingerprint is strategy 4: the stamped chain, role and accessible name,
+with no source file (conventions 0.5, [`NOTES.md`](NOTES.md)). Strategy 5 went for simplicity,
+since 4 and 5 scored identically on both apps. The spike now measures three strategies: role +
+name, selector path and `attribute`. Rule 1 above records what run 2 was judged by. The next
+run's comparisons, and what a redesign has to beat, are pre-registered before it runs, in place
+of the six-strategy table. With the file gone, rule 4's `anchor` proposer abstains on every
+subject.
 
 ---
 

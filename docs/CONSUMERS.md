@@ -157,7 +157,7 @@ the consumer's. The rows on them stay because they constrain what the output mus
 | Flow-shape clustering, impact ranking | **Deferred** | §8 trace clustering and §11 ranking are on `VALIDATION-PLAN.md` §5's not-doing list. Frequency-only is the honest ranking today. |
 | MCP interface | **Plausible later** | This is the query interface from §1. Cheap once something is worth querying, and it moves neither gate. |
 | Incumbents "start from exceptions"; flow problems that throw no error "never become work" | **Overstated** | Friction without errors is a decade old ([`PRIOR-ART.md`](PRIOR-ART.md)). LogRocket's Galileo AI surfaces rage clicks, dead clicks and slow requests, not just errors ([docs](https://docs.logrocket.com/docs/galileo)). PostHog's MCP server lets a coding agent search replays by rage and dead clicks ([docs](https://posthog.com/docs/session-replay/surfaces/mcp)). Agent-readable UX telemetry is an occupied lane. |
-| Differentiators: flow-shape clustering, session-to-test, post-deploy verification | **Not the differentiator** | The first is deferred, the second is unproven and the third is unsafe, all per the rows above. What is unoccupied is still identity keyed on component structure ([`PRIOR-ART.md`](PRIOR-ART.md)). For an agent that matters more, not less: a finding that names a component and a source file (`ux.source_file`) is one an agent can act on. A CSS selector sends it searching. |
+| Differentiators: flow-shape clustering, session-to-test, post-deploy verification | **Not the differentiator** | The first is deferred, the second is unproven and the third is unsafe, all per the rows above. What is unoccupied is still identity keyed on component structure ([`PRIOR-ART.md`](PRIOR-ART.md)). For an agent that matters more, not less: a finding that names a component is one an agent can act on. A CSS selector sends it searching. |
 | Landscape sourced from job postings | **Not used** | A job posting is not evidence of a shipped product. The product pages above replace it. |
 | "A strong portfolio piece" | **Not recorded** | Not a property of the software. |
 
@@ -187,9 +187,10 @@ In order. None of these is scheduled, and the first two are already the plan.
 2. **What is the person's view of the feed?** Rule 4 says it shows the same records the agent
    gets. Whether that is the dashboard, a collector `debug` exporter, or a plain log of what the
    query interface returned is open. The cheapest one that cannot drift wins.
-3. **What does an agent need that the conventions lack?** `ux.source_file` exists (0.3) and may
-   be the most agent-useful attribute there is. Whether a finding needs more, such as a
-   component's props shape or a route's source, is unknown until an agent tries to use one.
+3. **What does an agent need that the conventions lack?** `ux.source_file` (0.3) may have been
+   the most agent-useful attribute there was, and 0.5 removed it to narrow identity
+   ([`NOTES.md`](NOTES.md)). Whether a finding needs it back, or more, such as a component's
+   props shape or a route's source, is unknown until an agent tries to use one.
 4. **Where do output records live?** The same `EventStore`, kept apart by rule 1, or a second
    store. This is the same storage question §8 defers, and it stays deferred.
 

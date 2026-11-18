@@ -104,6 +104,11 @@ build-plugin DOM-attribute chain, not just the weaker no-fiber baselines. If the
 cannot beat it, the biggest liability in the codebase is being carried for convenience rather
 than capability.
 
+*Answered 2026-11-18.* It could not. On §3.2's run 2 the fiber walk, minified, churned on
+untouched code 1,199 times where the DOM-attribute chain churned none, and it was removed
+([`NOTES.md`](NOTES.md)). The source-file anchor in point 2 was cut in the same change, so the
+rename-proof anchor Sentry's attribute provides is not one Rastro has.
+
 ---
 
 ## Where this contradicts the project's own positioning
