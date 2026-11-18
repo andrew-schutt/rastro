@@ -1,6 +1,8 @@
 // scripts/identity-spike/scoring/drift.ts
-// Rule 4 on strategy 5 (README, item 2): the records the frozen proposers compare, the blind
-// labelling worksheet, and the scores.
+// Rule 4 on Rastro's fingerprint, `attribute` (README, item 2 named strategy 5, the default
+// in run 2): the records the frozen proposers compare, the blind labelling worksheet, and the
+// scores. The fingerprint carries no file since run 2, so the `anchor` proposer, which matches
+// on file, abstains on every subject (`no-file`).
 //
 // The order is the rule's: every vanished fingerprint is labelled from the diff BEFORE any
 // proposer runs. `worksheet` shows what was there and what appeared, and never a proposal.
@@ -17,9 +19,9 @@ import {
 } from '../src/drift-proposers.ts';
 import type { ElementDescription } from '../src/describe.ts';
 
-export const DRIFT_STRATEGY = 'attribute+file' as const;
+export const DRIFT_STRATEGY = 'attribute' as const;
 
-/** One record per strategy 5 fingerprint on a commit's screens, with every screen it was on. */
+/** One record per fingerprint on a commit's screens, with every screen it was on. */
 export function driftRecords(screens: ReadonlyMap<string, StateRecord>): DriftRecord[] {
   const records = new Map<string, DriftRecord & { routes: string[] }>();
   for (const [screen, record] of screens) {

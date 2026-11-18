@@ -1,8 +1,9 @@
 // scripts/identity-spike/src/page.ts
 // The corpus runner's in-page entry. Bundled with esbuild and evaluated in a loaded corpus app,
 // after the app has settled, never before it loads: nothing here touches the app's own start.
-import { documentIsAnnotated, INTERACTIVE_SELECTOR, resetAnnotationProbe, type ComponentMark } from 'rastro-core';
+import { COMPONENT_ATTRIBUTE, INTERACTIVE_SELECTOR } from 'rastro-core';
 import { markedAncestry } from './ancestry.ts';
+import type { ComponentMark } from './fiber.ts';
 import { describeForMatching, type ElementDescription } from './describe.ts';
 import { recordSites, type RecordedSite } from './repeat-oracle.ts';
 import { CORPUS_PARTS, RULE_1_STRATEGIES, type CorpusStrategy, type StrategyParts } from './strategies.ts';
@@ -13,7 +14,7 @@ export interface CapturedElement {
    * every interactive element, and which ones to slice out is the analysis's call, not capture's.
    */
   visible: boolean;
-  /** The element's fingerprint under each of rule 1's six strategies. */
+  /** The element's fingerprint under each of rule 1's strategies. */
   fingerprints: Record<CorpusStrategy, string>;
   /**
    * What each fingerprint was composed from: rule 4's proposers compare these (`DriftRecord`).
@@ -35,7 +36,7 @@ export interface CapturedElement {
 }
 
 export interface PageCapture {
-  /** False means strategy 5 would have read fibers: the build is not what was pre-registered. */
+  /** False means the build plugin stamped nothing: the build is not the one pre-registered. */
   annotated: boolean;
   elements: CapturedElement[];
 }
@@ -47,10 +48,9 @@ function isVisible(element: Element): boolean {
   return element.getClientRects().length > 0;
 }
 
-/** Every interactive element in document order, under all six strategies at once. */
+/** Every interactive element in document order, under every strategy at once. */
 export function capturePage(): PageCapture {
-  resetAnnotationProbe(document);
-  const annotated = documentIsAnnotated(document);
+  const annotated = document.querySelector(`[${COMPONENT_ATTRIBUTE}]`) !== null;
   const found = [...document.querySelectorAll(INTERACTIVE_SELECTOR)];
   // One pass over the whole capture, so every site's numbers are comparable with every other's.
   const sites = recordSites(found);

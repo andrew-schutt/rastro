@@ -1,6 +1,6 @@
 # Rastro Semantic Conventions
 
-**Version:** 0.4 · **Stability:** Development (expect breaking changes before 1.0)
+**Version:** 0.5 · **Stability:** Development (expect breaking changes before 1.0)
 
 This document defines how Rastro represents UX-behavioral telemetry on top of
 OpenTelemetry. It is the contract any instrumentation — first-party SDK or otherwise —
@@ -77,13 +77,12 @@ reinvent them.
 | `ux.component_chain` | Recommended | string[] | Component ancestry, outermost → innermost. Emitted when it composed the fingerprint. |
 | `ux.role` | Recommended | string | Element role/tag (`button`, `input:email`, `a`). A queryable slice of the fingerprint. |
 | `ux.accessible_name` | Recommended | string | Element label. Emitted **only when it composed the fingerprint**. MUST be redacted before emit; MUST NOT contain raw user content. |
-| `ux.source_file` | Recommended | string | Repo-relative file defining the innermost component in the chain. Emitted **only when it composed the fingerprint** — i.e. only where a build-time annotator supplied it. MUST be repo-relative; MUST NOT carry an absolute filesystem path. |
 
 ## Resource attributes (defined by Rastro)
 
 | Attribute | Level | Type | Meaning |
 |---|---|---|---|
-| `ux.convention.version` | Recommended | string (resource) | Version of *this* spec the record conforms to (e.g. `"0.4"`). Lets the analysis layer handle mixed-version data across migrations. |
+| `ux.convention.version` | Recommended | string (resource) | Version of *this* spec the record conforms to (e.g. `"0.5"`). Lets the analysis layer handle mixed-version data across migrations. |
 
 ## Fingerprint format
 
@@ -91,42 +90,21 @@ reinvent them.
 refactors, of the form:
 
 ```
-<component chain>[@<source file>]|<role>|"<accessible name>"
+<component chain>|<role>|"<accessible name>"
 ```
 
-Example: `Settings>ProfileForm>SaveButton@src/ProfileForm.tsx|button|"Save Profile"`.
+Example: `Settings>ProfileForm>SaveButton|button|"Save Profile"`.
 
-Fields degrade gracefully: a missing component chain becomes `unknown`; a missing source
-file drops the `@…` qualifier; a missing accessible name drops the trailing segment. An
-explicit `data-telemetry-id` on the element (or an ancestor) overrides derivation entirely
-and yields `id:<value>`.
-
-**The source file qualifies the chain rather than standing as its own segment**, because
-that is what it means: `Card` denotes one component in `billing/Card.tsx` and a different
-one in `settings/Card.tsx`. Attaching it there also leaves the optional accessible name as
-the trailing segment, so the degradation rules above stay independent of each other.
-
-Emitters that derive the chain at runtime (a framework-internals walk) have no source file
-available and MUST omit the qualifier rather than inventing one. Emitters supplied one by a
-build-time annotator MUST take it from the element contributing the **innermost** chain
-entry, and MUST NOT include files for outer entries — an outer file puts every edit higher
-in the tree into the identity of everything beneath it.
-
-> **Why it is in the identity at all.** Not stability — renaming a component changes the
-> chain and mints a new identity with or without the file. It is there to stop two components
-> that merely share a *name* from merging into one identity, because a false merge is the
-> failure mode nothing downstream can detect
-> ([`IDENTITY-RESOLUTION.md`](IDENTITY-RESOLUTION.md)). Its stability value is as a **part**:
-> a file survives the rename that mints a new fingerprint, which is the anchor identity
-> resolution matches old to new with. The accepted cost is that moving a file is a false
-> split.
+Fields degrade gracefully: a missing component chain becomes `unknown`; a missing accessible
+name drops the trailing segment. An explicit `data-telemetry-id` on the element (or an
+ancestor) overrides derivation entirely and yields `id:<value>`.
 
 Consumers MUST treat the fingerprint as an opaque string for joining; they SHOULD NOT
 parse it for meaning (use `ux.role` / `ux.component_chain` for that).
 
 ### Fingerprint parts
 
-`ux.component_chain`, `ux.role`, `ux.accessible_name`, and `ux.source_file` are the
+`ux.component_chain`, `ux.role`, and `ux.accessible_name` are the
 fingerprint's constituent parts, emitted alongside it so consumers can query them without
 parsing the composite.
 
@@ -182,7 +160,7 @@ exporter):
     "url.path": "/settings/:id",
     "ux.event_id": "9b1e…",
     "ux.seq": 42,
-    "ux.fingerprint": "Settings>ProfileForm>SaveButton@src/ProfileForm.tsx|button|\"Save Profile\"",
+    "ux.fingerprint": "Settings>ProfileForm>SaveButton|button|\"Save Profile\"",
     "ux.anonymous_id": "a77c…",
     "ux.interaction.method": "mouse",
     "ux.active_ms": 4200
@@ -190,7 +168,7 @@ exporter):
   "resource": {
     "service.name": "my-app",
     "service.version": "4.2.1",
-    "ux.convention.version": "0.4"
+    "ux.convention.version": "0.5"
   }
 }
 ```
@@ -211,6 +189,14 @@ exporter):
   exact idle threshold is an implementation choice and is out of scope for this spec.
 
 ## Change history
+
+**0.5** — the fingerprint loses the `@<source file>` qualifier that 0.3 added, and
+`ux.source_file` leaves the parts. Rastro's identity spike ([`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2, run
+2) found the qualifier changed nothing measurable: the chain with and without it scored
+identically on both corpus apps. It was dropped to narrow identity to one fingerprint. **Not
+additive for stored data:** every fingerprint a build-annotated 0.3 or 0.4 emitter produced
+changes, so records on either side of the boundary do not join on `ux.fingerprint`, and a
+corpus spanning it must be treated as two. The Required set is unchanged.
 
 **0.4** — on `ux.form_submit` and `ux.form_abandon`, `ux.active_ms` now means what it means on
 every other event: the dwell since the previous event. Time-to-complete moves to the new

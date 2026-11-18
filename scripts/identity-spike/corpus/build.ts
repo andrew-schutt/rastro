@@ -3,8 +3,8 @@
 //
 //   node scripts/identity-spike/corpus/build.ts <actual|react-admin> <commit> [variant…]
 //
-// <commit> is CORPUS.md's index (1–10) or a sha prefix. Variants default to both
-// (`as-shipped`, `mangled`). Builds land in $RASTRO_CORPUS/builds/<app>/<nn>-<sha7>/<variant>/,
+// <commit> is CORPUS.md's index (1–10) or a sha prefix. The one variant is `as-shipped`.
+// Builds land in $RASTRO_CORPUS/builds/<app>/<nn>-<sha7>/<variant>/,
 // next to a build.json saying exactly what made them.
 //
 // THIRD-PARTY CODE. This clones the app and runs its own install scripts. It is run by hand,
@@ -28,6 +28,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
+import { buildSync } from 'esbuild';
 import { join, resolve } from 'node:path';
 import {
   BUILD_VARIANTS,
@@ -91,7 +92,7 @@ function checkout(app: CorpusApp, commit: CorpusCommit, clone: string): void {
 }
 
 /** The absolute paths the patch writes into a foreign config, resolved from this package. */
-function patchPaths(app: CorpusApp, clone: string): PatchPaths {
+function patchPaths(app: CorpusApp, clone: string, markPlugin: string): PatchPaths {
   const require = createRequire(join(SPIKE_DIR, 'package.json'));
   const rastroPlugin = require.resolve('babel-plugin-rastro');
   if (!existsSync(rastroPlugin)) {
@@ -99,6 +100,7 @@ function patchPaths(app: CorpusApp, clone: string): PatchPaths {
   }
   return {
     rastroPlugin,
+    markPlugin,
     rolldownBabel: require.resolve('@rolldown/plugin-babel'),
     pluginRoot: resolve(clone, app.pluginRoot),
   };
@@ -114,28 +116,19 @@ function bundleCarries(dir: string, needle: string): boolean {
   return false;
 }
 
-/** Every built script's bytes, in a stable order, so two builds can be compared. */
-function scriptBytes(dir: string): string {
-  return readdirSync(dir, { recursive: true, encoding: 'utf8' })
-    .filter((entry) => /\.m?js$/.test(entry) && statSync(join(dir, entry)).isFile())
-    .sort()
-    .map((entry) => readFileSync(join(dir, entry), 'utf8'))
-    .join('\n');
-}
-
 /**
- * A mangled build identical to the as-shipped one means the flip did nothing, and strategy 3
- * would be scored on names it was meant to lose. Comparing the bundles is the check that does
- * not measure strategy 3 itself.
+ * The measurement's mark plugin, bundled into one CommonJS file the app's own Babel can load:
+ * it is TypeScript in this package, and imports the build plugin's naming rule.
  */
-function assertVariantsDiffer(commitDir: string): void {
-  const shipped = join(commitDir, 'as-shipped', 'app');
-  const mangled = join(commitDir, 'mangled', 'app');
-  if (!existsSync(shipped) || !existsSync(mangled)) return;
-  if (scriptBytes(shipped) === scriptBytes(mangled)) {
-    throw new Error(`${commitDir}: the mangled build is identical to as-shipped. The flip did nothing.`);
-  }
-  console.log('  ok: the mangled bundle differs from as-shipped');
+function bundleMarkPlugin(outFile: string): void {
+  buildSync({
+    entryPoints: [join(SPIKE_DIR, 'src', 'mark-plugin.ts')],
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    outfile: outFile,
+    logLevel: 'silent',
+  });
 }
 
 function buildVariant(
@@ -145,12 +138,14 @@ function buildVariant(
   clone: string,
   outDir: string,
 ): void {
-  const configPath = join(clone, app.viteConfig);
-  const original = readFileSync(configPath, 'utf8');
-  const patched = patchViteConfig(app.id, original, variant, patchPaths(app, clone));
-
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
+  const markPlugin = join(outDir, 'mark-plugin.cjs');
+  bundleMarkPlugin(markPlugin);
+
+  const configPath = join(clone, app.viteConfig);
+  const original = readFileSync(configPath, 'utf8');
+  const patched = patchViteConfig(app.id, original, patchPaths(app, clone, markPlugin));
   const log = join(outDir, 'build.log');
   const startedAt = new Date();
 
@@ -228,7 +223,7 @@ function main(argv: string[]): void {
   const afterFreeze = argv.includes(AFTER_FREEZE_FLAG);
   const [appArg, commitArg, ...variantArgs] = argv.filter((arg) => arg !== AFTER_FREEZE_FLAG);
   if (appArg === undefined || commitArg === undefined || !(appArg in CORPUS)) {
-    throw new Error('usage: build.ts <actual|react-admin> <commit> [as-shipped|mangled …] [--after-freeze]');
+    throw new Error('usage: build.ts <actual|react-admin> <commit> [as-shipped] [--after-freeze]');
   }
   const app = CORPUS[appArg as AppId];
   const commit = findCommit(app, commitArg);
@@ -253,7 +248,6 @@ function main(argv: string[]): void {
   for (const variant of variants as BuildVariant[]) {
     buildVariant(app, commit, variant, clone, join(commitDir, variant));
   }
-  assertVariantsDiffer(commitDir);
 }
 
 try {

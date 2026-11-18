@@ -142,9 +142,9 @@ record. When a finding was first and last seen belongs to durable findings
     "timeUnixNano": "1730300000000000000",
     "severityNumber": 9,
     "attributes": {
-      "rastro.finding.id": "rage_click:4.2.1:App>SettingsForm@src/App.tsx|button:button|\"Save\"",
+      "rastro.finding.id": "rage_click:4.2.1:App>SettingsForm|button:button|\"Save\"",
       "rastro.finding.kind": "rage_click",
-      "ux.fingerprint": "App>SettingsForm@src/App.tsx|button:button|\"Save\"",
+      "ux.fingerprint": "App>SettingsForm|button:button|\"Save\"",
       "rastro.finding.occurrences": 3,
       "rastro.finding.sessions": 2
     },

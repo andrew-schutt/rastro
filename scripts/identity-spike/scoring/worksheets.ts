@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { StateRecord } from '../corpus/flows.ts';
-import { CORPUS, type AppId, type CorpusApp } from '../corpus/manifest.ts';
+import { BUILD_VARIANTS, CORPUS, type AppId, type CorpusApp } from '../corpus/manifest.ts';
 import { corpusRoot } from '../corpus/runtime.ts';
 import type { ElementDescription } from '../src/describe.ts';
 import { isVoid, readCapture } from './captures.ts';
@@ -37,7 +37,7 @@ const show = (d: ElementDescription) =>
 /** False when the commit is void (`isVoid`): it gets no sheet, and neither does any pair it is in. */
 function stands(app: CorpusApp, index: number): boolean {
   const commit = app.commits.find((c) => c.index === index)!;
-  return !isVoid((['as-shipped', 'mangled'] as const).map((variant) => readCapture(corpusRoot(), app, commit, variant)));
+  return !isVoid(BUILD_VARIANTS.map((variant) => readCapture(corpusRoot(), app, commit, variant)));
 }
 
 function states(app: CorpusApp, index: number): Map<string, StateRecord> {

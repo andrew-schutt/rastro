@@ -2,10 +2,9 @@
 // Compile a variant of the base app in memory and render it, under one identity strategy.
 //
 // A variant is a map of repo-relative path → source. It is compiled with Babel: rastro's
-// plugin first (for the attribute and marked strategies), then TypeScript and the automatic JSX runtime,
+// plugin first (for the attribute strategy), then TypeScript and the automatic JSX runtime,
 // then CommonJS, so a ten-line loader can link it. Babel and not a bundler, because esbuild's
-// JS API fails inside jsdom test environments, and because Babel leaves every function its
-// written name, which is what the fiber walk reads (a dev build, in effect).
+// JS API fails inside jsdom test environments.
 import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, posix } from 'node:path';
@@ -16,35 +15,23 @@ import * as compilerRuntime from 'react/compiler-runtime';
 import * as jsxRuntime from 'react/jsx-runtime';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
-import { defaultRedactor, describeElement, fingerprint, markedFiberWalk, resetAnnotationProbe } from 'rastro-core';
+import { fingerprint } from 'rastro-core';
 import { roleNameFingerprint, selectorPathFingerprint } from '../src/baselines.js';
 import { snapshotDocument, type SnapshotEntry } from '../src/continuity.js';
+import rastroCorpusMarks from '../src/mark-plugin.ts';
 
 /**
- * All six of §3.2 rule 1's strategies. The first three are rastro-core's own
- * `fingerprint()`, the two baselines are in `src/baselines.ts`, and the marked fiber walk is
- * core's `markedFiberWalk` composed by `describeElement`. Each was appended, so earlier ones
- * keep their place in every committed snapshot.
+ * The strategies §3.2 measures. `attribute` is rastro-core's own `fingerprint()`, and the two
+ * baselines are in `src/baselines.ts`. Run 2 measured three more, cut after it (docs/NOTES.md).
  */
-export const STRATEGIES = [
-  'attribute+file',
-  'attribute',
-  'fiber',
-  'role+name',
-  'selector-path',
-  'marked-fiber',
-] as const;
+export const STRATEGIES = ['attribute', 'role+name', 'selector-path'] as const;
 export type Strategy = (typeof STRATEGIES)[number];
 
-/** Which build each strategy reads: the plugin's options for it, or null for no plugin. */
-const PLUGIN: Record<Strategy, { includeSourceFile: boolean; markComponents?: boolean } | null> = {
-  'attribute+file': { includeSourceFile: true },
-  attribute: { includeSourceFile: false },
-  fiber: null,
-  // The baselines read no stamp, and an app using either would not have the plugin.
-  'role+name': null,
-  'selector-path': null,
-  'marked-fiber': { includeSourceFile: true, markComponents: true },
+/** Whether each strategy's build runs the plugin. The baselines read no stamp, and an app using either would not have it. */
+const PLUGIN: Record<Strategy, boolean> = {
+  attribute: true,
+  'role+name': false,
+  'selector-path': false,
 };
 
 /**
@@ -54,12 +41,9 @@ const PLUGIN: Record<Strategy, { includeSourceFile: boolean; markComponents?: bo
 const VENDOR = 'vendor/';
 
 const FINGERPRINT: Record<Strategy, (element: Element) => string> = {
-  'attribute+file': (element) => fingerprint(element),
   attribute: (element) => fingerprint(element),
-  fiber: (element) => fingerprint(element),
   'role+name': (element) => roleNameFingerprint(element),
   'selector-path': (element) => selectorPathFingerprint(element),
-  'marked-fiber': (element) => describeElement(element, defaultRedactor, markedFiberWalk).fingerprint,
 };
 
 export type Files = ReadonlyMap<string, string>;
@@ -68,7 +52,7 @@ export type Files = ReadonlyMap<string, string>;
 export const ORACLE_ATTRIBUTE = 'data-el';
 
 const APP_ROOT = join(import.meta.dirname, 'app');
-/** Where compiled files pretend to live. Stamped paths are relative to it: `src/App.tsx`. */
+/** Where compiled files pretend to live. Marked files are relative to it: `src/App.tsx`. */
 const VIRTUAL_ROOT = '/app';
 
 /** The base app's sources, keyed `src/...` and `vendor/...`. */
@@ -98,12 +82,20 @@ const reactCompiler = require('babel-plugin-react-compiler') as PluginItem;
 export interface LoadOptions {
   /** Run the React Compiler after rastro's plugin, in the order its README documents. */
   reactCompiler?: boolean;
+  /**
+   * Also run the measurement's mark plugin, as the corpus builds do (`corpus/patch.ts`), so
+   * `markedAncestry` can read every first-party component. No strategy reads marks.
+   */
+  marks?: boolean;
 }
 
 /** One file, as the harness compiles it under `strategy`. Exported for tests of the build itself. */
 export function compile(path: string, source: string, strategy: Strategy, options: LoadOptions = {}): string {
-  const plugin = path.startsWith(VENDOR) ? null : PLUGIN[strategy];
-  const rastro: PluginItem[] = plugin === null ? [] : [[rastroPlugin, { root: VIRTUAL_ROOT, ...plugin }]];
+  const own = !path.startsWith(VENDOR);
+  const rastro: PluginItem[] = [
+    ...(own && PLUGIN[strategy] ? [rastroPlugin] : []),
+    ...(own && options.marks === true ? [[rastroCorpusMarks, { root: VIRTUAL_ROOT }] as PluginItem] : []),
+  ];
   const compiler: PluginItem[] = options.reactCompiler === true ? [[reactCompiler, { target: '19' }]] : [];
   const result = transformSync(source, {
     filename: posix.join(VIRTUAL_ROOT, path),
@@ -164,13 +156,9 @@ export function snapshotVariant(files: Files, strategy: Strategy): SnapshotEntry
   const root = createRoot(container);
   try {
     act(() => root.render(React.createElement(App)));
-    // The annotation probe is cached per document, and this document hosts every strategy in
-    // turn. Without the reset, the fiber renders would silently reuse the attribute verdict.
-    resetAnnotationProbe(document);
     return snapshotDocument(container, FINGERPRINT[strategy], { oracleAttribute: ORACLE_ATTRIBUTE });
   } finally {
     act(() => root.unmount());
     container.remove();
-    resetAnnotationProbe(document);
   }
 }

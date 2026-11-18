@@ -2,23 +2,19 @@
  * @vitest-environment jsdom
  *
  * packages/core/src/fingerprint.test.ts
- * The DOM half of §4.2.1. The fiber walk needs a real React render, so it is tested in
- * packages/react (fingerprint.dom.test.ts) — `core` stays free of React, dev deps included.
+ * §4.2.1 on plain DOM: the fingerprint reads build-time stamps and the element itself, and
+ * nothing of React's, so `core` stays free of React, dev deps included.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   COMPONENT_ATTRIBUTE,
   MAX_NAME_LENGTH,
   NOISE,
-  SOURCE_FILE_ATTRIBUTE,
   UNKNOWN_CHAIN,
   accName,
   attributeChain,
   describeElement,
-  documentIsAnnotated,
-  resetAnnotationProbe,
   fingerprint,
-  getFiber,
   norm,
   overrideOf,
   roleOf,
@@ -92,13 +88,13 @@ describe('overrideOf', () => {
 
 describe('fingerprint — composition and degradation', () => {
   it('composes <chain>|<role>|"<name>"', () => {
-    // No React here, so the chain degrades — the shape and the other two parts are real.
+    // No stamps here, so the chain degrades — the shape and the other two parts are real.
     expect(fingerprint(html('<button>Save Profile</button>'))).toBe(
       `${UNKNOWN_CHAIN}|button|"Save Profile"`,
     );
   });
 
-  it('degrades the component chain to `unknown` on a non-React node', () => {
+  it('degrades the component chain to `unknown` on an element the plugin did not stamp', () => {
     expect(fingerprint(html('<a href="/x">Home</a>'))).toBe(`${UNKNOWN_CHAIN}|a|"Home"`);
   });
 
@@ -122,28 +118,6 @@ describe('fingerprint — composition and degradation', () => {
 
     expect(description.componentChain).toEqual([]);
     expect(description.accessibleName).toBeUndefined();
-  });
-});
-
-describe('getFiber', () => {
-  it('returns null for a plain DOM node with no React fiber', () => {
-    expect(getFiber(html('<button>x</button>'))).toBeNull();
-  });
-
-  it('finds a fiber hung off the node under the React 17+ key', () => {
-    const element = html('<button>x</button>');
-    const fiber = { type: null };
-    Object.assign(element, { __reactFiber$abc123: fiber });
-
-    expect(getFiber(element)).toBe(fiber);
-  });
-
-  it('finds a fiber under the React 16 key', () => {
-    const element = html('<button>x</button>');
-    const fiber = { type: null };
-    Object.assign(element, { __reactInternalInstance$xyz: fiber });
-
-    expect(getFiber(element)).toBe(fiber);
   });
 });
 
@@ -319,7 +293,6 @@ describe('attributeChain', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '';
-    resetAnnotationProbe(document);
   });
 
   it('reads the ancestry from the DOM, outermost first', () => {
@@ -344,7 +317,7 @@ describe('attributeChain', () => {
     ]);
   });
 
-  it('applies NOISE exactly as the fiber walk does', () => {
+  it('skips NOISE names, so adding a provider does not churn the chain', () => {
     expect(attributeChain(stamped('App', 'AuthProvider', 'SettingsForm'))).toEqual([
       'App',
       'SettingsForm',
@@ -365,54 +338,12 @@ describe('attributeChain', () => {
   });
 });
 
-describe('documentIsAnnotated', () => {
+describe('the stamped chain in the fingerprint', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
-    resetAnnotationProbe(document);
   });
 
-  it('is false for a document the plugin never touched', () => {
-    document.body.innerHTML = '<button>Save</button>';
-    expect(documentIsAnnotated(document)).toBe(false);
-  });
-
-  it('is true as soon as one element carries the attribute', () => {
-    document.body.innerHTML = `<div ${COMPONENT_ATTRIBUTE}="App"><button>Save</button></div>`;
-    expect(documentIsAnnotated(document)).toBe(true);
-  });
-
-  // The decision is per document, not per element: a portaled modal outside the annotated
-  // subtree must NOT silently fall back to the fiber walk, or one page yields two kinds of
-  // chain that cannot be compared with each other.
-  it('commits the whole document, so an unannotated subtree does not switch strategy', () => {
-    document.body.innerHTML =
-      `<div ${COMPONENT_ATTRIBUTE}="App"></div><div id="portal"><button>Save</button></div>`;
-    expect(documentIsAnnotated(document)).toBe(true);
-
-    const orphan = document.querySelector('#portal button');
-    expect(orphan).not.toBeNull();
-    // No annotated ancestor: the chain degrades to `unknown` rather than reverting to fiber.
-    expect(describeElement(orphan as Element).fingerprint).toBe(`${UNKNOWN_CHAIN}|button|"Save"`);
-  });
-
-  it('caches, so the strategy cannot change mid-session', () => {
-    document.body.innerHTML = '<button>Save</button>';
-    expect(documentIsAnnotated(document)).toBe(false);
-
-    document.body.innerHTML = `<div ${COMPONENT_ATTRIBUTE}="App"></div>`;
-    expect(documentIsAnnotated(document)).toBe(false); // still the first answer
-  });
-});
-
-describe('the two strategies agree where they can', () => {
-  beforeEach(() => {
-    document.body.innerHTML = '';
-    resetAnnotationProbe(document);
-  });
-
-  // The CHAINS agree, and that is the part parity was ever really about — both strategies
-  // must describe the same ancestry or nothing downstream is comparable.
-  it('derives the same component chain an equivalent fiber walk would', () => {
+  it('composes the stamped chain with role and name', () => {
     document.body.innerHTML = `
       <div ${COMPONENT_ATTRIBUTE}="App">
         <form ${COMPONENT_ATTRIBUTE}="SettingsForm">
@@ -422,39 +353,39 @@ describe('the two strategies agree where they can', () => {
     const button = document.querySelector('button');
     expect(button).not.toBeNull();
 
-    // Same ancestry the fiber walk yields (see packages/react/src/fingerprint.dom.test.tsx,
-    // which renders it through React).
-    expect(describeElement(button as Element).componentChain).toEqual([
-      'App',
-      'SettingsForm',
-      'SaveButton',
-    ]);
+    expect(describeElement(button as Element)).toEqual({
+      fingerprint: 'App>SettingsForm>SaveButton|button|"Save Profile"',
+      componentChain: ['App', 'SettingsForm', 'SaveButton'],
+      role: 'button',
+      accessibleName: 'Save Profile',
+    });
   });
 
-  // ...but the composed FINGERPRINTS do not agree, and this is the honest statement of what
-  // that costs. The real plugin stamps the source file on every element it touches, so a
-  // genuinely annotated document always takes the `@file` branch. Adding the build plugin to
-  // an app therefore re-identifies every element it already had data for — a one-time
-  // migration, recorded in docs/NOTES.md rather than discovered later.
-  //
-  // The fixture above omits the file attribute, which is why it still reads like parity. That
-  // is a test fixture, not an app.
-  it('diverges from the fiber walk once the file is stamped, as the plugin really stamps it', () => {
+  // A portaled modal sits outside the stamped tree. It degrades to role and name, and there is
+  // no second chain source to fall back to, so one page can never mix two kinds of chain.
+  it('degrades an element outside every stamped ancestor to `unknown`', () => {
+    document.body.innerHTML =
+      `<div ${COMPONENT_ATTRIBUTE}="App"></div><div id="portal"><button>Save</button></div>`;
+    const orphan = document.querySelector('#portal button');
+    expect(orphan).not.toBeNull();
+    expect(describeElement(orphan as Element).fingerprint).toBe(`${UNKNOWN_CHAIN}|button|"Save"`);
+  });
+
+  // The measured failure mode (§3.2 run 2): two different buttons in one component, with no
+  // accessible name, are one identity. Asserted so it stays visible until something fixes it.
+  it('merges two unlabelled buttons that one component renders', () => {
     document.body.innerHTML = `
-      <div ${COMPONENT_ATTRIBUTE}="App" ${SOURCE_FILE_ATTRIBUTE}="src/App.tsx">
-        <button ${COMPONENT_ATTRIBUTE}="SaveButton" ${SOURCE_FILE_ATTRIBUTE}="src/SaveButton.tsx">Save Profile</button>
+      <div ${COMPONENT_ATTRIBUTE}="Toolbar">
+        <button ${COMPONENT_ATTRIBUTE}="Toolbar" id="bold"></button>
+        <button ${COMPONENT_ATTRIBUTE}="Toolbar" id="italic"></button>
       </div>`;
-    const button = document.querySelector('button');
-    expect(button).not.toBeNull();
-
-    const withPlugin = describeElement(button as Element).fingerprint;
-    const whatTheFiberWalkWouldYield = 'App>SaveButton|button|"Save Profile"';
-
-    expect(withPlugin).toBe('App>SaveButton@src/SaveButton.tsx|button|"Save Profile"');
-    expect(withPlugin).not.toBe(whatTheFiberWalkWouldYield);
+    const bold = document.querySelector('#bold') as Element;
+    const italic = document.querySelector('#italic') as Element;
+    expect(fingerprint(bold)).toBe('Toolbar|button');
+    expect(fingerprint(italic)).toBe(fingerprint(bold));
   });
 
-  it('still honours data-telemetry-id above either strategy', () => {
+  it('still honours data-telemetry-id above the stamped chain', () => {
     document.body.innerHTML = `
       <div data-telemetry-id="checkout" ${COMPONENT_ATTRIBUTE}="App">
         <button ${COMPONENT_ATTRIBUTE}="SaveButton">Save</button>
@@ -462,97 +393,9 @@ describe('the two strategies agree where they can', () => {
     const button = document.querySelector('button');
     expect(describeElement(button as Element).fingerprint).toBe('id:checkout');
   });
-});
 
-describe('the source file in the fingerprint', () => {
-  beforeEach(() => {
-    document.body.innerHTML = '';
-    resetAnnotationProbe(document);
-  });
-
-  /** Markup shaped the way the plugin really emits it: BOTH attributes, on every element. */
-  function annotate(...pairs: [string, string][]): Element {
-    const open = pairs
-      .map(([c, f]) => `<div ${COMPONENT_ATTRIBUTE}="${c}" ${SOURCE_FILE_ATTRIBUTE}="${f}">`)
-      .join('');
-    const close = pairs.map(() => '</div>').join('');
-    document.body.innerHTML = `${open}<button>Edit</button>${close}`;
-    const button = document.querySelector('button');
-    if (button === null) throw new Error('fixture did not render');
-    return button;
-  }
-
-  it('qualifies the chain with the file, on the chain segment', () => {
-    const button = annotate(['App', 'src/App.tsx'], ['Card', 'src/billing/Card.tsx']);
-    expect(describeElement(button).fingerprint).toBe(
-      'App>Card@src/billing/Card.tsx|button|"Edit"',
-    );
-  });
-
-  // THE POINT OF THE WHOLE CHANGE. Two components that merely share a NAME used to collapse
-  // into one identity, and a merge is the failure nothing in the data announces
-  // (docs/IDENTITY-RESOLUTION.md). Separating them is what the file buys.
-  it('separates two same-named components defined in different files', () => {
-    const billing = describeElement(
-      annotate(['App', 'src/App.tsx'], ['Card', 'src/billing/Card.tsx']),
-    ).fingerprint;
-    resetAnnotationProbe(document);
-    const settings = describeElement(
-      annotate(['App', 'src/App.tsx'], ['Card', 'src/settings/Card.tsx']),
-    ).fingerprint;
-
-    expect(billing).not.toBe(settings);
-  });
-
-  // Not one file per chain entry: an outer file would put every edit up the tree into the
-  // identity of everything below it, which is the churn the depth cap exists to bound.
-  it('takes the innermost contributor file, never an outer one', () => {
-    const button = annotate(
-      ['App', 'src/App.tsx'],
-      ['SettingsForm', 'src/SettingsForm.tsx'],
-      ['SaveButton', 'src/ui/SaveButton.tsx'],
-    );
-    const described = describeElement(button);
-    expect(described.sourceFile).toBe('src/ui/SaveButton.tsx');
-    expect(described.fingerprint).toContain('@src/ui/SaveButton.tsx');
-    expect(described.fingerprint).not.toContain('src/App.tsx');
-  });
-
-  // NOISE runs first, so the file follows the name that actually survived into the chain —
-  // the pair can never describe two different components.
-  it('follows the innermost SURVIVING name past a filtered wrapper', () => {
-    const button = annotate(
-      ['SettingsForm', 'src/SettingsForm.tsx'],
-      ['ThemeProvider', 'src/theme/ThemeProvider.tsx'],
-    );
-    const described = describeElement(button);
-    expect(described.componentChain).toEqual(['SettingsForm']);
-    expect(described.sourceFile).toBe('src/SettingsForm.tsx');
-  });
-
-  it('degrades to the 3-part format when the plugin stamped no file', () => {
-    document.body.innerHTML =
-      `<div ${COMPONENT_ATTRIBUTE}="App"><button>Edit</button></div>`;
-    const button = document.querySelector('button');
-    const described = describeElement(button as Element);
-    expect(described.sourceFile).toBeUndefined();
-    expect(described.fingerprint).toBe('App|button|"Edit"');
-  });
-
-  it('reports no file in an unannotated document, where the fiber walk cannot know one', () => {
-    document.body.innerHTML = '<button>Edit</button>';
-    const described = describeElement(document.querySelector('button') as Element);
-    expect(described.sourceFile).toBeUndefined();
-  });
-
-  // The parts invariant (docs/SEMANTIC-CONVENTIONS.md): an override composes the fingerprint
-  // out of nothing else, so no part may be emitted — the file included.
-  it('emits no file when data-telemetry-id overrode derivation', () => {
-    document.body.innerHTML =
-      `<div data-telemetry-id="checkout" ${COMPONENT_ATTRIBUTE}="App" ${SOURCE_FILE_ATTRIBUTE}="src/App.tsx">` +
-      `<button>Edit</button></div>`;
-    const described = describeElement(document.querySelector('button') as Element);
-    expect(described.fingerprint).toBe('id:checkout');
-    expect(described.sourceFile).toBeUndefined();
+  it('ignores a source-file attribute an older plugin stamped', () => {
+    document.body.innerHTML = `<button ${COMPONENT_ATTRIBUTE}="SaveButton" data-rastro-source-file="src/Save.tsx">Save</button>`;
+    expect(fingerprint(document.querySelector('button') as Element)).toBe('SaveButton|button|"Save"');
   });
 });

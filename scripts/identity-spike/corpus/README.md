@@ -4,9 +4,9 @@ Builds and drives the two corpus apps pre-registered in
 [`docs/CORPUS.md`](../../../docs/CORPUS.md). **Run by hand, locally, never in CI.** These are
 third-party apps with their own install scripts.
 
-Three pieces: **building** (checkout, harness patch, both variants), **capturing** (every
-pre-registered screen, under all six strategies, twice, under the run conditions) and **walking
-rule 3's flow** in each of those loads. The freeze comes next.
+Three pieces: **building** (checkout, harness patch), **capturing** (every
+pre-registered screen, under every strategy, twice, under the run conditions) and **walking
+rule 3's flow** in each of those loads. Each run is frozen first (below).
 
 ## The freeze
 
@@ -45,8 +45,7 @@ separately.
 
 ```bash
 pnpm -r build                                                  # before the freeze, build the plugin first
-node scripts/identity-spike/corpus/build.ts react-admin 10     # both variants
-node scripts/identity-spike/corpus/build.ts actual 10 mangled  # one variant
+node scripts/identity-spike/corpus/build.ts react-admin 10
 ```
 
 `<commit>` is `CORPUS.md`'s index or a sha prefix. Clones and builds live in `$RASTRO_CORPUS`,
@@ -59,6 +58,7 @@ workspace glob can ever reach third-party code.
   logs/                              install logs
   builds/<app>/<nn>-<sha7>/<variant>/
     app/                             the built app, copied out of the clone
+    mark-plugin.cjs                  the mark plugin this build loaded, bundled from src/
     build.json                       commit, variant, rastro commit (and whether it was dirty),
                                      Node version, duration, how the lockfile was installed,
                                      and whether stamps and marks reached the bundle
@@ -86,7 +86,7 @@ element it records:
 
 | Field | What it is for |
 |---|---|
-| `fingerprints` | All six strategies. What every rule counts. |
+| `fingerprints` | Every strategy. What every rule counts. |
 | `parts` | Each fingerprint's role, chain, file and name, from the same computation. Rule 4's proposers compare these (`DriftRecord`), and they are never parsed back out of the string, since a name can contain the separators. |
 | `ancestry` | Every first-party component above the element, with its file, uncapped and unfiltered (`src/ancestry.ts`). Rule 2's "touched" means a change to *any* of them, and the fingerprint walks stop at depth 4 and drop `NOISE`. |
 | `site` | The collision referee's input (`recordSites`): keyed list and item as numbers that compare within one capture, React's `key`, and the JSX slot. Fibers exist only in the live page, so the referee runs offline on these (`groupSites`), with the same code the live referee uses. |
@@ -118,11 +118,9 @@ Descriptions are recorded and not judged: the rebuild control compares fingerpri
 It prints counts, verdicts and the "first" labels, never a fingerprint or a description, so a
 capture can be checked without its output being read.
 
-**One annotated build serves all six strategies.** The smoke test builds once per strategy;
-the corpus is built once per variant with stamps, files and marks all present, so
-`fingerprint()` would read the attribute chain under every strategy. `src/strategies.ts` names
-each strategy's walk explicitly instead, and `continuity/strategies.test.ts` proves it gives the
-smoke test's per-build fingerprints on the base app and every scenario.
+**One annotated build serves every strategy.** The smoke test builds once per strategy; the
+corpus is built once, with stamps and marks present. `continuity/strategies.test.ts` proves the
+single build gives the smoke test's per-build fingerprints on the base app and every scenario.
 
 ### Walking the flow
 
@@ -173,31 +171,29 @@ Open responses come from the corpus server, not CDP: CDP reports a worker script
 starting on the page and finishing on the worker, so a page would wait on it forever. Every CDP
 command has a deadline, so a stuck target fails with an error instead of hanging the runner.
 
-**The rebuild control** judges strategies 1 and 3 to 6. Strategy 2's stability across loads is
+**The rebuild control** judges role + name and `attribute`. Strategy 2's stability across loads is
 measured and reported beside it, never judged: it keeps element ids, and Actual's come from
 React's `useId`, which numbers by mount order. PostHog keeps them too, checked in its source,
 so this is the incumbent's behaviour and not the runner's. See `CORPUS.md`'s amendment.
 
 ## What a build is
 
-Two variants per commit, from `VALIDATION-PLAN.md` §3.2 rule 1:
-
-| Variant | Measures | Patch |
-|---|---|---|
-| `as-shipped` | strategies 1, 2, 4, 5, 6, and 3 as shipped (reported beside, not instead) | the plugin, with `markComponents: true` |
-| `mangled` | strategy 3's rule 1 numbers | the same, plus identifier mangling forced on |
+One build per commit, `as-shipped`: the app as it ships, patched with `babel-plugin-rastro` (no
+options) and then the measurement's mark plugin (`src/mark-plugin.ts`, bundled to
+`mark-plugin.cjs` beside the build). No strategy reads the marks; rule 2's ancestry does. Run 2
+also built `mangled`, with identifier mangling forced on, for the fiber walk alone. That walk was
+cut after it, and the variant with it (`docs/NOTES.md`).
 
 The harness patch (`patch.ts`) is a set of exact text anchors in each app's Vite config. Every
 anchor must match exactly once, or the patch throws. All anchors were checked at all ten
 commits of both apps before this was written, by reading the configs, not by building.
 
 - **Actual:** `babel-plugin-rastro` joins the existing `babel({ presets: [reactCompilerPreset()] })`
-  call, whose `include` already scopes it to `packages/*/src`, Actual's own source. `root` is the
-  repo root. `mangled` flips Actual's `mangle: false`.
+  call, whose `include` already scopes it to `packages/*/src`, Actual's own source. The marks'
+  `root` is the repo root.
 - **react-admin demo:** a `@rolldown/plugin-babel` step (0.2.4, as `CORPUS.md` pins, resolved
   from this package) right after `react()`, scoped to `examples/demo/src` so library source the
-  demo aliases in is not stamped. `root` is the demo directory. `mangled` turns off
-  `keepNames: true`.
+  demo aliases in is not stamped. The marks' `root` is the demo directory.
 
 **No build cache can serve a stale stamp.** The plugin lives outside each app's repo, so no
 app-side cache key sees it change. That is safe today for a reason in each app's own config,

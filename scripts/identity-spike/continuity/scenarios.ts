@@ -21,10 +21,10 @@
 // classes and sibling position, so it moves when markup does, whatever the components are
 // called. Their expectations were written before their first run, like the rest.
 //
-// `marked-fiber` (strategy 6) walks the fiber tree like `fiber`, but counts only components
-// the plugin marked: everything in src/, including the composers stamping cannot see, and
-// nothing in vendor/. Its file is the innermost counted component's, like `attribute+file`.
-// Its expectations, and pick-theme's under every strategy, were also written before their run.
+// Run 2 measured three more strategies: the fiber walk, the attribute chain with its file, and
+// the marked fiber walk. They were cut after it (docs/NOTES.md), with their expectations. Three
+// scenarios below existed to show what only they could see (a moved file, a renamed composer, a
+// renamed library component), and now pin that the remaining strategies see none of it.
 import type { Files, Strategy } from './harness.js';
 
 export interface Scenario {
@@ -53,12 +53,9 @@ const edit =
   };
 
 const everywhere = (elements: string[]): Record<Strategy, string[]> => ({
-  'attribute+file': elements,
   attribute: elements,
-  fiber: elements,
   'role+name': elements,
   'selector-path': elements,
-  'marked-fiber': elements,
 });
 
 const ALL = ['cancel', 'email', 'nav-help', 'nav-home', 'page-docs', 'pick-theme', 'pref-dark', 'save'];
@@ -111,19 +108,11 @@ export const SCENARIOS: Scenario[] = [
       // DOM walk: pref-dark's stamps are Switch, Row, SettingsPage, App, so Layout enters its
       // four. save and cancel already fill four below ProfilePanel. pick-theme's only stamps
       // are SettingsPage and App, so Layout enters too.
-      'attribute+file': ['email', 'page-docs', 'pick-theme', 'pref-dark'],
       attribute: ['email', 'page-docs', 'pick-theme', 'pref-dark'],
-      // Fiber walk: pref-dark's four are Switch, Row, PreferenceRow, SettingsPage. The fiber
-      // tree sees PreferenceRow, which the DOM cannot, so the cap keeps Layout out. pick-theme's
-      // four are PickerTrigger, Picker, ThemePicker, SettingsPage: the library fills the window.
-      fiber: ['email', 'page-docs'],
       'role+name': [],
       // A new <div class="layout"> sits above <section>, so everything SettingsPage renders
       // gets a new ancestor. The nav links are beside it, and keep their path.
       'selector-path': ['cancel', 'email', 'page-docs', 'pick-theme', 'pref-dark', 'save'],
-      // Marked walk: as the fiber walk for the seven original elements, since every component
-      // they pass is marked. pick-theme counts only ThemePicker, SettingsPage, App, so Layout enters.
-      'marked-fiber': ['email', 'page-docs', 'pick-theme'],
     },
   },
   {
@@ -140,13 +129,12 @@ export const SCENARIOS: Scenario[] = [
       replace(f, 'src/settings/ProfilePanel.tsx', "import { Toolbar } from './Toolbar.js';", "import { ActionBar } from './Toolbar.js';");
       replace(f, 'src/settings/ProfilePanel.tsx', '<Toolbar />', '<ActionBar />');
     }),
-    // No markup changes: neither baseline reads a component name. The marked walk reads the
-    // renamed Toolbar's new mark.
+    // No markup changes: neither baseline reads a component name.
     changes: { ...everywhere(['cancel', 'save']), 'role+name': [], 'selector-path': [] },
   },
   {
     name: 'move-file',
-    description: 'Move SaveButton.tsx from ui/ to settings/. Only the file part can see a move.',
+    description: 'Move SaveButton.tsx from ui/ to settings/. No strategy reads a file, so nothing changes.',
     edit: edit((f) => {
       const source = f.get('src/ui/SaveButton.tsx');
       if (source === undefined) throw new Error('src/ui/SaveButton.tsx is missing');
@@ -154,8 +142,7 @@ export const SCENARIOS: Scenario[] = [
       f.set('src/settings/SaveButton.tsx', source);
       replace(f, 'src/settings/Toolbar.tsx', "from '../ui/SaveButton.js'", "from './SaveButton.js'");
     }),
-    // The two strategies with a file: SaveButton is save's innermost component in both.
-    changes: { ...everywhere([]), 'attribute+file': ['save'], 'marked-fiber': ['save'] },
+    changes: everywhere([]),
   },
   {
     name: 'tooltip-wrap',
@@ -181,27 +168,24 @@ export const SCENARIOS: Scenario[] = [
     name: 'rename-composer',
     description:
       'Rename PreferenceRow, which composes only design-system primitives. Stamping cannot ' +
-      'see it, so the attribute chain is blind to the rename; the fiber walk is not.',
+      'see it, so the attribute chain is blind to the rename.',
     edit: edit((f) => {
       replace(f, 'src/settings/PreferenceRow.tsx', 'export function PreferenceRow(', 'export function SettingRow(');
       replace(f, 'src/settings/SettingsPage.tsx', "import { PreferenceRow } from './PreferenceRow.js';", "import { SettingRow } from './PreferenceRow.js';");
       replace(f, 'src/settings/SettingsPage.tsx', '<PreferenceRow ', '<SettingRow ');
     }),
-    // The marked walk sees the composer too: the plugin marks every component it names,
-    // including those that write no host element. This is what separates 6 from 4 and 5.
-    changes: { ...everywhere([]), fiber: ['pref-dark'], 'marked-fiber': ['pref-dark'] },
+    changes: everywhere([]),
   },
   {
     name: 'library-upgrade',
     description:
-      'A dependency upgrade renames a component inside vendor/picker.tsx. Only the unmarked ' +
-      'fiber walk reads library names; every other strategy is blind to the library.',
+      'A dependency upgrade renames a component inside vendor/picker.tsx. No strategy reads ' +
+      'library names, so nothing changes.',
     edit: edit((f) => {
       replace(f, 'vendor/picker.tsx', 'return <PickerTrigger ', 'return <PickerButton ');
       replace(f, 'vendor/picker.tsx', 'function PickerTrigger(', 'function PickerButton(');
     }),
-    // This is churn on a component nobody in the app touched, which rule 2 requires to be zero.
-    // It is what separates 6 from 3.
-    changes: { ...everywhere([]), fiber: ['pick-theme'] },
+    // Churn here would be on a component nobody in the app touched, which rule 2 requires to be zero.
+    changes: everywhere([]),
   },
 ];

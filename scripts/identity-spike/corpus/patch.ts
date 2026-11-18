@@ -5,14 +5,16 @@
 // rather than guessing. A config that has moved under the anchor is a finding to record against
 // CORPUS.md, and a silent near-miss would build an app that is not the one pre-registered. Both
 // apps' anchors were checked at all ten commits before this was written.
-import type { AppId, BuildVariant } from './manifest.ts';
+import type { AppId } from './manifest.ts';
 
 export interface PatchPaths {
   /** Absolute path to `babel-plugin-rastro`'s built entry. */
   rastroPlugin: string;
+  /** Absolute path to the measurement's mark plugin, bundled for this build (build.ts). */
+  markPlugin: string;
   /** Absolute path to `@rolldown/plugin-babel`'s entry. Only react-admin needs it. */
   rolldownBabel: string;
-  /** Absolute path the plugin's `root` resolves to: CORPUS.md's `root`. */
+  /** Absolute path the mark plugin's `root` resolves to: CORPUS.md's `root`. */
   pluginRoot: string;
 }
 
@@ -29,14 +31,11 @@ function replaceOnce(text: string, anchor: string, replacement: string, where: s
 }
 
 /**
- * The plugin options both apps get. `markComponents` is on in the same scope as the stamps,
- * because strategy 6 reads the marks and the other strategies ignore them.
+ * The Babel plugins both apps get: rastro's, as an app installs it, with no options, then the
+ * measurement's marks for rule 2's ancestry (src/mark-plugin.ts). No strategy reads the marks.
  */
-function pluginEntry(paths: PatchPaths): string {
-  return `[${JSON.stringify(paths.rastroPlugin)}, ${JSON.stringify({
-    root: paths.pluginRoot,
-    markComponents: true,
-  })}]`;
+function pluginEntries(paths: PatchPaths): string {
+  return `${JSON.stringify(paths.rastroPlugin)}, [${JSON.stringify(paths.markPlugin)}, ${JSON.stringify({ root: paths.pluginRoot })}]`;
 }
 
 /**
@@ -44,20 +43,14 @@ function pluginEntry(paths: PatchPaths): string {
  * `include` already scopes Babel to `packages/*\/src`, which is exactly what rule 1 calls
  * Actual's own source. Babel runs plugins before presets, so rastro reads every component before
  * the compiler rewrites it, as the plugin README requires.
- *
- * `mangled` flips the `mangle: false` Actual ships with, which overrides the mangling
- * `minify: 'oxc'` would otherwise do.
  */
-function patchActual(config: string, variant: BuildVariant, paths: PatchPaths): string {
-  const where = 'actual vite.config.mts';
-  let out = replaceOnce(
+function patchActual(config: string, paths: PatchPaths): string {
+  return replaceOnce(
     config,
     'presets: [reactCompilerPreset()],',
-    `presets: [reactCompilerPreset()], ${PATCH_MARKER}\n        plugins: [${pluginEntry(paths)}],`,
-    where,
+    `presets: [reactCompilerPreset()], ${PATCH_MARKER}\n        plugins: [${pluginEntries(paths)}],`,
+    'actual vite.config.mts',
   );
-  if (variant === 'mangled') out = replaceOnce(out, 'mangle: false,', 'mangle: true,', where);
-  return out;
 }
 
 /**
@@ -65,11 +58,8 @@ function patchActual(config: string, variant: BuildVariant, paths: PatchPaths): 
  * right after `react()`. `include` scopes it to `examples/demo/src`, because Vite aliases every
  * react-admin package to its source, and an unscoped plugin would stamp the library as if the
  * app had written it. No React Compiler here: the demo does not use one.
- *
- * `mangled` turns off the `keepNames: true` the demo ships with. Vite's default minifier
- * mangles once names are not kept.
  */
-function patchReactAdmin(config: string, variant: BuildVariant, paths: PatchPaths): string {
+function patchReactAdmin(config: string, paths: PatchPaths): string {
   const where = 'react-admin examples/demo/vite.config.ts';
   let out = replaceOnce(
     config,
@@ -81,21 +71,13 @@ function patchReactAdmin(config: string, variant: BuildVariant, paths: PatchPath
     out,
     '            react(),\n',
     '            react(),\n' +
-      `            rastroCorpusBabel({ include: [/[\\\\/]examples[\\\\/]demo[\\\\/]src[\\\\/]/], plugins: [${pluginEntry(paths)}] }),\n`,
+      `            rastroCorpusBabel({ include: [/[\\\\/]examples[\\\\/]demo[\\\\/]src[\\\\/]/], plugins: [${pluginEntries(paths)}] }),\n`,
     where,
   );
-  if (variant === 'mangled') out = replaceOnce(out, 'keepNames: true,', 'keepNames: false,', where);
   return out;
 }
 
-export function patchViteConfig(
-  app: AppId,
-  config: string,
-  variant: BuildVariant,
-  paths: PatchPaths,
-): string {
+export function patchViteConfig(app: AppId, config: string, paths: PatchPaths): string {
   if (config.includes(PATCH_MARKER)) throw new Error(`${app}: the config is already patched`);
-  return app === 'actual'
-    ? patchActual(config, variant, paths)
-    : patchReactAdmin(config, variant, paths);
+  return app === 'actual' ? patchActual(config, paths) : patchReactAdmin(config, paths);
 }

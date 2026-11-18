@@ -55,7 +55,7 @@ const APP: CorpusApp = {
   flow: { name: 'test', rows: [{ id: 'X1', state: 'st', element: 'button: "Save"' }] },
 };
 
-function capture(index: 1 | 2, variant: 'as-shipped' | 'mangled', frozen = 'f', passed = true): Capture {
+function capture(index: 1 | 2, variant: 'as-shipped', frozen = 'f', passed = true): Capture {
   // Between the commits, Save's fingerprint changes under every strategy but role+name, and the
   // diff touches nothing Save is rendered by: one untouched churn instance, one false split.
   const screens = one(index === 1 ? 'save' : 'save-2');
@@ -82,15 +82,15 @@ function sources(overrides: Partial<Sources> = {}): Sources {
 describe('scoreApp', () => {
   it('computes rules 1 and 2 exactly, and leaves 3 and 4 pending without their human inputs', () => {
     const result = scoreApp(APP, sources(), 'f');
-    const fileStrategy = result.strategies['attribute+file'];
+    const attribute = result.strategies.attribute;
 
     // Per commit: Dup is one undecided false merge (1–1), Edit adds only to the upper bound (0–1).
-    expect(fileStrategy.totals).toEqual({ merges: { atLeast: 2, atMost: 4 }, untouchedChurn: 1, falseSplits: 1 });
-    expect(fileStrategy.undecidedPairs).toBe(2);
-    expect(fileStrategy.instances).toMatchObject([{ fingerprint: 'save', touch: 'untouched', pair: '1-2' }]);
+    expect(attribute.totals).toEqual({ merges: { atLeast: 2, atMost: 4 }, untouchedChurn: 1, falseSplits: 1 });
+    expect(attribute.undecidedPairs).toBe(2);
+    expect(attribute.instances).toMatchObject([{ fingerprint: 'save', touch: 'untouched', pair: '1-2' }]);
     // Role + name never moved, so it neither churned nor split.
     expect(result.strategies['role+name'].totals).toMatchObject({ untouchedChurn: 0, falseSplits: 0 });
-    expect(result.comparisons['role+name']!['attribute+file']).toBe('beats');
+    expect(result.comparisons['role+name']!.attribute).toBe('beats');
     expect([result.ruleThree, result.ruleFour]).toEqual([null, null]);
     expect(markdown([result], 'f')).toContain('Rule 3:** pending');
   });
@@ -102,7 +102,7 @@ describe('scoreApp', () => {
       hunks: () => [{ start: 1, count: 1 }],
       before: () => 'export function App() {\n  return null;\n}\n',
     };
-    expect(scoreApp(APP, sources({ diff: () => touched }), 'f').strategies['attribute+file'].totals.untouchedChurn).toBe(0);
+    expect(scoreApp(APP, sources({ diff: () => touched }), 'f').strategies.attribute.totals.untouchedChurn).toBe(0);
   });
 
   it('judges rule 3 from the matches and rule 4 from the labels once they exist', () => {
@@ -115,16 +115,16 @@ describe('scoreApp', () => {
     const result = scoreApp(APP, s, 'f');
 
     // Save is clear at commit 1; the row matched to Dup at commit 2 collides, undecided.
-    expect(result.ruleThree?.['attribute+file']).toMatchObject({ collisions: 1, undecidedCollisions: 1, unmatched: 0, void: 0 });
+    expect(result.ruleThree?.attribute).toMatchObject({ collisions: 1, undecidedCollisions: 1, unmatched: 0, void: 0 });
     expect(result.ruleFour?.scores.resolution.continued).toBe(1);
   });
 
-  it('voids a commit whose rebuild control failed on either build, and every pair it is in', () => {
-    const failed = sources({ capture: (_app, commit, variant) => capture(commit.index as 1 | 2, variant, 'f', !(commit.index === 2 && variant === 'mangled')) });
+  it('voids a commit whose rebuild control failed, and every pair it is in', () => {
+    const failed = sources({ capture: (_app, commit, variant) => capture(commit.index as 1 | 2, variant, 'f', commit.index !== 2) });
     const result = scoreApp(APP, failed, 'f');
     expect(result.voidCommits).toEqual([2]);
     // Commit 1 alone: its merges are counted, and there is no pair left to churn or split.
-    expect(result.strategies['attribute+file'].totals).toEqual({ merges: { atLeast: 1, atMost: 2 }, untouchedChurn: 0, falseSplits: 0 });
+    expect(result.strategies.attribute.totals).toEqual({ merges: { atLeast: 1, atMost: 2 }, untouchedChurn: 0, falseSplits: 0 });
     expect(markdown([result], 'f')).toContain('**Void commits**');
   });
 

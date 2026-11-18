@@ -11,12 +11,7 @@
 import { transformSync } from '@babel/core';
 import * as esbuild from 'esbuild';
 import { describe, expect, it } from 'vitest';
-import rastroComponentAnnotate, {
-  COMPONENT_ATTRIBUTE,
-  MARK_PROPERTY,
-  SOURCE_FILE_ATTRIBUTE,
-  type RastroPluginOptions,
-} from './index.js';
+import rastroComponentAnnotate, { COMPONENT_ATTRIBUTE } from './index.js';
 
 /** Distinctive names, so a match in the output cannot be a coincidence. */
 const SOURCE = `
@@ -29,7 +24,7 @@ const SOURCE = `
 
 const COMPONENTS = ['SaveButtonComponent', 'SettingsFormComponent', 'AppRootComponent'];
 
-function annotate(source: string, options: RastroPluginOptions = {}): string {
+function annotate(source: string): string {
   return (
     transformSync(source, {
       filename: '/repo/src/SettingsForm.tsx',
@@ -37,7 +32,7 @@ function annotate(source: string, options: RastroPluginOptions = {}): string {
       babelrc: false,
       configFile: false,
       parserOpts: { plugins: ['jsx'] },
-      plugins: [[rastroComponentAnnotate, options]],
+      plugins: [rastroComponentAnnotate],
     })?.code ?? ''
   );
 }
@@ -92,13 +87,6 @@ describe('surviving minification', () => {
     const out = await bundleMinified(annotate(SOURCE));
 
     expect(out).toContain(COMPONENT_ATTRIBUTE);
-    expect(out).toContain(SOURCE_FILE_ATTRIBUTE);
-  });
-
-  it('preserves the source file, which is the rename-proof anchor', async () => {
-    const out = await bundleMinified(annotate(SOURCE));
-
-    expect(out).toContain('"src/SettingsForm.tsx"');
   });
 
   it('stamps nested components distinctly, so the DOM chain is recoverable after minifying', async () => {
@@ -109,25 +97,5 @@ describe('surviving minification', () => {
     // would yield one identity for both, which is the mass false merge being designed against.
     expect(out).toContain(`"button",{"${COMPONENT_ATTRIBUTE}":"SaveButtonComponent"`);
     expect(out).toContain(`"form",{"${COMPONENT_ATTRIBUTE}":"SettingsFormComponent"`);
-  });
-});
-
-// The marks strategy 6 reads must survive the same build, and stay attached to the function
-// they name once it is renamed: a mark on the wrong function is a wrong identity.
-describe('marks surviving minification', () => {
-  it('keeps each mark on its own, mangled, component', async () => {
-    const out = await bundleMinified(annotate(SOURCE, { markComponents: true }));
-
-    for (const name of COMPONENTS) {
-      expect(out).not.toContain(`function ${name}`);
-      const assigned = new RegExp(`([\\w$]+)\\.${MARK_PROPERTY}=\\{name:"${name}",file:"src/SettingsForm.tsx"\\}`).exec(out);
-      expect(assigned, name).not.toBeNull();
-      // The mangled identifier the mark is assigned to is the function rendering that name.
-      expect(out).toMatch(new RegExp(`function ${assigned?.[1]?.replace('$', '\\$') ?? ''}\\(`));
-    }
-  });
-
-  it('emits no mark unless asked', async () => {
-    expect(await bundleMinified(annotate(SOURCE))).not.toContain(MARK_PROPERTY);
   });
 });

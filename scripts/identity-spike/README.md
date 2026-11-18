@@ -108,7 +108,7 @@ count changes (the only trace a new merge leaves). Both are for the corpus runne
 
 Before the runner trusts them with numbers nobody can check, [`continuity/`](continuity) runs
 them on an app whose answers we know: known edits, each with the fingerprint changes it must
-cause, under all six of §3.2 rule 1's strategies. Its outputs are committed snapshots, so it is
+cause, under every strategy §3.2 measures. Its outputs are committed snapshots, so it is
 also CI's guard against any PR changing a fingerprint unannounced. See its README.
 
 ### `baselines.ts`: strategies 1 and 2
@@ -137,7 +137,7 @@ fingerprint and the pool of new ones, and names exactly one candidate or abstain
 | Proposer | Candidates | Picks |
 |---|---|---|
 | `naive` | same role, a shared route | the only one |
-| `anchor` | same role, same source file, any route | the only one; abstains without a file |
+| `anchor` | same role, same source file, any route | the only one; abstains without a file, which is every subject since the fingerprint dropped its file |
 | `resolution` | same role, a shared route | the one whose shared stored parts (chain, file, name) strictly contain every other candidate's, and share at least one |
 
 The choices it settles:
@@ -160,15 +160,22 @@ subject rather than letting it drop out. `dominates` is rule 4's comparison. Tur
 scores into rule 4's verdict is `scoring/drift.ts` (`ruleFourVerdict`).
 
 Any change to a proposer after a corpus number is seen makes it a different proposer,
-reported separately, as with strategy 6.
+reported separately.
 
 ## Where it stands
 
-All six of rule 1's strategies now exist and run in `continuity/`. Strategy 6, the marked
-fiber walk, is `rastro-core`'s `markedComponentChain`, reading the marks that
-`babel-plugin-rastro` writes with `markComponents`. It is in core, not here, so the corpus
-measures the code that would ship. `continuity/marked-walk.test.ts` runs it end to end through
-the real plugin, React and React Compiler.
+Three strategies are measured since run 2: role + name, selector path and `attribute`, which
+is Rastro's fingerprint. Run 2 measured six; the fiber walk, the attribute chain with its file
+and the marked fiber walk were cut after it (`docs/NOTES.md`).
+
+**What the measurement keeps of React's internals, and why.** Rastro no longer reads them, but
+the referee reads React's `key` off each element's fiber, and rule 2's "touched" reads every
+first-party component above an element from marks on the fiber tree. So `src/fiber.ts` holds
+the fiber lookup and the mark shape, moved from `rastro-core`, and `src/mark-plugin.ts` is the
+Babel plugin that writes the marks, moved from `babel-plugin-rastro`'s `markComponents`. It
+imports the build plugin's naming rule (`owningComponent`), so it marks exactly what the plugin
+stamps. `continuity/ancestry.test.ts` runs the two end to end through the real plugins, React
+and the React Compiler.
 
 The corpus is pre-registered in [`docs/CORPUS.md`](../../docs/CORPUS.md): apps, commits,
 screens, run conditions and rule 3's flow elements. Rule 4's verdict when both cheaper
@@ -180,7 +187,7 @@ In the order agreed for §3.2:
    including the same-commit rebuild control. It builds and drives each app, and feeds
    `snapshotDocument` and the proposers. **Building and capturing are done**
    ([`corpus/`](corpus)): both variants of both apps build, and every pre-registered screen is
-   captured twice under all six strategies, passing the rebuild control at the two exposed
+   captured twice under every strategy, passing the rebuild control at the two exposed
    commits. **The rule 3 flow drivers are done too**: both flows are walked in every load, on
    both variants, and pass the rebuild control at the exposed commits. What walking them
    settled is `CORPUS.md`'s 2026-11-13 amendment. The question the run-conditions amendment

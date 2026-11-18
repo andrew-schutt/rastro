@@ -12,11 +12,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { StateRecord } from '../corpus/flows.ts';
-import { CORPUS, flowStates, type AppId, type CorpusApp, type CorpusCommit } from '../corpus/manifest.ts';
+import { BUILD_VARIANTS, CORPUS, flowStates, type AppId, type BuildVariant, type CorpusApp, type CorpusCommit } from '../corpus/manifest.ts';
 import { corpusRoot, readFreeze } from '../corpus/runtime.ts';
 import type { DriftLabel, DriftScore } from '../src/drift-proposers.ts';
 import { RULE_1_STRATEGIES, type CorpusStrategy } from '../src/strategies.ts';
-import { isVoid, judgedVariant, readCapture, type Capture } from './captures.ts';
+import { isVoid, readCapture, type Capture } from './captures.ts';
 import { churn, falseSplits, type ChurnInstance } from './churn.ts';
 import { collisions, mergeCount, visibleOnly } from './collisions.ts';
 import { beats, type RuleOneTotals } from './dominance.ts';
@@ -101,7 +101,7 @@ function ruleThree(app: CorpusApp, all: ReadonlyMap<string, ReadonlyMap<number, 
   const rows = app.flow.rows;
   return Object.fromEntries(
     RULE_1_STRATEGIES.map((strategy) => {
-      const captures = all.get(judgedVariant(strategy))!;
+      const captures = all.get('as-shipped')!;
       const verdicts: Record<string, Record<string, RowVerdict>> = {};
       for (const [commitIndex, capture] of captures) {
         const byState = new Map((capture.load.flow?.states ?? []).filter((s) => s.captured).map((s) => [s.screen, s]));
@@ -165,7 +165,7 @@ function ruleFour(app: CorpusApp, captures: ReadonlyMap<number, Capture>, inputs
 
 /** Where a run's captures, diffs and human inputs come from. Injected so the whole report is tested on a synthetic corpus. */
 export interface Sources {
-  capture: (app: CorpusApp, commit: CorpusCommit, variant: 'as-shipped' | 'mangled') => Capture | null;
+  capture: (app: CorpusApp, commit: CorpusCommit, variant: BuildVariant) => Capture | null;
   diff: (app: CorpusApp, older: CorpusCommit, newer: CorpusCommit) => PairDiff;
   /** The directory holding `matches/` and `labels/`. */
   inputs: string;
@@ -174,7 +174,7 @@ export interface Sources {
 export function scoreApp(app: CorpusApp, sources: Sources, frozen: string) {
   const all = new Map<string, Map<number, Capture>>();
   const missing: string[] = [];
-  for (const variant of ['as-shipped', 'mangled'] as const) {
+  for (const variant of BUILD_VARIANTS) {
     const captures = new Map<number, Capture>();
     for (const commit of app.commits) {
       const capture = sources.capture(app, commit, variant);
@@ -202,10 +202,8 @@ export function scoreApp(app: CorpusApp, sources: Sources, frozen: string) {
   }
 
   const strategies = Object.fromEntries(
-    RULE_1_STRATEGIES.map((strategy) => [strategy, scoreStrategy(app, all.get(judgedVariant(strategy))!, strategy, diffs)]),
+    RULE_1_STRATEGIES.map((strategy) => [strategy, scoreStrategy(app, all.get('as-shipped')!, strategy, diffs)]),
   ) as Record<CorpusStrategy, StrategyResult>;
-  // Strategy 3 as shipped (names kept): reported beside its judged, mangled numbers, never instead.
-  const fiberAsShipped = scoreStrategy(app, all.get('as-shipped')!, 'fiber', diffs);
 
   const comparisons = Object.fromEntries(
     RULE_1_STRATEGIES.map((a) => [
@@ -221,7 +219,6 @@ export function scoreApp(app: CorpusApp, sources: Sources, frozen: string) {
       [...all.get('as-shipped')!].map(([index, c]) => [index, c.control.flow?.voidStates ?? []]),
     ),
     strategies,
-    fiberAsShipped,
     comparisons,
     ruleThree: ruleThree(app, all, sources.inputs),
     ruleFour: ruleFour(app, all.get('as-shipped')!, sources.inputs),
@@ -240,8 +237,7 @@ export function markdown(results: ReturnType<typeof scoreApp>[], frozen: string)
       lines.push(
         `| ${label} | ${s.totals.merges.atLeast}–${s.totals.merges.atMost} | ${s.visibleMerges.atLeast}–${s.visibleMerges.atMost} | ${s.undecidedPairs} | ${s.totals.untouchedChurn} | ${s.undeterminedChurn} | ${s.fileLevelUntouchedChurn} | ${s.totals.falseSplits} | ${s.splitsSkipped} |`,
       );
-    RULE_1_STRATEGIES.forEach((strategy, i) => row(`${i + 1} ${strategy}${strategy === 'fiber' ? ' (mangled)' : ''}`, r.strategies[strategy]));
-    row('3 fiber (as shipped, reported)', r.fiberAsShipped);
+    for (const strategy of RULE_1_STRATEGIES) row(strategy, r.strategies[strategy]);
     lines.push('', '**Rule 1, row beats column:**', '', `| | ${RULE_1_STRATEGIES.join(' | ')} |`, `|---|${RULE_1_STRATEGIES.map(() => '---').join('|')}|`);
     for (const a of RULE_1_STRATEGIES) {
       lines.push(`| ${a} | ${RULE_1_STRATEGIES.map((b) => (a === b ? '—' : (r.comparisons[a] as Record<string, string>)[b])).join(' | ')} |`);

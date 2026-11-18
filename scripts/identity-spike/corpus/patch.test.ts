@@ -6,6 +6,7 @@ import { PATCH_MARKER, patchViteConfig, type PatchPaths } from './patch.ts';
 
 const PATHS: PatchPaths = {
   rastroPlugin: '/r/packages/babel-plugin/dist/index.js',
+  markPlugin: '/corpus/builds/mark-plugin.cjs',
   rolldownBabel: '/r/node_modules/@rolldown/plugin-babel/dist/index.mjs',
   pluginRoot: '/corpus/app',
 };
@@ -48,11 +49,11 @@ export default defineConfig(async ({ mode }) => {
 });
 `;
 
-const RASTRO = `["/r/packages/babel-plugin/dist/index.js", {"root":"/corpus/app","markComponents":true}]`;
+const RASTRO = `"/r/packages/babel-plugin/dist/index.js", ["/corpus/builds/mark-plugin.cjs", {"root":"/corpus/app"}]`;
 
 describe('patchViteConfig — Actual', () => {
-  it('adds the plugin, with marks, to the existing compiler call', () => {
-    const out = patchViteConfig('actual', ACTUAL, 'as-shipped', PATHS);
+  it('adds the plugin, then the marks, to the existing compiler call', () => {
+    const out = patchViteConfig('actual', ACTUAL, PATHS);
 
     expect(out).toContain(`presets: [reactCompilerPreset()], ${PATCH_MARKER}`);
     expect(out).toContain(`plugins: [${RASTRO}],`);
@@ -60,26 +61,15 @@ describe('patchViteConfig — Actual', () => {
     expect(out).toContain('mangle: false,');
   });
 
-  it('forces mangling on only for the mangled variant', () => {
-    const out = patchViteConfig('actual', ACTUAL, 'mangled', PATHS);
-    expect(out).toContain('mangle: true,');
-    expect(out).not.toContain('mangle: false,');
-  });
-
   it('refuses a config whose anchor has moved, rather than guessing', () => {
     const moved = ACTUAL.replace('presets: [reactCompilerPreset()],', 'presets: [compiler()],');
-    expect(() => patchViteConfig('actual', moved, 'as-shipped', PATHS)).toThrow(/anchor not found/);
-  });
-
-  it('refuses a mangled build when there is no mangle: false to flip', () => {
-    const noMangle = ACTUAL.replace('mangle: false,', '');
-    expect(() => patchViteConfig('actual', noMangle, 'mangled', PATHS)).toThrow(/anchor not found/);
+    expect(() => patchViteConfig('actual', moved, PATHS)).toThrow(/anchor not found/);
   });
 });
 
 describe('patchViteConfig — react-admin', () => {
   it('adds a Babel step scoped to examples/demo/src, right after react()', () => {
-    const out = patchViteConfig('react-admin', REACT_ADMIN, 'as-shipped', PATHS);
+    const out = patchViteConfig('react-admin', REACT_ADMIN, PATHS);
     const lines = out.split('\n');
     const react = lines.findIndex((line) => line === '            react(),');
 
@@ -93,7 +83,7 @@ describe('patchViteConfig — react-admin', () => {
   });
 
   it('writes an include that matches the demo source and nothing in packages/', () => {
-    const out = patchViteConfig('react-admin', REACT_ADMIN, 'as-shipped', PATHS);
+    const out = patchViteConfig('react-admin', REACT_ADMIN, PATHS);
     const source = out.match(/include: \[(\/.*\/)\]/)?.[1] ?? '';
     const include = new RegExp(source.slice(1, -1));
 
@@ -101,21 +91,16 @@ describe('patchViteConfig — react-admin', () => {
     expect(include.test('C:\\c\\examples\\demo\\src\\App.tsx')).toBe(true);
     expect(include.test('/c/packages/ra-ui-materialui/src/list/List.tsx')).toBe(false);
   });
-
-  it('turns keepNames off only for the mangled variant', () => {
-    const out = patchViteConfig('react-admin', REACT_ADMIN, 'mangled', PATHS);
-    expect(out).toContain('keepNames: false,');
-  });
 });
 
 describe('patchViteConfig', () => {
   it('refuses a config that is already patched', () => {
-    const once = patchViteConfig('actual', ACTUAL, 'as-shipped', PATHS);
-    expect(() => patchViteConfig('actual', once, 'as-shipped', PATHS)).toThrow(/already patched/);
+    const once = patchViteConfig('actual', ACTUAL, PATHS);
+    expect(() => patchViteConfig('actual', once, PATHS)).toThrow(/already patched/);
   });
 
   it('refuses an anchor that occurs twice', () => {
-    expect(() => patchViteConfig('actual', ACTUAL + ACTUAL, 'as-shipped', PATHS)).toThrow(
+    expect(() => patchViteConfig('actual', ACTUAL + ACTUAL, PATHS)).toThrow(
       /more than once/,
     );
   });

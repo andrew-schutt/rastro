@@ -7,11 +7,10 @@ Build-time component annotation for [Rastro](https://github.com/andrew-schutt/ra
 
 ## Why this exists
 
-Rastro identifies elements by their React component ancestry. Derived at runtime, that
-ancestry comes from `fn.name` on React's internal fiber tree — and a production build renames
-`SaveButton` to `t`. Minifiers reuse those short names per module, so unrelated elements
-collapse into a single identity, silently, with no error. Every number computed downstream is
-then wrong in a way nothing announces.
+Rastro identifies elements by their React component ancestry. A production build renames
+`SaveButton` to `t`, and minifiers reuse those short names per module, so any ancestry read
+from the running app collapses unrelated elements into a single identity, silently, with no
+error. Every number computed downstream is then wrong in a way nothing announces.
 
 No runtime trick fixes it. React DevTools reads the same internals, stack traces are minified
 too, and source maps are not available in the browser at runtime. Names have to be captured
@@ -28,24 +27,23 @@ function SettingsForm() {
 // the plugin emits
 function SettingsForm() {
   return (
-    <form data-rastro-component="SettingsForm" data-rastro-source-file="src/SettingsForm.tsx">
-      <input type="email" data-rastro-component="SettingsForm" data-rastro-source-file="src/SettingsForm.tsx" />
+    <form data-rastro-component="SettingsForm">
+      <input type="email" data-rastro-component="SettingsForm" />
     </form>
   );
 }
 ```
 
-The SDK then reconstructs the ancestry by walking the **DOM** rather than the fiber tree.
-Nested components each stamp their own name, so nesting reproduces the chain:
+The SDK then reconstructs the ancestry by walking the **DOM**. Nested components each stamp their own name, so nesting reproduces the chain:
 
 ```
 <form   data-rastro-component="SettingsForm">
   <button data-rastro-component="SaveButton">   →   SettingsForm>SaveButton
 ```
 
-`data-rastro-source-file` is the rename-proof half: renaming a component changes its name but
-does not move the file, so source location survives exactly the refactor that mints a new
-identity everywhere else.
+**Without this plugin, Rastro has no component ancestry at all.** The fingerprint falls back
+to role and accessible name, with the chain reading `unknown`. Rastro no longer reads React's
+internals at runtime (`docs/NOTES.md`).
 
 ## Install
 
@@ -73,7 +71,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [
     react(),
-    babel({ plugins: [['babel-plugin-rastro', { root: import.meta.dirname }]] }),
+    babel({ plugins: ['babel-plugin-rastro'] }),
   ],
 });
 ```
@@ -89,7 +87,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [react({ babel: { plugins: [['babel-plugin-rastro', { root: import.meta.dirname }]] } })],
+  plugins: [react({ babel: { plugins: ['babel-plugin-rastro'] } })],
 });
 ```
 
@@ -131,9 +129,6 @@ see [`docs/DESIGN.md`](https://github.com/andrew-schutt/rastro/blob/main/docs/DE
 | Option | Default | Meaning |
 |---|---|---|
 | `componentAttribute` | `data-rastro-component` | Attribute carrying the owning component's name |
-| `sourceFileAttribute` | `data-rastro-source-file` | Attribute carrying the defining file |
-| `includeSourceFile` | `true` | Emit the source-file attribute at all |
-| `markComponents` | `false` | Also attach `{ name, file }` to each component it names, for the marked fiber walk. A `docs/VALIDATION-PLAN.md` §3.2 candidate that nothing reads by default. `file` follows `includeSourceFile` |
 
 ## What it does and does not annotate
 
@@ -147,7 +142,7 @@ see [`docs/DESIGN.md`](https://github.com/andrew-schutt/rastro/blob/main/docs/DE
   `memo(...)` and `forwardRef(...)` wrappers resolve to the binding name.
 - **Author-supplied attributes always win**, and a double transform adds nothing.
 - **Only your own source.** Components from `node_modules` ship pre-built and are never
-  annotated — a real difference from the runtime fiber walk, which sees them.
+  annotated, so a library's internals never enter the chain.
 
 ## License
 
