@@ -16,7 +16,7 @@ import { CORPUS, flowStates, type AppId, type CorpusApp, type CorpusCommit } fro
 import { corpusRoot, readFreeze } from '../corpus/runtime.ts';
 import type { DriftLabel, DriftScore } from '../src/drift-proposers.ts';
 import { RULE_1_STRATEGIES, type CorpusStrategy } from '../src/strategies.ts';
-import { judgedVariant, readCapture, type Capture } from './captures.ts';
+import { isVoid, judgedVariant, readCapture, type Capture } from './captures.ts';
 import { churn, falseSplits, type ChurnInstance } from './churn.ts';
 import { collisions, mergeCount, visibleOnly } from './collisions.ts';
 import { beats, type RuleOneTotals } from './dominance.ts';
@@ -189,12 +189,10 @@ export function scoreApp(app: CorpusApp, sources: Sources, frozen: string) {
     }
     all.set(variant, captures);
   }
-  // CORPUS.md (2026-11-09): a failed rebuild control voids that commit's numbers. On either
-  // build, so the commit is dropped from both, with both pairs it is part of, and reported.
-  // A traced void flow state leaves `passed` true and voids only that state (rule 3, below).
+  // A void commit (`isVoid`) is dropped from both builds, with both pairs it is part of, and reported.
   const voidCommits = app.commits
     .map((c) => c.index)
-    .filter((index) => [...all.values()].some((captures) => captures.get(index)?.control.passed === false));
+    .filter((index) => isVoid([...all.values()].map((captures) => captures.get(index) ?? null)));
   for (const captures of all.values()) for (const index of voidCommits) captures.delete(index);
 
   const diffs = new Map<string, PairDiff>();

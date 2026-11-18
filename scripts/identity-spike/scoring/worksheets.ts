@@ -7,14 +7,14 @@
 // Writes to $RASTRO_CORPUS/worksheets/<app>/. Neither shows a verdict, a collision or a score.
 // Rule 3's sheets show descriptions only (README, item 3). Rule 4's show what vanished and what
 // appeared, never what a proposer would say. The answers go in this directory, under
-// matches/<app>.json and labels/<app>.json, where the gate PR can show them.
+// matches/<app>.json and labels/<app>.json, where they are reviewed with the results.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { StateRecord } from '../corpus/flows.ts';
 import { CORPUS, type AppId, type CorpusApp } from '../corpus/manifest.ts';
 import { corpusRoot } from '../corpus/runtime.ts';
 import type { ElementDescription } from '../src/describe.ts';
-import { readCapture } from './captures.ts';
+import { isVoid, readCapture } from './captures.ts';
 import { worksheet } from './drift.ts';
 import { propose, type Matches } from './flow-rule.ts';
 
@@ -34,6 +34,12 @@ const show = (d: ElementDescription) =>
     .filter((part) => part !== '')
     .join('  ');
 
+/** False when the commit is void (`isVoid`): it gets no sheet, and neither does any pair it is in. */
+function stands(app: CorpusApp, index: number): boolean {
+  const commit = app.commits.find((c) => c.index === index)!;
+  return !isVoid((['as-shipped', 'mangled'] as const).map((variant) => readCapture(corpusRoot(), app, commit, variant)));
+}
+
 function states(app: CorpusApp, index: number): Map<string, StateRecord> {
   const commit = app.commits.find((c) => c.index === index)!;
   const capture = readCapture(corpusRoot(), app, commit, 'as-shipped');
@@ -48,6 +54,7 @@ function screens(app: CorpusApp, index: number): Map<string, StateRecord> | null
 }
 
 function ruleThree(app: CorpusApp, out: string): void {
+  if (!stands(app, REFERENCE)) throw new Error(`${app.id} commit ${REFERENCE} is void, and rule 3 is matched there`);
   const reference = states(app, REFERENCE);
   const lines = [`# Rule 3 matching: ${app.id}, commit ${REFERENCE}`, '', `Flow: ${app.flow.name}. Match each row by its description; put the element index in matches/${app.id}.json.`, ''];
   for (const [state, record] of reference) {
@@ -65,7 +72,7 @@ function ruleThree(app: CorpusApp, out: string): void {
     return;
   }
   const proposals: Matches = {};
-  for (const commit of app.commits.filter((c) => c.index !== REFERENCE)) {
+  for (const commit of app.commits.filter((c) => c.index !== REFERENCE && stands(app, c.index))) {
     const here = states(app, commit.index);
     proposals[commit.index] = Object.fromEntries(
       app.flow.rows.map((row) => {
@@ -87,6 +94,10 @@ function ruleFour(app: CorpusApp, out: string): void {
     const before = screens(app, commit.index - 1);
     const after = screens(app, commit.index);
     const pair = `${commit.index - 1}-${commit.index}`;
+    if (!stands(app, commit.index - 1) || !stands(app, commit.index)) {
+      console.log(`  ${app.id} ${pair}: a void commit; not labelled`);
+      continue;
+    }
     if (before === null || after === null) {
       console.log(`  ${app.id} ${pair}: a capture is missing; not labelled`);
       continue;

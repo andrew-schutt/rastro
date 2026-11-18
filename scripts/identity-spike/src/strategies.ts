@@ -17,7 +17,7 @@ import {
   markedFiberWalk,
   type ChainWalk,
 } from 'rastro-core';
-import { roleNameParts, selectorPathParts } from './baselines.js';
+import { roleNameParts, selectorPathParts } from './baselines.ts';
 
 /** Rule 1's order: the table's numbering, 1 to 6. */
 export const RULE_1_STRATEGIES = [

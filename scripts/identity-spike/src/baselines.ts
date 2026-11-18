@@ -4,7 +4,7 @@
 // they are composed with does ship, so they take it from core: the override, the role, the
 // accessible name and its redaction, all exactly as `fingerprint()` uses them.
 import { accName, defaultRedactor, overrideOf, roleOf, type Redactor } from 'rastro-core';
-import type { StrategyParts } from './strategies.js';
+import type { StrategyParts } from './strategies.ts';
 
 /**
  * `<path>|<role>|"<name>"` around any path, the way `fingerprint()` composes its chain, with

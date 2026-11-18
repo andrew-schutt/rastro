@@ -5,6 +5,7 @@ import type { StateRecord } from '../corpus/flows.ts';
 import type { CapturedElement } from '../src/page.ts';
 import type { RecordedSite } from '../src/repeat-oracle.ts';
 import { RULE_1_STRATEGIES, type CorpusStrategy } from '../src/strategies.ts';
+import { isVoid, type Capture } from './captures.ts';
 import { churn, falseSplits } from './churn.ts';
 import { collisions, mergeCount, visibleOnly } from './collisions.ts';
 import type { Touch } from './touched.ts';
@@ -110,5 +111,20 @@ describe('falseSplits', () => {
     const before = docs(doc('/a', [el('p1', { name: 'edit' }), el('p2', { name: 'edit' })]));
     const after = docs(doc('/a', [el('p3', { name: 'edit' })]));
     expect(falseSplits(before, after, 'attribute')).toEqual({ matched: 0, split: 0, skipped: 2 });
+  });
+});
+
+describe('isVoid', () => {
+  const capture = (passed: boolean, voidStates: string[] = []) =>
+    ({ control: { passed, flow: { voidStates } } }) as unknown as Capture;
+
+  it('voids a commit whose control failed on either build', () => {
+    expect(isVoid([capture(true), capture(false)])).toBe(true);
+    expect(isVoid([capture(true), capture(true)])).toBe(false);
+  });
+
+  it('leaves a commit standing when a build is missing or a traced state is void', () => {
+    expect(isVoid([capture(true), null])).toBe(false);
+    expect(isVoid([capture(true, ['after Add']), capture(true)])).toBe(false);
   });
 });

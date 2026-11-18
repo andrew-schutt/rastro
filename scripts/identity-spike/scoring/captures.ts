@@ -58,6 +58,16 @@ export function readCapture(root: string, app: CorpusApp, commit: CorpusCommit, 
   };
 }
 
+/**
+ * Is a commit void? CORPUS.md (2026-11-09): a failed rebuild control on either build voids that
+ * commit's numbers, and every pair it is part of. Pass the commit's captures, both builds. A
+ * capture that is missing is reported missing, not void. A traced void flow state leaves
+ * `passed` true: it voids that state's rule 3 verdict only.
+ */
+export function isVoid(captures: readonly (Capture | null)[]): boolean {
+  return captures.some((capture) => capture?.control.passed === false);
+}
+
 /** Every screen and reached flow state of a load, by name. Screens and states never share a key. */
 export function documents(load: Load): Map<string, StateRecord> {
   const all = new Map<string, StateRecord>();
