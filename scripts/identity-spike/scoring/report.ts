@@ -189,6 +189,13 @@ export function scoreApp(app: CorpusApp, sources: Sources, frozen: string) {
     }
     all.set(variant, captures);
   }
+  // CORPUS.md (2026-11-09): a failed rebuild control voids that commit's numbers. On either
+  // build, so the commit is dropped from both, with both pairs it is part of, and reported.
+  // A traced void flow state leaves `passed` true and voids only that state (rule 3, below).
+  const voidCommits = app.commits
+    .map((c) => c.index)
+    .filter((index) => [...all.values()].some((captures) => captures.get(index)?.control.passed === false));
+  for (const captures of all.values()) for (const index of voidCommits) captures.delete(index);
 
   const diffs = new Map<string, PairDiff>();
   const commitBy = new Map<number, CorpusCommit>(app.commits.map((c) => [c.index, c]));
@@ -211,6 +218,7 @@ export function scoreApp(app: CorpusApp, sources: Sources, frozen: string) {
   return {
     app: app.id,
     missing,
+    voidCommits,
     voidStates: Object.fromEntries(
       [...all.get('as-shipped')!].map(([index, c]) => [index, c.control.flow?.voidStates ?? []]),
     ),
@@ -228,6 +236,7 @@ export function markdown(results: ReturnType<typeof scoreApp>[], frozen: string)
   for (const r of results) {
     lines.push(`## ${r.app}`, '');
     if (r.missing.length > 0) lines.push(`**Missing captures:** ${r.missing.join(', ')}`, '');
+    if (r.voidCommits.length > 0) lines.push(`**Void commits** (rebuild control failed; both pairs each is part of are not scored): ${r.voidCommits.join(', ')}`, '');
     lines.push('| Strategy | False merges (range) | Visible only | Undecided pairs | Untouched churn | Undetermined churn | File-level untouched | False splits | Splits skipped |', '|---|---|---|---|---|---|---|---|---|');
     const row = (label: string, s: StrategyResult) =>
       lines.push(

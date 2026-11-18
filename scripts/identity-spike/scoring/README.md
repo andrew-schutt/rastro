@@ -59,8 +59,12 @@ seen makes a different score, reported separately.**
 
 Already fixed elsewhere and applied unchanged: strategy 3 is judged on the `mangled` build and
 the five others on `as-shipped` (§3.2 rule 1). A flow state listed as void at a commit has no
-rule 3 verdict there (`CORPUS.md`, 2026-11-17). A screen absent at a commit is reported absent,
-not replaced. Run 1 uses the `key` referee alone.
+rule 3 verdict there (`CORPUS.md`, 2026-11-17). A commit whose rebuild control failed on
+either build is void (`CORPUS.md`, 2026-11-09): it is dropped from both builds, with both pairs
+it is part of, and reported. *The report applied this only from 2026-11-18, before any number;
+until then it read a failed commit's load 1 as if it had passed.* A screen absent at a commit is reported absent,
+not replaced. The first scored run uses the `key` referee alone (`VALIDATION-PLAN.md` calls it
+run 1; it is run 2, since run 1 was void and never scored).
 
 ## Running it
 

@@ -55,7 +55,7 @@ const APP: CorpusApp = {
   flow: { name: 'test', rows: [{ id: 'X1', state: 'st', element: 'button: "Save"' }] },
 };
 
-function capture(index: 1 | 2, variant: 'as-shipped' | 'mangled', frozen = 'f'): Capture {
+function capture(index: 1 | 2, variant: 'as-shipped' | 'mangled', frozen = 'f', passed = true): Capture {
   // Between the commits, Save's fingerprint changes under every strategy but role+name, and the
   // diff touches nothing Save is rendered by: one untouched churn instance, one false split.
   const screens = one(index === 1 ? 'save' : 'save-2');
@@ -64,7 +64,7 @@ function capture(index: 1 | 2, variant: 'as-shipped' | 'mangled', frozen = 'f'):
     commit: APP.commits[index - 1]!,
     variant,
     load: { entered: true, screens, flow: { states: [{ ...screens[0]!, screen: 'st' }], firsts: {} } },
-    control: { passed: true, flow: { voidStates: [] } },
+    control: { passed, flow: { voidStates: [] } },
     frozen,
   };
 }
@@ -117,6 +117,15 @@ describe('scoreApp', () => {
     // Save is clear at commit 1; the row matched to Dup at commit 2 collides, undecided.
     expect(result.ruleThree?.['attribute+file']).toMatchObject({ collisions: 1, undecidedCollisions: 1, unmatched: 0, void: 0 });
     expect(result.ruleFour?.scores.resolution.continued).toBe(1);
+  });
+
+  it('voids a commit whose rebuild control failed on either build, and every pair it is in', () => {
+    const failed = sources({ capture: (_app, commit, variant) => capture(commit.index as 1 | 2, variant, 'f', !(commit.index === 2 && variant === 'mangled')) });
+    const result = scoreApp(APP, failed, 'f');
+    expect(result.voidCommits).toEqual([2]);
+    // Commit 1 alone: its merges are counted, and there is no pair left to churn or split.
+    expect(result.strategies['attribute+file'].totals).toEqual({ merges: { atLeast: 1, atMost: 2 }, untouchedChurn: 0, falseSplits: 0 });
+    expect(markdown([result], 'f')).toContain('**Void commits**');
   });
 
   it('refuses a capture from any runner but the frozen one', () => {
