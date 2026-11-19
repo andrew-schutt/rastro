@@ -11,7 +11,8 @@ the fingerprint is judged on them the same way, as a new run under a new freeze,
 definitions fixed before its numbers are seen. Each run's written report goes in
 [`results/`](results/). **[Run 2](results/run-2.md) is the first scored run: rule 1 failed and
 rule 2 passed.** A candidate designed after seeing run 2 has to be judged on corpus commits that
-nobody has seen. The run 2 apps can be reported alongside, labelled as seen.
+nobody has seen. The run 2 apps can be reported alongside, labelled as seen. [The run 2 diagnostic](results/run-2-diagnostic.md) is
+seen data too, and every later run discloses it.
 
 ## Pre-registered 2026-11-17, before any corpus number
 
@@ -108,4 +109,5 @@ them. The human inputs live here, so they are reviewed with the results:
 | `flow-rule.ts` | Rule 3's row judgement, and proposals by identical description |
 | `drift.ts` | Rule 4's records, the blind worksheet, the scores and the verdict |
 | `report.ts`, `worksheets.ts` | The two commands |
+| `run-2-diagnostic.ts` | Where run 2's merges live, on seen data; not part of any rule ([results](results/run-2-diagnostic.md)) |
 | `results/` | Each scored run's written report |
