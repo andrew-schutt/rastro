@@ -6,6 +6,7 @@ import { markedAncestry } from './ancestry.ts';
 import type { ComponentMark } from './fiber.ts';
 import { describeForMatching, type ElementDescription } from './describe.ts';
 import { recordSites, type RecordedSite } from './repeat-oracle.ts';
+import { recordSequences, type RecordedSequence } from './site-referee.ts';
 import { CORPUS_PARTS, RULE_1_STRATEGIES, type CorpusStrategy, type StrategyParts } from './strategies.ts';
 
 export interface CapturedElement {
@@ -24,10 +25,17 @@ export interface CapturedElement {
   /** Every first-party component above it, with files, uncapped: rule 2's "touched" (ancestry.ts). */
   ancestry: ComponentMark[];
   /**
-   * The collision referee's input, recorded while the fibers exist so it can rule offline
-   * (`groupSites`). Numbers compare only within one capture. Null outside any keyed list.
+   * The key referee's input, recorded while the fibers exist so it can rule offline
+   * (`groupSites`). Numbers compare only within one capture. Null outside any keyed list. Run 2
+   * was judged by it. Kept so later runs can report it beside the site referee.
    */
   site: RecordedSite | null;
+  /**
+   * The site referee's input (`groupSequences`): the element's JSX-site sequence, as numbers
+   * that compare only within one capture. Null when no stamped fiber is above it. Absent from
+   * run 2's captures, which predate it.
+   */
+  sequence?: RecordedSequence | null;
   /**
    * What a person matches rule 3's rows against, read from the DOM and never from a strategy
    * (see describe.ts). Recorded, not judged: the rebuild control compares fingerprints only.
@@ -39,6 +47,8 @@ export interface PageCapture {
   /** False means the build plugin stamped nothing: the build is not the one pre-registered. */
   annotated: boolean;
   elements: CapturedElement[];
+  /** `sequence.lower` → its JSX sites, outermost first, so a person can read what was compared. */
+  sites: string[][];
 }
 
 function isVisible(element: Element): boolean {
@@ -54,6 +64,7 @@ export function capturePage(): PageCapture {
   const found = [...document.querySelectorAll(INTERACTIVE_SELECTOR)];
   // One pass over the whole capture, so every site's numbers are comparable with every other's.
   const sites = recordSites(found);
+  const sequences = recordSequences(found);
   const elements = found.map((element, i): CapturedElement => {
     const fingerprints = {} as CapturedElement['fingerprints'];
     const parts = {} as CapturedElement['parts'];
@@ -68,10 +79,11 @@ export function capturePage(): PageCapture {
       parts,
       ancestry: markedAncestry(element),
       site: sites[i] ?? null,
+      sequence: sequences.sequences[i] ?? null,
       description: describeForMatching(element),
     };
   });
-  return { annotated, elements };
+  return { annotated, elements, sites: sequences.sites };
 }
 
 declare global {

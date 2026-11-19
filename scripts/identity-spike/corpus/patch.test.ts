@@ -7,6 +7,7 @@ import { PATCH_MARKER, patchViteConfig, type PatchPaths } from './patch.ts';
 const PATHS: PatchPaths = {
   rastroPlugin: '/r/packages/babel-plugin/dist/index.js',
   markPlugin: '/corpus/builds/mark-plugin.cjs',
+  sitePlugin: '/corpus/builds/site-plugin.cjs',
   rolldownBabel: '/r/node_modules/@rolldown/plugin-babel/dist/index.mjs',
   pluginRoot: '/corpus/app',
 };
@@ -49,10 +50,11 @@ export default defineConfig(async ({ mode }) => {
 });
 `;
 
-const RASTRO = `"/r/packages/babel-plugin/dist/index.js", ["/corpus/builds/mark-plugin.cjs", {"root":"/corpus/app"}]`;
+const SITES = `["/corpus/builds/site-plugin.cjs", {"root":"/corpus/app"}]`;
+const RASTRO = `"/r/packages/babel-plugin/dist/index.js", ["/corpus/builds/mark-plugin.cjs", {"root":"/corpus/app"}], ${SITES}`;
 
 describe('patchViteConfig — Actual', () => {
-  it('adds the plugin, then the marks, to the existing compiler call', () => {
+  it('adds the plugin, then the marks and the sites, to the existing compiler call', () => {
     const out = patchViteConfig('actual', ACTUAL, PATHS);
 
     expect(out).toContain(`presets: [reactCompilerPreset()], ${PATCH_MARKER}`);
@@ -79,6 +81,9 @@ describe('patchViteConfig — react-admin', () => {
     expect(lines[react + 1]).toBe(
       `            rastroCorpusBabel({ include: [/[\\\\/]examples[\\\\/]demo[\\\\/]src[\\\\/]/], plugins: [${RASTRO}] }),`,
     );
+    expect(lines[react + 2]).toBe(
+      `            rastroCorpusBabel({ include: [/[\\\\/]packages[\\\\/][^\\\\/]+[\\\\/]src[\\\\/]/], plugins: [${SITES}] }),`,
+    );
     expect(out).toContain('keepNames: true,');
   });
 
@@ -90,6 +95,19 @@ describe('patchViteConfig — react-admin', () => {
     expect(include.test('/c/examples/demo/src/orders/OrderList.tsx')).toBe(true);
     expect(include.test('C:\\c\\examples\\demo\\src\\App.tsx')).toBe(true);
     expect(include.test('/c/packages/ra-ui-materialui/src/list/List.tsx')).toBe(false);
+  });
+
+  // The library gets the referee's site stamps and nothing else.
+  it('writes a second include, for the sites alone, that matches packages/*/src and not the demo', () => {
+    const out = patchViteConfig('react-admin', REACT_ADMIN, PATHS);
+    const [, second] = [...out.matchAll(/include: \[(\/.*\/)\], plugins: \[(.*)\] \}/g)];
+    const include = new RegExp((second?.[1] ?? '').slice(1, -1));
+
+    expect(second?.[2]).toBe(SITES);
+    expect(include.test('/c/packages/ra-ui-materialui/src/list/List.tsx')).toBe(true);
+    expect(include.test('C:\\c\\packages\\ra-core\\src\\index.ts')).toBe(true);
+    expect(include.test('/c/examples/demo/src/App.tsx')).toBe(false);
+    expect(include.test('/c/node_modules/@mui/material/esm/Button/Button.js')).toBe(false);
   });
 });
 

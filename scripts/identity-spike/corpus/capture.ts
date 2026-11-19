@@ -117,6 +117,7 @@ async function captureLoad(
           captured: true,
           location: await page.evaluate<string>('location.href.replace(location.origin, "")'),
           elements: capture.elements,
+          sites: capture.sites,
         };
       } catch (error) {
         await saveScreenshot(page, join(out, `load-${load}-${kind}-${slug(name)}.png`));

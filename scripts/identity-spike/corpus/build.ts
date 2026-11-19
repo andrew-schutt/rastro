@@ -41,6 +41,7 @@ import {
 } from './manifest.ts';
 import { installDifference } from './lockfile.ts';
 import { PATCH_MARKER, patchViteConfig, type PatchPaths } from './patch.ts';
+import { MARK_PROPERTY, SITE_PROPERTY } from '../src/fiber.ts';
 import {
   AFTER_FREEZE_FLAG,
   prepareRunner,
@@ -92,7 +93,7 @@ function checkout(app: CorpusApp, commit: CorpusCommit, clone: string): void {
 }
 
 /** The absolute paths the patch writes into a foreign config, resolved from this package. */
-function patchPaths(app: CorpusApp, clone: string, markPlugin: string): PatchPaths {
+function patchPaths(app: CorpusApp, clone: string, markPlugin: string, sitePlugin: string): PatchPaths {
   const require = createRequire(join(SPIKE_DIR, 'package.json'));
   const rastroPlugin = require.resolve('babel-plugin-rastro');
   if (!existsSync(rastroPlugin)) {
@@ -101,6 +102,7 @@ function patchPaths(app: CorpusApp, clone: string, markPlugin: string): PatchPat
   return {
     rastroPlugin,
     markPlugin,
+    sitePlugin,
     rolldownBabel: require.resolve('@rolldown/plugin-babel'),
     pluginRoot: resolve(clone, app.pluginRoot),
   };
@@ -117,12 +119,13 @@ function bundleCarries(dir: string, needle: string): boolean {
 }
 
 /**
- * The measurement's mark plugin, bundled into one CommonJS file the app's own Babel can load:
- * it is TypeScript in this package, and imports the build plugin's naming rule.
+ * One of the measurement's plugins (`mark-plugin.ts`, `site-plugin.ts`), bundled into one
+ * CommonJS file the app's own Babel can load: they are TypeScript in this package, and the marks
+ * import the build plugin's naming rule.
  */
-function bundleMarkPlugin(outFile: string): void {
+function bundlePlugin(source: string, outFile: string): void {
   buildSync({
-    entryPoints: [join(SPIKE_DIR, 'src', 'mark-plugin.ts')],
+    entryPoints: [join(SPIKE_DIR, 'src', source)],
     bundle: true,
     platform: 'node',
     format: 'cjs',
@@ -141,11 +144,13 @@ function buildVariant(
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
   const markPlugin = join(outDir, 'mark-plugin.cjs');
-  bundleMarkPlugin(markPlugin);
+  bundlePlugin('mark-plugin.ts', markPlugin);
+  const sitePlugin = join(outDir, 'site-plugin.cjs');
+  bundlePlugin('site-plugin.ts', sitePlugin);
 
   const configPath = join(clone, app.viteConfig);
   const original = readFileSync(configPath, 'utf8');
-  const patched = patchViteConfig(app.id, original, patchPaths(app, clone, markPlugin));
+  const patched = patchViteConfig(app.id, original, patchPaths(app, clone, markPlugin, sitePlugin));
   const log = join(outDir, 'build.log');
   const startedAt = new Date();
 
@@ -164,7 +169,8 @@ function buildVariant(
   cpSync(built, join(outDir, 'app'), { recursive: true });
 
   const stamped = bundleCarries(join(outDir, 'app'), 'data-rastro-component');
-  const marked = bundleCarries(join(outDir, 'app'), '__rastroMark');
+  const marked = bundleCarries(join(outDir, 'app'), MARK_PROPERTY);
+  const sited = bundleCarries(join(outDir, 'app'), SITE_PROPERTY);
   writeFileSync(join(outDir, 'vite.config.patched'), patched);
   writeFileSync(
     join(outDir, 'build.json'),
@@ -182,16 +188,16 @@ function buildVariant(
         startedAt: startedAt.toISOString(),
         durationMs: Date.now() - startedAt.getTime(),
         patchMarker: patched.includes(PATCH_MARKER),
-        bundle: { stamped, marked },
+        bundle: { stamped, marked, sited },
       },
       null,
       2,
     )}\n`,
   );
-  if (!stamped || !marked) {
+  if (!stamped || !marked || !sited) {
     throw new Error(
       `${app.id} ${variant}: the bundle carries ${stamped ? '' : 'no stamps '}` +
-        `${marked ? '' : 'no marks '}— the patch did not reach the build. See ${outDir}.`,
+        `${marked ? '' : 'no marks '}${sited ? '' : 'no sites '}— the patch did not reach the build. See ${outDir}.`,
     );
   }
   console.log(`  ok: ${join(outDir, 'app')}`);
