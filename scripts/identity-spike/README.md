@@ -11,7 +11,41 @@ and this is code whose correctness the spike's numbers depend on entirely.
 
 ## What is here so far
 
-### `repeat-oracle.ts` — the collision referee
+### `site-referee.ts` — the collision referee after run 2
+
+The key referee below judged run 2, and misreads nested lists: a cell's nearest keyed item is in
+its own row's list of cells, so every row looked like a different list
+([`run-2-diagnostic.md`](scoring/results/run-2-diagnostic.md)). Looking at every keyed level
+does not fix it. In a grid of rows × keyed columns, nothing in a key says which list is the loop
+(the rows) and which lists different things (the columns).
+
+So later runs judge by **JSX site** instead. A measurement-only Babel plugin (`site-plugin.ts`)
+gives every JSX element, host and component, a prop naming where it was written
+(`file:line:column`, as a registered symbol, which React DOM never writes to the page). Each
+captured element records the sequence of sites above it and its own. **Two elements are copies
+of one control exactly when their sequences are equal.** Every row runs the same JSX, and two
+columns are two JSX sites. Equality is transitive, so there is nothing to choose.
+
+| Situation | Controls |
+|---|---|
+| Rows of one list, a list nested per row, a grid's column | one |
+| Two controls in one row, two columns, two call sites of one component | two |
+| `<section key="left">` and `<section key="right">` | two (the key referee could only say 1 to 2) |
+| A loop inside code the build did not stamp (node_modules) | a range: 1 to one per row |
+| One JSX site rendering different controls from data | one: a known lenient error |
+| One control written at two sites, rows taking different branches | two: a known strict error |
+
+`atLeast` skips fibers with no site of their own. `atMost` counts each by its type and its key,
+or its index. A stamp that a component's spread carries into unstamped code is discounted, so
+it cannot hide a library's loop. The tests (`site-referee.test.ts`) run every row of that table
+through real React renders of fixtures compiled with the plugin. Mutating each rule's code (the
+discount, keys left in `atLeast`, unstamped fibers left out of `atMost`, a string stamp, the
+stamp before a spread) fails at least one test. Corpus builds stamp each app's own source. React-admin's library source
+(`packages/*/src`) is stamped with sites alone, and Actual's dependencies are not stamped.
+
+Run 2's captures predate the stamps, so they can only be judged by the key referee.
+
+### `repeat-oracle.ts` — the key referee, which judged run 2
 
 §3.2 requires one decision before any collision number means anything:
 
