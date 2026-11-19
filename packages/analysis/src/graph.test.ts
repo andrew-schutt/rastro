@@ -315,18 +315,8 @@ describe('labelFor', () => {
     expect(labelFor('App>SettingsForm|input:email')).toBe('SettingsForm input:email');
   });
 
-  // The source-file qualifier is part of the identity (§4.2.1), never part of the label — a
-  // path inside a box on screen is noise. This is the exact shape a build-annotated demo run
-  // produces for an unnamed element, so it is what the flow graph renders today.
-  it('drops the source-file qualifier from the innermost component', () => {
-    expect(labelFor('App>SettingsForm@src/App.tsx|form')).toBe('SettingsForm form');
-    expect(labelFor('App>Card@src/billing/Card.tsx|input:email')).toBe('Card input:email');
-  });
-
-  // Only a source path is a qualifier. On the fiber-walk path there is no `@<file>` at all and
-  // the segment is a raw `displayName`, which is arbitrary developer- or library-supplied text
-  // — cutting at the first `@` turned `Connect(@app/Widget)` into the label `Connect(`.
-  it('keeps an @ that is part of the component name, not a source path', () => {
+  // `@` is legal in a component name, and the label keeps the name whole.
+  it('keeps an @ that is part of the component name', () => {
     expect(labelFor('App>Connect(@app/Widget)|input:email')).toBe(
       'Connect(@app/Widget) input:email',
     );

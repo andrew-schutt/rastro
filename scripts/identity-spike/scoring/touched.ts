@@ -12,7 +12,7 @@
 // found, or is found twice, gets investigated by hand like untouched churn.
 import { parseSync, type types as t } from '@babel/core';
 import { extname, posix } from 'node:path';
-import type { ComponentMark } from 'rastro-core';
+import type { ComponentMark } from '../src/fiber.ts';
 
 export type Touch = 'touched' | 'untouched' | 'undetermined';
 

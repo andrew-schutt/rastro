@@ -31,12 +31,12 @@ describe('rebuildControl', () => {
     const verdict = rebuildControl(
       ['/a'],
       [screen('/a', [element('x')])],
-      [screen('/a', [element('x', { fiber: 'x-different' })])],
+      [screen('/a', [element('x', { attribute: 'x-different' })])],
       RULE_1_STRATEGIES,
     );
 
     expect(verdict.passed).toBe(false);
-    expect(verdict.screens[0]?.unstable).toEqual(['fiber']);
+    expect(verdict.screens[0]?.unstable).toEqual(['attribute']);
   });
 
   it('fails when two elements swap fingerprints, which a set comparison would miss', () => {
@@ -103,14 +103,14 @@ describe('rebuildControl', () => {
   it('still fails a judged strategy alongside a reported one', () => {
     const verdict = rebuildControl(
       ['/a'],
-      [screen('/a', [element('x', { 'selector-path': 'p1', fiber: 'f1' })])],
-      [screen('/a', [element('x', { 'selector-path': 'p2', fiber: 'f2' })])],
+      [screen('/a', [element('x', { 'selector-path': 'p1', attribute: 'f1' })])],
+      [screen('/a', [element('x', { 'selector-path': 'p2', attribute: 'f2' })])],
       RULE_1_STRATEGIES,
       ['selector-path'],
     );
 
     expect(verdict.passed).toBe(false);
-    expect(verdict.screens[0]).toMatchObject({ unstable: ['fiber'], reported: ['selector-path'] });
+    expect(verdict.screens[0]).toMatchObject({ unstable: ['attribute'], reported: ['selector-path'] });
   });
 
   it('cannot pass when every strategy is reported-only', () => {
@@ -140,14 +140,14 @@ describe('flowControl', () => {
   });
 
   it('voids an unstable state for a trace instead of failing the commit', () => {
-    const changed = { states: [states[0]!, screen('menu open', [element('y', { fiber: 'y2' })])], firsts: { A1: 'Bank' } };
+    const changed = { states: [states[0]!, screen('menu open', [element('y', { attribute: 'y2' })])], firsts: { A1: 'Bank' } };
     const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), changed, RULE_1_STRATEGIES);
     expect(verdict).toMatchObject({ passed: true, voidStates: ['menu open'] });
-    expect(verdict.screens[1]?.unstable).toEqual(['fiber']);
+    expect(verdict.screens[1]?.unstable).toEqual(['attribute']);
   });
 
   it('still fails the commit when an unstable state comes with a differing first', () => {
-    const changed = { states: [states[0]!, screen('menu open', [element('y', { fiber: 'y2' })])], firsts: { A1: 'Ally' } };
+    const changed = { states: [states[0]!, screen('menu open', [element('y', { attribute: 'y2' })])], firsts: { A1: 'Ally' } };
     const verdict = flowControl(['sidebar', 'menu open'], walked({ A1: 'Bank' }), changed, RULE_1_STRATEGIES);
     expect(verdict.passed).toBe(false);
   });

@@ -21,7 +21,7 @@
 // ⚠ Fiber identity is compared with `===`, which holds within a single rendered snapshot.
 // React double-buffers trees (`current` / `alternate`), so a verdict must be computed and used
 // before the page re-renders. The harness reads a static page, so it is.
-import { getFiber } from 'rastro-core';
+import { getFiber } from './fiber.ts';
 
 /** The private fiber fields this reads. Typed locally: `rastro-core` does not export them. */
 interface KeyedFiber {

@@ -36,7 +36,7 @@ export interface Exporter {
 }
 
 /**
- * Fingerprint seam (§4.2.1). Default: React fiber component chain + role + accessible name.
+ * Fingerprint seam (§4.2.1). Default: the build plugin's component chain + role + accessible name.
  * Swap for: manual-only (`data-telemetry-id`), a hybrid, or something app-specific.
  */
 export interface FingerprintStrategy {

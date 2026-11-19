@@ -533,3 +533,19 @@ runner made run 1, which is void. Run 2 is every commit of both apps, rebuilt an
 from this runner, and it is the run the gate reads. Run 1's captures carry the first freeze,
 and the scoring refuses them. Everything the first freeze section says still holds, with this
 commit in place of `1d99a9d`.
+
+## After run 2, 2026-11-18: the runner has changed, and this file describes run 2
+
+Run 2 was scored (`VALIDATION-PLAN.md` §3.2, outcome). Rastro's identity was then narrowed to
+one fingerprint ([`NOTES.md`](NOTES.md)), and the runner changed with it:
+- it measures three strategies, not six: role + name, selector path and `attribute`;
+- it builds `as-shipped` only, with no `mangled` variant;
+- the marks rule 2 reads come from a measurement-only Babel plugin
+  (`scripts/identity-spike/src/mark-plugin.ts`), not from `babel-plugin-rastro`.
+
+`freeze.json` still names run 2's runner, so every build and capture now refuses to run. That
+is deliberate. **The next run is pre-registered and frozen anew before it runs**, and everything
+above stays as the record of what run 2 ran on. That includes this file's six strategies and two
+variants. Run 2's captures remain readable by the scoring for the three strategies that remain.
+A fingerprint redesigned after seeing run 2 is judged on corpus commits nobody has seen, and
+these two apps' commits are reported alongside it, labelled as seen.

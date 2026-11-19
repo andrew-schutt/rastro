@@ -1,59 +1,7 @@
 {
   "scenario": "rename-composer",
-  "description": "Rename PreferenceRow, which composes only design-system primitives. Stamping cannot see it, so the attribute chain is blind to the rename; the fiber walk is not.",
+  "description": "Rename PreferenceRow, which composes only design-system primitives. Stamping cannot see it, so the attribute chain is blind to the rename.",
   "strategies": {
-    "attribute+file": {
-      "changed": [],
-      "diff": {
-        "kept": [
-          "App>NavBar@src/NavBar.tsx|a|\"Help\"",
-          "App>NavBar@src/NavBar.tsx|a|\"Home\"",
-          "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\"",
-          "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\"",
-          "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\"",
-          "App>SettingsPage@src/settings/SettingsPage.tsx|button:button|\"Theme\"",
-          "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\"",
-          "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
-        ],
-        "vanished": [],
-        "appeared": [],
-        "countChanged": []
-      },
-      "after": [
-        {
-          "element": "nav-home",
-          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Home\""
-        },
-        {
-          "element": "nav-help",
-          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Help\""
-        },
-        {
-          "element": "page-docs",
-          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\""
-        },
-        {
-          "element": "email",
-          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\""
-        },
-        {
-          "element": "save",
-          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
-        },
-        {
-          "element": "cancel",
-          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
-        },
-        {
-          "element": "pref-dark",
-          "fingerprint": "App>SettingsPage>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
-        },
-        {
-          "element": "pick-theme",
-          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|button:button|\"Theme\""
-        }
-      ]
-    },
     "attribute": {
       "changed": [],
       "diff": {
@@ -103,63 +51,6 @@
         {
           "element": "pick-theme",
           "fingerprint": "App>SettingsPage|button:button|\"Theme\""
-        }
-      ]
-    },
-    "fiber": {
-      "changed": [
-        "pref-dark"
-      ],
-      "diff": {
-        "kept": [
-          "App>NavBar|a|\"Help\"",
-          "App>NavBar|a|\"Home\"",
-          "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\"",
-          "App>SettingsPage|a|\"Docs\"",
-          "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\"",
-          "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\"",
-          "SettingsPage>ThemePicker>Picker>PickerTrigger|button:button|\"Theme\""
-        ],
-        "vanished": [
-          "SettingsPage>PreferenceRow>Row>Switch|switch|\"Dark mode\""
-        ],
-        "appeared": [
-          "SettingsPage>SettingRow>Row>Switch|switch|\"Dark mode\""
-        ],
-        "countChanged": []
-      },
-      "after": [
-        {
-          "element": "nav-home",
-          "fingerprint": "App>NavBar|a|\"Home\""
-        },
-        {
-          "element": "nav-help",
-          "fingerprint": "App>NavBar|a|\"Help\""
-        },
-        {
-          "element": "page-docs",
-          "fingerprint": "App>SettingsPage|a|\"Docs\""
-        },
-        {
-          "element": "email",
-          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm|input:email|\"Email\""
-        },
-        {
-          "element": "save",
-          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton|button:button|\"Save\""
-        },
-        {
-          "element": "cancel",
-          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton|button:button|\"Cancel\""
-        },
-        {
-          "element": "pref-dark",
-          "fingerprint": "SettingsPage>SettingRow>Row>Switch|switch|\"Dark mode\""
-        },
-        {
-          "element": "pick-theme",
-          "fingerprint": "SettingsPage>ThemePicker>Picker>PickerTrigger|button:button|\"Theme\""
         }
       ]
     },
@@ -264,63 +155,6 @@
         {
           "element": "pick-theme",
           "fingerprint": "button:nth-child=\"5\"nth-of-type=\"1\";section:nth-child=\"2\"nth-of-type=\"1\";main:nth-child=\"1\"nth-of-type=\"1\";div:nth-child=\"1\"nth-of-type=\"1\";body:nth-child=\"2\"nth-of-type=\"1\"|button:button|\"Theme\""
-        }
-      ]
-    },
-    "marked-fiber": {
-      "changed": [
-        "pref-dark"
-      ],
-      "diff": {
-        "kept": [
-          "App>NavBar@src/NavBar.tsx|a|\"Help\"",
-          "App>NavBar@src/NavBar.tsx|a|\"Home\"",
-          "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\"",
-          "App>SettingsPage>ThemePicker@src/settings/ThemePicker.tsx|button:button|\"Theme\"",
-          "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\"",
-          "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\"",
-          "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
-        ],
-        "vanished": [
-          "SettingsPage>PreferenceRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
-        ],
-        "appeared": [
-          "SettingsPage>SettingRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
-        ],
-        "countChanged": []
-      },
-      "after": [
-        {
-          "element": "nav-home",
-          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Home\""
-        },
-        {
-          "element": "nav-help",
-          "fingerprint": "App>NavBar@src/NavBar.tsx|a|\"Help\""
-        },
-        {
-          "element": "page-docs",
-          "fingerprint": "App>SettingsPage@src/settings/SettingsPage.tsx|a|\"Docs\""
-        },
-        {
-          "element": "email",
-          "fingerprint": "App>SettingsPage>ProfilePanel>ProfileForm@src/settings/ProfilePanel.tsx|input:email|\"Email\""
-        },
-        {
-          "element": "save",
-          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>SaveButton@src/ui/SaveButton.tsx|button:button|\"Save\""
-        },
-        {
-          "element": "cancel",
-          "fingerprint": "ProfilePanel>ProfileForm>Toolbar>CancelButton@src/settings/Toolbar.tsx|button:button|\"Cancel\""
-        },
-        {
-          "element": "pref-dark",
-          "fingerprint": "SettingsPage>SettingRow>Row>Switch@src/ui/primitives.tsx|switch|\"Dark mode\""
-        },
-        {
-          "element": "pick-theme",
-          "fingerprint": "App>SettingsPage>ThemePicker@src/settings/ThemePicker.tsx|button:button|\"Theme\""
         }
       ]
     }

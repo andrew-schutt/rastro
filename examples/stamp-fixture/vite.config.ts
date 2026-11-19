@@ -4,7 +4,7 @@ import auditSitePlugin from './audit/site-plugin.ts';
 
 const root = import.meta.dirname;
 const audit = [auditSitePlugin, { root }];
-const rastro = ['babel-plugin-rastro', { root }];
+const rastro = 'babel-plugin-rastro';
 
 export default defineConfig(({ mode }) => ({
   plugins: [

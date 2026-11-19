@@ -37,12 +37,6 @@ export interface UxEvent {
     'ux.component_chain'?: string[];   // [SPEC] Recommended — outermost → innermost
     'ux.role'?: string;                // [SPEC] Recommended — queryable slice of the fingerprint
     'ux.accessible_name'?: string;     // [SPEC] Recommended — redacted before emit (§4.9)
-    // [SPEC] Recommended — repo-relative file defining the chain's innermost component.
-    // Emitted only where a build-time annotator supplied it, so it composed the fingerprint.
-    // Repo-relative, never absolute: an absolute path is both a leak and a machine-specific
-    // identity. The open index signature below would have swallowed the omission silently,
-    // which is exactly why every spec attribute is named here explicitly.
-    'ux.source_file'?: string;
 
     // [SPEC] Custom attributes from `track(name, props)`. The conventions say props become
     // attributes, so the shape has to admit them. Keys in a reserved namespace are rejected
@@ -76,7 +70,7 @@ export function isReservedAttribute(key: string): boolean {
  * Rides on the resource as `ux.convention.version` so the analysis layer can handle
  * mixed-version data across migrations.
  */
-export const UX_CONVENTION_VERSION = '0.4';
+export const UX_CONVENTION_VERSION = '0.5';
 
 /**
  * The Required set from the semantic conventions: every conforming record MUST carry these

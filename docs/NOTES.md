@@ -129,9 +129,10 @@ works). Delete it to start clean.
 - **`react/forms.ts`** — the submit/abandon state machine, pure and DOM-free.
 - **`react/route.ts`** — the default `RouteAdapter`: a reference-counted `history` patch plus
   `popstate`/`hashchange`.
-- **`rastro-core/fingerprint.ts`** — §4.2.1 in full: the fiber walk, component chain with
-  forwardRef/memo unwrapping and noise filtering, role descriptor, approximated accessible
-  name (redacted), and composition with graceful degradation. `describeElement` returns the
+- **`rastro-core/fingerprint.ts`** — §4.2.1: the component chain from the build plugin's
+  stamps, with noise filtering, role descriptor, approximated accessible name (redacted), and
+  composition with graceful degradation. It no longer reads React's fiber tree (2026-11-18,
+  under the decisions below). `describeElement` returns the
   fingerprint *and* its raw parts from one pass, so identities can be re-derived later
   without re-collecting. The Opt-In attributes `ux.component_chain`, `ux.role`, and
   `ux.accessible_name` are emitted only when switched on via the provider's `optIn` prop.
@@ -145,24 +146,14 @@ works). Delete it to start clean.
   changes highlighted where context moves, and `ux.interaction.method` per step. Its
   arithmetic lives in `timeline.ts`, pure and unit-tested, so the component only renders.
 - **`babel-plugin-rastro`** — §4.3's build-time plugin, for Babel. Stamps
-  `data-rastro-component` and `data-rastro-source-file` onto every host element at build time,
-  as string literals a minifier cannot touch. Next.js is unsupported (it compiles with SWC);
+  `data-rastro-component` onto every host element at build time, as a string literal a
+  minifier cannot touch. It no longer stamps the source file or attaches marks (2026-11-18). Next.js is unsupported (it compiles with SWC);
   that port is the open half of §17 #4.
-- **`rastro-core/fingerprint.ts` — `attributeChain` + `documentIsAnnotated` + the source-file
-  qualifier.** The consumer.
-  Walks the DOM for `data-rastro-component` instead of the fiber tree, collapsing consecutive
-  repeats (the plugin stamps every host element) and applying `NOISE` identically, so the two
-  strategies produce comparable chains. The strategy is chosen **once per document**, lazily,
-  never per element — per-element tiering would let one page mix both and produce chains that
-  are not comparable within a single session. The fiber walk remains the fallback for apps
-  installed without the build step. The same walk also takes `data-rastro-source-file` from
-  the element contributing the innermost chain entry, which becomes the fingerprint's `@<file>`
-  qualifier and the `ux.source_file` part (conventions 0.3).
-- **`markedComponentChain` + the plugin's `markComponents`: §3.2 strategy 6, built and
-  unmeasured.** A candidate, not the default. `fingerprint()` never calls it, and the plugin
-  marks nothing unless asked. `describeElement` takes the chain walk as a parameter so the
-  spike composes it exactly as the default. How it was built, and what that settled, is under
-  the reopened attribute decision below.
+- **`rastro-core/fingerprint.ts` — `attributeChain`.** The consumer. Walks the DOM for
+  `data-rastro-component`, collapsing consecutive repeats (the plugin stamps every host
+  element) and skipping `NOISE`. A document the plugin did not annotate has no stamps, so its
+  chain is `unknown` and the fingerprint is role and accessible name alone. There is no second
+  chain source, so one page cannot mix two kinds of chain.
 
 ### Stubbed — real signatures, naive bodies, TODOs naming the work
 
@@ -224,7 +215,7 @@ Driven against a real headless Chrome with genuine mouse and keyboard input, on 
   hesitation, which is exactly what §13.1 exists to surface
 - four sessions aggregating into an 11-node flow graph, with a 6.5s median on the
   `SettingsForm input → form` edge and a 0.75 drop-off on the form
-- the source-file qualifier through a **minified production build** (`vite preview`, real mouse
+- *(superseded 2026-11-18: the qualifier is gone)* the source-file qualifier through a **minified production build** (`vite preview`, real mouse
   and keyboard over CDP): `App>Nav@src/Nav.tsx|button:button|"/users/42/settings"` and
   `App>SettingsForm@src/App.tsx|form` off the same page — so the file tracks the innermost
   component across a module boundary rather than the entry point. `ux.source_file` matches the
@@ -253,6 +244,24 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 ---
 
 ## Decisions worth knowing about
+
+**Identity is narrowed to one fingerprint (2026-11-18), after run 2.** The fingerprint is the
+build plugin's component chain, role and accessible name: §3.2's `attribute` strategy. Cut, with
+their code:
+- **the fiber walk**, the fallback for apps without the plugin, by its own pre-registered test:
+  once minified it had 1,199 untouched churn instances against 0;
+- **the marked fiber walk** (strategy 6), which did not beat the default and read React's
+  internals in production; the plugin's `markComponents` option goes with it;
+- **the source file** (`@<file>`, `ux.source_file`, the plugin's `includeSourceFile`,
+  `sourceFileAttribute` and `root`), which changed nothing measurable: with and without it
+  scored identically on both apps. That is conventions 0.5.
+
+The maintainer's reason for the cut as a whole: flexibility in where Rastro can be applied,
+over being locked into React internals and framework tooling. An app without the plugin now gets
+role and accessible name only. The costs are written down under "Known holes": same-named
+components merge, and identity resolution loses its file anchor. The measurement keeps what it
+needs from React's internals and the marks (`scripts/identity-spike/src/fiber.ts`,
+`mark-plugin.ts`). It measures three strategies now: role + name, selector path and `attribute`.
 
 **§3.2's first scored run failed rule 1 and passed rule 2 (2026-11-18).** Run 2 captured all
 ten commits of both corpus apps. React-admin commit 3 is void because one load's entry timed
@@ -348,6 +357,13 @@ instead of the nearest, excusing two controls in one row as siblings, and mergin
 pairs each fail exactly one test; collapsing a whole list into one group fails two. On the slot
 rewrite: ignoring `fiber.index` fails four, not stopping the slot walk at the item fiber fails
 eight, and collapsing `atMost` onto `atLeast` fails the two range tests.
+
+**Reversed 2026-11-18: the source file is no longer in the identity.** §3.2's run 2 scored the
+chain with and without it identically on both corpus apps, and it was cut to narrow identity to
+one fingerprint (conventions 0.5, and the decision at the top of this section). The reasoning
+below is kept as the record of why it went in. What it bought, separating same-named components
+in different files, is now a known merge (`fingerprint.dom.test.tsx`), and what it promised as
+an anchor for identity resolution is gone with it.
 
 **The source file is in the identity, and the reason is NOT stability.** The fingerprint is
 now `<chain>[@<file>]|<role>|"<name>"` wherever the build plugin annotated the document.
@@ -579,8 +595,8 @@ problem instead of containing it, and nothing in this package crosses into the S
 incompatible node type systems in the same file.
 
 **`UxEvent` is a superset of §19.2.** The plan's snippet predates SEMANTIC-CONVENTIONS.md and
-omits six attributes the spec defines: `ux.from_path`, `ux.component_chain`, `ux.role`,
-`ux.accessible_name`, `ux.source_file`, and the `ux.convention.version` resource attribute.
+omits five attributes the spec defines: `ux.from_path`, `ux.component_chain`, `ux.role`,
+`ux.accessible_name`, and the `ux.convention.version` resource attribute.
 They are added as optional members, each tagged `[SPEC]`. Every Required attribute matches §19.2 exactly, so
 nothing that conformed before stops conforming.
 
@@ -644,8 +660,9 @@ distinction relied on: nothing it produces feeds a metric or a join. `FlowNode.i
 whole fingerprint and everything is keyed on that; `labelFor` only decides what text sits
 inside a box, and falls back to the raw fingerprint on anything unfamiliar.
 
-That fallback is the reason the source-file qualifier is stripped by a pattern anchored on a
-source extension and not at the first `@`. Only a build-annotated chain carries an `@<file>`;
+*(The stripping below was removed 2026-11-18 with the qualifier: no fingerprint carries a file
+now, and no stored data predates that.)* That fallback is the reason the source-file qualifier
+was stripped by a pattern anchored on a source extension and not at the first `@`. Only a build-annotated chain carries an `@<file>`;
 on the fiber-walk path the segment is a raw `displayName`, which is arbitrary developer- or
 library-supplied text, and cutting `Connect(@app/Widget)` at the `@` labelled the node
 `Connect(` — the promise of degrading to something unfamiliar rather than truncating it, broken
@@ -788,42 +805,27 @@ Verified: replaying a batch stores nothing new.
   merged node's rate counts only real abandonments. The likely fix is to key form-outcome
   nodes on `eventName` as well. That changes what a node *is*, and it is a separate decision.
   Not asserted in a test yet.
-- **Minified production builds destroy fingerprints — unless `babel-plugin-rastro` is
-  installed.** Without it `fn.name` becomes `t`, `a`, `e`, minifiers reuse those per-module,
-  and unrelated components collapse into one identity: a mass false *merge* rather than a
-  visible failure. With it, identity comes from build-time DOM attributes instead of the fiber
-  tree and the problem is gone. Measured on the demo app's own minified bundle: `App>Nav|…`
-  with the plugin, `vr>Tr>br|…` without — the same chain for every nav button.
-  **The remaining exposure is Next.js**, which compiles with SWC and has no plugin yet, and
-  any app that installs the SDK without its build step. Asserted in
-  `fingerprint.dom.test.tsx` and `babel-plugin/src/minification.test.ts`.
-  **Since 2026-11-02 the fallback is documented as a development diagnostic only,** and
-  §3.2 rule 1 pre-registers its removal: it stays only if, with mangling on, it beats role +
-  accessible name alone on both corpus apps.
-  **"Gone" holds for minification, not for identity.** In design-system apps the stamped chain
-  survives minification and still carries little: it degenerates to the primitive (`View`) or
-  to nothing. This is in the reopened attribute decision above, from samples of both corpus
-  apps, and is unmeasured until §3.2 runs.
-- **The fiber walk never sees a component written `memo(() => …)`.** Without a comparator,
-  React renders it as one fiber whose `type` is the anonymous inner function. `componentChain`
-  reads that function's empty name and skips the fiber. So the fallback strategy drops the
-  component from every chain beneath it, in dev as well as in production. Found while building
-  §3.2 strategy 6, which reads the memo object from `fiber.elementType` instead. Asserted in
-  `fingerprint.dom.test.tsx`. A named inner function (`memo(function Row() {…})`) is seen.
+- **Without `babel-plugin-rastro`, there is no component chain.** Since 2026-11-18 the SDK
+  reads nothing of React's at runtime, so an app installed without the build step gets role and
+  accessible name alone, with the chain `unknown`. **Next.js is in that position until the SWC
+  port exists** (§17 #4). Before the cut, such an app got a fiber walk that minification
+  destroyed (`vr>Tr>br|…` on the demo's minified bundle) and that run 2 measured churning on
+  untouched code.
+  **In design-system apps the stamped chain carries little** even with the plugin: it
+  degenerates to the primitive (`View`) or to nothing. Run 2 measured it: the chain barely
+  changes what role and accessible name already say.
+- **Distinct elements that share a component and a name merge.** Run 2's real case: unlabelled
+  toolbar icon buttons in one component are one identity. Asserted in
+  `fingerprint.dom.test.tsx` and `fingerprint.test.ts`. The open fix is redesign (VALIDATION-PLAN
+  §3.2's outcome).
+- **Same-named components in different files merge, since conventions 0.5.** A `Card` in
+  `billing/` and one in `settings/` stamp the same name. The source-file qualifier separated
+  them until it was cut. Asserted in `fingerprint.dom.test.tsx`.
 - **i18n and copy edits cause false splits.** Same button, new text, new fingerprint. §4.2.1
   accepts this cost knowingly: dropping the name would merge the forty buttons saying "Save".
-- **Moving a file causes false splits too, since conventions 0.3.** Same trade as above, same
-  reasoning, new input: the fingerprint's `@<file>` qualifier means a file move or rename
-  re-identifies everything defined in it. Accepted to stop same-named components in different
-  files from merging, which is the silent failure. Unmeasured — §3.2 runs with-file and
-  without-file as separate strategies.
 - **`data-telemetry-id` matches an ANCESTOR.** Putting one on a container collapses every
   element inside it into the container's identity. That is per §4.2.1 and it is a useful
   escape hatch, but it is a foot-gun on a `<form>` or a layout wrapper.
-- **The fiber walk reads React's private internals.** A React version that moves the
-  `__reactFiber$` key makes `getFiber` return null and every fingerprint degrade to
-  `unknown|<role>` — quietly, and everywhere at once. There is no public API for this; every
-  autocapture tool has the same exposure.
 - **The `history` patch does not see everything.** Next's App Router can change what the user
   sees without a `pushState` this can observe (§4.6). Each router wants a real `RouteAdapter`,
   which would also retire `tokenizePath`'s blind spot by reporting the route pattern directly.

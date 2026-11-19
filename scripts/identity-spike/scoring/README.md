@@ -28,7 +28,9 @@ seen makes a different score, reported separately.**
    whose definition cannot be located in its file is **undetermined**, and its churn is
    investigated by hand like any untouched instance. It is never assumed touched.
 2. **Rule 4's blind labels cover strategy 5 only** (`attribute+file`, the shipped default the
-   resolution layer would sit on). Every strategy 5 fingerprint present at one commit and absent
+   resolution layer would sit on). *Since 2026-11-18 the shipped default is `attribute`, the
+   chain without its file, and `drift.ts` labels that; the `anchor` proposer abstains on every
+   subject, having no file.* Every strategy 5 fingerprint present at one commit and absent
    at the next is labelled, from the diff, before any proposer runs. The three proposers run on
    strategy 5. Other strategies' churn is counted for rules 1 and 2 and not labelled.
 3. **Rule 3's rows are matched by hand at commit 10**, from the description. At every other
@@ -64,8 +66,9 @@ seen makes a different score, reported separately.**
     Otherwise it is undetermined if any was, otherwise touched. This applies item 1 in the strict
     direction. *Added while writing the code, before any number.*
 
-Already fixed elsewhere and applied unchanged: strategy 3 is judged on the `mangled` build and
-the five others on `as-shipped` (§3.2 rule 1). A flow state listed as void at a commit has no
+Already fixed elsewhere and applied unchanged: in run 2, strategy 3 was judged on the `mangled`
+build and the five others on `as-shipped` (§3.2 rule 1). Since 2026-11-18 three strategies
+remain and there is one build, so the scoring reads `as-shipped` for all of them. A flow state listed as void at a commit has no
 rule 3 verdict there (`CORPUS.md`, 2026-11-17). A commit whose rebuild control failed on
 either build is void (`CORPUS.md`, 2026-11-09): it is dropped from both builds, with both pairs
 it is part of, and reported. *The report applied this only from 2026-11-18, before any number;

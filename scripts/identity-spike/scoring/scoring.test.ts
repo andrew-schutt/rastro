@@ -50,9 +50,9 @@ describe('collisions and mergeCount', () => {
   });
 
   it('judges each strategy by its own fingerprints', () => {
-    const elements = [el('A', { strategies: { fiber: 'same' } }), el('B', { strategies: { fiber: 'same' } })];
+    const elements = [el('A', { strategies: { 'role+name': 'same' } }), el('B', { strategies: { 'role+name': 'same' } })];
     expect(collisions(elements, 'attribute')).toEqual([]);
-    expect(collisions(elements, 'fiber')).toHaveLength(1);
+    expect(collisions(elements, 'role+name')).toHaveLength(1);
   });
 
   it('reports visible-only beside, by filtering before counting', () => {

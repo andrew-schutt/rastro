@@ -8,7 +8,8 @@ fails silently on v6: the build succeeds with nothing annotated. Babel now runs 
 `@rolldown/plugin-babel`, configured exactly as `babel-plugin-rastro`'s README documents. A
 regression in either the plugin or that documented config fails here.
 
-It has no source of its own. `index.html` loads `../stamp-fixture/src/main.tsx`, and `root` is
-pinned to that package so stamped paths are identical across the two builds. Add patterns, and
+It has no source of its own. `index.html` loads `../stamp-fixture/src/main.tsx`, and the audit's
+site plugin is pinned to that package, so the sites it records are identical across the two
+builds. Add patterns, and
 change what the audit expects, in `examples/stamp-fixture`. See that README for how the audit
 works.

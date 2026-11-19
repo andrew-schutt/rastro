@@ -1,10 +1,10 @@
 // scripts/identity-spike/corpus/capture.ts
-// Capture every pre-registered screen of a built corpus app, under all six strategies, twice.
+// Capture every pre-registered screen of a built corpus app, under every strategy, twice.
 //
 //   node scripts/identity-spike/corpus/capture.ts <actual|react-admin> <commit> [variant…]
 //
 // Needs the build from build.ts. Writes to $RASTRO_CORPUS/captures/<app>/<nn>-<sha7>/<variant>/:
-// load-1.json and load-2.json (every screen's elements and their six fingerprints), and
+// load-1.json and load-2.json (every screen's elements and their fingerprints), and
 // rebuild-control.json. Prints counts and verdicts only, never a fingerprint, so a capture can be
 // checked for having worked without its output being read.
 //
@@ -109,7 +109,7 @@ async function captureLoad(
           '({ ...window.__rastroCorpus.capturePage(), strategies: window.__rastroCorpus.strategies })',
         );
         if (!capture.annotated) {
-          throw new Error('the page carries no stamps: strategy 5 would read fibers. Not the pre-registered build.');
+          throw new Error('the page carries no stamps: the build plugin did not run. Not the pre-registered build.');
         }
         strategies = capture.strategies;
         return {
@@ -280,7 +280,7 @@ async function main(argv: string[]): Promise<boolean> {
   const afterFreeze = argv.includes(AFTER_FREEZE_FLAG);
   const [appArg, commitArg, ...variantArgs] = argv.filter((arg) => arg !== AFTER_FREEZE_FLAG);
   if (appArg === undefined || commitArg === undefined || !(appArg in CORPUS)) {
-    throw new Error(`usage: capture.ts <actual|react-admin> <commit> [as-shipped|mangled …] [${AFTER_FREEZE_FLAG}]`);
+    throw new Error(`usage: capture.ts <actual|react-admin> <commit> [as-shipped] [${AFTER_FREEZE_FLAG}]`);
   }
   const app = CORPUS[appArg as AppId];
   const commit = findCommit(app, commitArg);

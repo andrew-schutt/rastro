@@ -58,13 +58,12 @@ fixed before its numbers are seen, on commits nobody has seen. Rules 3 and 4 awa
 steps, and their worksheets exist.
 
 Identity derives from build-time DOM attributes stamped by `babel-plugin-rastro`, so it
-survives minification. The React fiber walk is still in the code as the fallback for apps
-installed without the build step, but run 2 decided its removal: it did not beat role +
-accessible name. Removing it, the marked fiber walk and the plugin's `includeSourceFile` and
-`markComponents` options is the next change. After it, an app without the plugin gets role and
-accessible name only. Strategy is chosen once per document, never per
-element. **Next.js is the open gap.** It compiles with SWC, and that port is the open half of
-§17 #4.
+survives minification: the stamped component chain, role and accessible name. **Since
+2026-11-18 Rastro reads nothing of React's at runtime.** The fiber walk, the marked fiber walk
+and the source file were cut after run 2 (`docs/NOTES.md`), so an app without the plugin gets
+role and accessible name alone. The spike keeps its own copy of the fiber and mark reading,
+because its referee and rule 2's "touched" need them. **Next.js is the open gap.** It compiles
+with SWC, and that port is the open half of §17 #4.
 
 **Output has a direction and a first record, and nothing emits it.** `docs/CONSUMERS.md` names
 AI agents as the first consumer. `docs/OUTPUT-CONVENTIONS.md` defines the one derived record,

@@ -94,33 +94,23 @@ click → capture (stable fingerprint) → OTel Event → OTLP → collector →
 
 - **Stable element identity.** Rastro derives a fingerprint for each element from
   its React component ancestry + role + accessible name, so "Save Profile" is the
-  same node across sessions and small refactors. With the build plugin installed the
-  ancestry is qualified by the file that defines it — `App>Card@src/billing/Card.tsx` —
-  so two components that merely share a *name* stay separate. This is the hard part; see
-  the plan.
+  same node across sessions and small refactors. The ancestry comes from the build
+  plugin's stamps, as in `Settings>ProfileForm>SaveButton|button|"Save Profile"`. This is
+  the hard part; see the plan.
 
-  > ⚠️ **Identity is stated, not yet measured.** Every claim above describes what the
-  > fingerprint is built to do; how often it actually mis-identifies an element on a real
-  > app is unknown, and [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) §3.2 exists to
-  > find out. Treat the numbers this tool produces accordingly until it has run.
+  > ⚠️ **Identity is measured, and does not yet pass.** On two real apps
+  > ([`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) §3.2), the fingerprint never changed
+  > on code nobody touched, but it does merge different elements: two icon buttons with no
+  > label in one component are one identity, and so are two components that share a name. A
+  > redesign is next. Treat the numbers this tool produces accordingly.
 
-  > ⚠️ **Install the build plugin. Without it, identity is a development aid, not a
-  > production feature.** [`babel-plugin-rastro`](packages/babel-plugin) stamps component
-  > names into the DOM at build time, where a minifier cannot reach them, and the SDK
-  > derives identity from those. Without it, the SDK falls back to reading component names
-  > out of React's internals (the "fiber walk"). That fallback fails in known ways:
-  >
-  > - a minified build renames `SaveButton` to `t`, so unrelated elements collapse into
-  >   one identity with no error, and the short names change from build to build;
-  > - library components fill the chain with their internal names, which change on a
-  >   dependency upgrade;
-  > - a component written `memo(() => …)` has no name to read, so it drops out of the chain.
-  >
-  > Treat the fallback as a diagnostic for development. Whether it stays at all is decided
-  > by [`docs/VALIDATION-PLAN.md`](docs/VALIDATION-PLAN.md) §3.2: if it does not beat role
-  > and accessible name alone on real apps, it is removed. Next.js is not yet supported by
-  > the plugin, since it compiles with SWC ([`docs/DESIGN.md`](docs/DESIGN.md) §4.3), so a
-  > Next app gets only this fallback today.
+  > ⚠️ **Install the build plugin, or identity is role and label alone.**
+  > [`babel-plugin-rastro`](packages/babel-plugin) stamps component names into the DOM at
+  > build time, where a minifier cannot reach them, and the SDK reads them from there.
+  > Without it, the SDK reads nothing of React's: the component part of the fingerprint is
+  > `unknown`, and identity is the element's role and accessible name. Next.js is not yet
+  > supported by the plugin, since it compiles with SWC
+  > ([`docs/DESIGN.md`](docs/DESIGN.md) §4.3), so a Next app gets role and label only today.
 - **OpenTelemetry-native.** Interactions are OTel *Events* (log records), grouped by
   the standard `session.id`. UX meaning rides in a small `ux.*` attribute namespace —
   see [`docs/SEMANTIC-CONVENTIONS.md`](docs/SEMANTIC-CONVENTIONS.md).

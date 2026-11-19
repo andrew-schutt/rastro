@@ -11,15 +11,12 @@
 // - They drop `NOISE`. An app's own `ThemeProvider` is still the app's own source, and editing
 //   it touches everything it wraps.
 //
-// So this reads the same marks `markedComponentChain` reads, uncapped and unfiltered. Marks
-// are on every component the plugin names, including ones that render no host element, and the
-// fiber's `.return` crosses portals, which DOM stamps cannot. The corpus builds carry marks
-// with files in the app's own source only, so a library component never appears here.
-//
-// ⚠ Reading marks duplicates core's private `markOf` (rastro-core/src/fingerprint.ts), because
-// core exports the property name and not the reader. `continuity/marked-walk.test.ts` holds the
-// two together: this, capped and NOISE-filtered, must equal `markedComponentChain`.
-import { getFiber, MARK_PROPERTY, type ComponentMark } from 'rastro-core';
+// So this reads marks, uncapped and unfiltered: `name` and `file` string literals that the
+// spike's mark plugin (mark-plugin.ts) attaches to every component the build plugin names,
+// including ones that render no host element. The fiber's `.return` crosses portals, which DOM
+// stamps cannot. The corpus builds carry marks in the app's own source only, so a library
+// component never appears here.
+import { getFiber, MARK_PROPERTY, type ComponentMark } from './fiber.ts';
 
 /** The private fiber fields this reads. */
 interface MarkedFiber {
@@ -39,7 +36,7 @@ function ownMark(value: unknown): ComponentMark | null {
   return typeof file === 'string' && file !== '' ? { name, file } : { name };
 }
 
-/** Unwrapping forwardRef (`render`) and memo (`type`) one level, as core does. */
+/** Unwrapping forwardRef (`render`) and memo (`type`) one level. */
 function markOfType(type: unknown): ComponentMark | null {
   const own = ownMark(type);
   if (own !== null || typeof type !== 'object' || type === null) return own;
@@ -56,7 +53,7 @@ function markOf(fiber: MarkedFiber): ComponentMark | null {
 /**
  * Every marked component above the element, outermost → innermost, each with its file when
  * the build emitted one. Not collapsed: a component counted twice by the fiber tree (a `memo`
- * with a comparator) appears twice, as in `markedComponentChain`.
+ * with a comparator) appears twice.
  */
 export function markedAncestry(element: Element): ComponentMark[] {
   const marks: ComponentMark[] = [];

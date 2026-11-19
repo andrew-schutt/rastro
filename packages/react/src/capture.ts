@@ -75,8 +75,6 @@ export interface BuildEventInput {
   fromPath?: string;
   /** `ux.component_chain`, outermost → innermost. */
   componentChain?: string[];
-  /** `ux.source_file`: the file defining the innermost component in the chain. */
-  sourceFile?: string;
   /** Custom attributes from `track(name, props)`. Already sanitized by `sanitizeProps`. */
   attributes?: Record<string, AttributeValue>;
 }
@@ -177,9 +175,6 @@ export function buildEvent(
       ...(input.accessibleName === undefined
         ? {}
         : { 'ux.accessible_name': redactor.redact(input.accessibleName) }),
-      // Not redacted: a repo-relative source path is authored by the developer, never by a
-      // user, and it is already on the wire inside the Required `ux.fingerprint`.
-      ...(input.sourceFile === undefined ? {} : { 'ux.source_file': input.sourceFile }),
       ...(input.fromPath === undefined
         ? {}
         : { 'ux.from_path': redactor.tokenizePath(input.fromPath) }),
@@ -235,8 +230,7 @@ export function interactionMethodOf(
  *
  * ⚠ The spec moved these from Opt-In to Recommended in 0.2 and the emitter has not followed
  * — they are still off by default here. That is a deviation, recorded in docs/NOTES.md, and
- * it is conformant: Recommended attributes may be omitted. `ux.source_file` (0.3) is added
- * on the same footing rather than defaulting on ahead of its siblings.
+ * it is conformant: Recommended attributes may be omitted.
  *
  * §4.2.1 recommends turning `componentChain` on while tuning fingerprints — it is what lets
  * you re-derive identities later without re-collecting, and it is the debugging aid for
@@ -247,18 +241,13 @@ export interface OptInAttributes {
   componentChain?: boolean;
   role?: boolean;
   accessibleName?: boolean;
-  /**
-   * `ux.source_file`. Only ever available in a document the build plugin annotated; in any
-   * other app this switch does nothing, because there is no file to report.
-   */
-  sourceFile?: boolean;
 }
 
 /** Pick out whichever Opt-In attributes are enabled, from an already-derived description. */
 function optInFrom(
   described: ElementDescription,
   optIn: OptInAttributes,
-): Pick<BuildEventInput, 'componentChain' | 'role' | 'accessibleName' | 'sourceFile'> {
+): Pick<BuildEventInput, 'componentChain' | 'role' | 'accessibleName'> {
   return {
     ...(optIn.componentChain === true && described.componentChain.length > 0
       ? { componentChain: described.componentChain }
@@ -266,9 +255,6 @@ function optInFrom(
     ...(optIn.role === true ? { role: described.role } : {}),
     ...(optIn.accessibleName === true && described.accessibleName !== undefined
       ? { accessibleName: described.accessibleName }
-      : {}),
-    ...(optIn.sourceFile === true && described.sourceFile !== undefined
-      ? { sourceFile: described.sourceFile }
       : {}),
   };
 }
@@ -303,10 +289,10 @@ export interface CaptureOptions {
  * every element without a `data-telemetry-id` collapses to `unknown|<tag>`. The capture is
  * real; the join key is not yet.
  *
- * TODO(§4.7): step 3 puts a synchronous fiber walk inside these handlers, which is exactly
- * the jank §4.7 warns about. The fix is to capture the cheap DOM facts synchronously — the
- * element, the method, and `ux.seq`, which MUST stay in gesture order — and defer only the
- * expensive derivation to `requestIdleCallback`.
+ * TODO(§4.7): the identity derivation runs synchronously inside these handlers. It reads only
+ * the DOM, and `describeElement` records its measured cost. If that ever becomes jank, capture
+ * the cheap facts synchronously (the element, the method, and `ux.seq`, which MUST stay in
+ * gesture order) and defer only the derivation to `requestIdleCallback`.
  * TODO(§10): a click that resolves to no interactive target is dropped here. Those are the
  * raw material for the dead-click friction signal, which needs state-change observation to
  * tell "clicked nothing" from "clicked something that did nothing".
@@ -359,8 +345,8 @@ export function startCapture({
       ...(source.pointerType === undefined ? {} : { pointerType: source.pointerType }),
     });
 
-    // One derivation per event: the fingerprint and its raw parts come from a single fiber
-    // walk rather than one per attribute (§4.7).
+    // One derivation per event: the fingerprint and its raw parts come from a single walk of
+    // the stamped ancestry rather than one per attribute (§4.7).
     const described = describeElement(element, redactor);
 
     emit({

@@ -4,7 +4,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FlowRecord, StateRecord } from '../corpus/flows.ts';
 import type { AppId, BuildVariant, CorpusApp, CorpusCommit } from '../corpus/manifest.ts';
-import type { CorpusStrategy } from '../src/strategies.ts';
 
 /** What `capture.ts` writes as `load-N.json`: the fields scoring reads. */
 export interface Load {
@@ -28,14 +27,6 @@ export interface Capture {
   control: Control;
   /** The freeze the capture ran under. Scoring refuses a capture from any other runner. */
   frozen: string | null;
-}
-
-/**
- * §3.2 rule 1: strategy 3 reads function names, so it is judged on the build with mangling
- * forced on. The other five are judged as shipped.
- */
-export function judgedVariant(strategy: CorpusStrategy): BuildVariant {
-  return strategy === 'fiber' ? 'mangled' : 'as-shipped';
 }
 
 export function captureDirectory(root: string, app: CorpusApp, commit: CorpusCommit, variant: BuildVariant): string {

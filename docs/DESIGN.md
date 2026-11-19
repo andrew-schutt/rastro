@@ -111,6 +111,11 @@ The realistic answer is a **composite fingerprint** (element role + accessible n
 
 ### 4.2.1 Fingerprinting — implementation spec (v1, buildable)
 
+> **What shipped differs (2026-11-18).** Since §3.2's run 2, Rastro reads no fiber at runtime.
+> The chain comes only from §4.3's build-time stamps, the fingerprint carries no source file,
+> and an app without the plugin gets role and accessible name alone.
+> [`NOTES.md`](NOTES.md) has the decision. This section stays as the original design.
+
 This is the concrete "open your editor and code this" version. It is deliberately *good enough*, not perfect — the goal is a fingerprint that's stable across sessions and small refactors, readable enough to eyeball collisions during development, and honest about where it breaks.
 
 **Design decisions for v1:**
@@ -217,6 +222,9 @@ So v1's known failure modes, stated plainly: **i18n and copy edits cause false s
 **Testing (TDD-friendly).** The pure parts — `roleOf`, `accName`, `norm`, redaction, and `fingerprint` given a mock element — test cleanly with jsdom fixtures. The fiber walk needs a real render, so cover it with React Testing Library: render a small component tree, query a node, assert the chain. Build a fixture suite of "same element before/after a refactor" pairs and assert the fingerprint holds — that suite *is* your false-split regression guard, and it's the most valuable test file in the repo.
 
 ### 4.3 The build-time escape hatch (missing entirely from the original)
+
+> **What shipped differs (2026-11-18).** The plugin stamps the owning component's name and
+> nothing else: the source location was cut after §3.2's run 2 ([`NOTES.md`](NOTES.md)).
 
 The industry fix for "minification kills names" and "semantics without runtime friction" is a **Babel/SWC plugin** that injects `displayName` and source location `(file:line)` at build time. This is the actual way to get `<Action>`-level meaning *and* stable identity without asking developers to wrap every element by hand. The original reached straight for runtime wrappers (§7 of the source) and skipped the build-time layer that makes the whole semantic story tractable.
 
@@ -725,7 +733,7 @@ The catalog:
 |---|---|---|---|
 | Storage | `EventStore` | SQLite | Postgres, ClickHouse (§8), in-memory (tests) |
 | **Exporter** | `Exporter` | HTTP → your collector | OTel, PostHog/Segment/Amplitude, fan-out, custom (§19.6) |
-| Fingerprint | `FingerprintStrategy` | fiber + composite (§4.2.1) | manual-only (`data-telemetry-id`), hybrid, custom |
+| Fingerprint | `FingerprintStrategy` | build-plugin chain + role + name (§4.2.1, §4.3) | manual-only (`data-telemetry-id`), hybrid, custom |
 | Redaction | `Redactor` | regex email/number strip | enterprise DLP rules, no-op (trusted internal app), custom |
 | Route detection | `RouteAdapter` | `history` patch | React Router, Next App/Pages, TanStack (§4.6) |
 | Graph building | `GraphBuilder` | transition graph (§19.3) | real process-mining miner (§8), custom |

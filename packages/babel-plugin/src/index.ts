@@ -1,44 +1,27 @@
 // packages/babel-plugin/src/index.ts
 // Build-time component annotation (docs/DESIGN.md §4.3).
 //
-// The runtime fiber walk (§4.2.1) reads `fn.name` off React's internals, and a production
-// bundle renames `SaveButton` to `t` — so unrelated elements collapse into one identity,
-// silently. That is the single most important limitation of the tool, and no runtime trick
-// fixes it: React DevTools reads the same internals, stack traces are minified too, and
-// source maps are not available at runtime. Names have to be captured before the minifier
-// runs, which is what this does.
+// A component's name has to be captured before the minifier runs: a production bundle renames
+// `SaveButton` to `t`, and nothing at runtime can recover it. React DevTools reads the same
+// internals, stack traces are minified too, and source maps are not available at runtime.
 //
-// It stamps the component that OWNS each host element into a data attribute, as a string
+// So this stamps the component that OWNS each host element into a data attribute, as a string
 // literal that minification cannot touch. The SDK then reconstructs the ancestry by walking
-// the DOM instead of the fiber tree:
+// the DOM:
 //
 //   function SettingsForm() {          <form  data-rastro-component="SettingsForm">
 //     return <form>                      <button data-rastro-component="SaveButton">
 //       <SaveButton />         ──▶     → walking up from the button yields
 //     </form>;                           ["SaveButton", "SettingsForm"]
 //   }                                    → SettingsForm>SaveButton
-import { relative, sep } from 'node:path';
+//
+// That chain is all it stamps. It used to stamp the defining file, and could attach marks for a
+// fiber walk. Both were removed after §3.2's run 2 (docs/NOTES.md).
 import type { NodePath, PluginObj, PluginPass } from '@babel/core';
 import type * as BabelTypes from '@babel/types';
 
 /** Where the owning component's name lands. Read by `attributeChain` in `rastro-core`. */
 export const COMPONENT_ATTRIBUTE = 'data-rastro-component';
-
-/**
- * Where the defining file lands. This is the rename-proof half: renaming a component changes
- * its name but does not move the file, so source location survives exactly the refactor that
- * mints a new identity everywhere else (§4.3, docs/IDENTITY-RESOLUTION.md).
- */
-export const SOURCE_FILE_ATTRIBUTE = 'data-rastro-source-file';
-
-/**
- * The property `markComponents` attaches a component's `{ name, file }` mark under. Read by
- * `markedComponentChain` in `rastro-core`.
- *
- * ⚠ Duplicated from `rastro-core`'s `MARK_PROPERTY`, as `COMPONENT_ATTRIBUTE` is. The two
- * MUST agree.
- */
-export const MARK_PROPERTY = '__rastroMark';
 
 /** Only these are transformed. Annotating a `.ts` file's JSX-free source is pure overhead. */
 const JSX_EXTENSIONS = /\.[jt]sx$/;
@@ -46,72 +29,6 @@ const JSX_EXTENSIONS = /\.[jt]sx$/;
 export interface RastroPluginOptions {
   /** Attribute for the owning component's name. Default `data-rastro-component`. */
   componentAttribute?: string;
-  /** Attribute for the defining file. Default `data-rastro-source-file`. */
-  sourceFileAttribute?: string;
-  /** Emit the source-file attribute at all. Default `true`. */
-  includeSourceFile?: boolean;
-  /**
-   * The directory source paths are relativized against. Defaults to Babel's `root`, which
-   * itself falls back to the process's cwd.
-   *
-   * Set it wherever the build can be launched from more than one directory, because that
-   * default is only as pinned as the toolchain makes it. Vite pins it in practice — its root
-   * is where `index.html` is resolved from, so a build launched elsewhere fails outright
-   * rather than stamping a different path — but a plain Babel, babel-loader, or Next build has
-   * no such anchor, and there `root` follows cwd and the stamped path follows with it: one
-   * identity set per directory somebody happened to run the build from.
-   */
-  root?: string;
-  /**
-   * Also attach `{ name, file }` to every component the plugin names, for the marked fiber
-   * walk (docs/VALIDATION-PLAN.md §3.2, strategy 6). Default `false`.
-   *
-   * ⚠ For the §3.2 measurement only. Nothing in Rastro reads marks unless asked to, and the
-   * marked walk is a candidate, not the default. `file` follows `includeSourceFile`.
-   */
-  markComponents?: boolean;
-}
-
-/**
- * The source path as it gets stamped: repo-relative with POSIX separators, or null when the
- * file does not sit under the root at all.
- *
- * Both halves are identity correctness, not tidiness. `relative()` returns the host's
- * separators, so an unnormalized Windows build stamps `src\Nav.tsx` where CI stamps
- * `src/Nav.tsx` — two disjoint identity sets for one line of source, which is the churn this
- * whole path exists to prevent. And a file outside the root comes back as `../../shared/x.tsx`
- * (relative to the launch directory again) or, across Windows drives, as an absolute path,
- * which `SEMANTIC-CONVENTIONS.md` forbids outright: it leaks the build machine's filesystem
- * into telemetry. Stamping nothing costs that element its source-file qualifier and leaves it
- * with the plain component chain, which is what an unannotated build already produces.
- */
-export function sourceFilePath(root: string | undefined | null, filename: string): string | null {
-  if (root === undefined || root === null || root === '') return null;
-  return toStampedPath(relative(root, filename));
-}
-
-/** A POSIX path from the filesystem root, or a Windows one from a drive. Neither is stampable. */
-const ABSOLUTE = /^([a-zA-Z]:)?\//;
-
-/**
- * One `relative()` result, in the form it gets stamped — or null if it must not be.
- *
- * Split from `sourceFilePath` so each rejection is testable on any platform: `relative()` on
- * Linux cannot produce a backslash or a drive letter, so a guard written against the host's
- * own output would ship untested and CI is Linux-only.
- *
- * `separator` is the host's, and the conversion is conditioned on it rather than replacing
- * every backslash outright, because a backslash is a legal character in a POSIX filename and
- * rewriting it there would invent a directory that does not exist.
- */
-export function toStampedPath(relativePath: string, separator: string = sep): string | null {
-  const posixPath = separator === '\\' ? relativePath.split('\\').join('/') : relativePath;
-
-  if (posixPath === '') return null;
-  if (posixPath === '..' || posixPath.startsWith('../')) return null;
-  if (ABSOLUTE.test(posixPath)) return null;
-
-  return posixPath;
 }
 
 interface RastroPluginPass extends PluginPass {
@@ -173,19 +90,22 @@ function boundName(path: NodePath): string | null {
 }
 
 /** A component the plugin names, and the function or class that defines it. */
-interface Owner {
+export interface Owner {
   name: string;
   path: NodePath;
 }
 
 /**
- * The nearest enclosing component, by name.
+ * The nearest enclosing component, by name: the plugin's naming rule.
+ *
+ * Exported for the identity spike (`scripts/identity-spike`), whose measurement marks every
+ * component this names. Sharing the rule keeps the measurement from drifting from the plugin.
  *
  * Walks up from the JSX element through every function and class until one is capitalised.
  * Anonymous functions and lowercase helpers are transparent — the search continues past them,
  * so JSX inside a `renderRow()` helper is attributed to the component that owns it.
  */
-function owningComponent(path: NodePath): Owner | null {
+export function owningComponent(path: NodePath): Owner | null {
   let current: NodePath | null = path.parentPath;
 
   while (current !== null) {
@@ -197,28 +117,6 @@ function owningComponent(path: NodePath): Owner | null {
   }
 
   return null;
-}
-
-/**
- * The statement that declares a component's binding, which its mark is inserted after: the
- * declaration itself, or the `const` whose declarator `boundName` climbed to. Null when the
- * binding is not declared by a statement in a block or the program, where a following
- * statement could not see it.
- */
-function declaringStatement(owner: Owner): NodePath | null {
-  const node = owner.path.node;
-  if (node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration') return owner.path;
-
-  let current: NodePath | null = owner.path.parentPath;
-  while (current !== null && current.isCallExpression()) current = current.parentPath;
-  const declaration = current?.parentPath ?? null;
-  if (declaration === null || !declaration.isVariableDeclaration()) return null;
-
-  const container = declaration.parentPath;
-  const ok =
-    container !== null &&
-    (container.isProgram() || container.isBlockStatement() || container.isExportNamedDeclaration());
-  return ok ? declaration : null;
 }
 
 /**
@@ -257,12 +155,7 @@ export default function rastroComponentAnnotate(babel: {
     if (filename === undefined || !JSX_EXTENSIONS.test(filename)) return;
     if (!isHostElement(path.node.name)) return;
 
-    const {
-      componentAttribute = COMPONENT_ATTRIBUTE,
-      sourceFileAttribute = SOURCE_FILE_ATTRIBUTE,
-      includeSourceFile = true,
-    } = state.opts;
-
+    const { componentAttribute = COMPONENT_ATTRIBUTE } = state.opts;
     if (hasAttribute(path.node, componentAttribute)) return;
 
     const component = owningComponent(path)?.name ?? null;
@@ -270,70 +163,6 @@ export default function rastroComponentAnnotate(babel: {
 
     // Appended, so an explicit attribute or a later spread still wins by source order.
     path.node.attributes.push(attribute(componentAttribute, component));
-
-    if (includeSourceFile && !hasAttribute(path.node, sourceFileAttribute)) {
-      // The PROJECT root, not the process's cwd. This path is part of the fingerprint, so
-      // relativizing against wherever the build was launched from would mint a different
-      // identity for every element depending on the directory — CI running from a monorepo
-      // root and a developer running from the package would produce two disjoint identity
-      // sets for identical code, churn with no signal behind it.
-      //
-      // The `root` option first, because Babel's own `root` is only pinned to the extent
-      // the toolchain pins it — it defaults to `cwd`, and outside Vite (where the root has
-      // to be wherever `index.html` is) nothing anchors it to the project.
-      const file = stampedFile(state);
-      if (file !== null) path.node.attributes.push(attribute(sourceFileAttribute, file));
-    }
-  };
-
-  const stampedFile = (state: RastroPluginPass): string | null =>
-    state.filename === undefined
-      ? null
-      : sourceFilePath(state.opts.root ?? state.file.opts.root ?? state.cwd, state.filename);
-
-  /**
-   * `markComponents`: one `Name.__rastroMark = { name, file }` statement after each named
-   * component's declaration, like a `displayName` assignment.
-   *
-   * Marked are the components that own JSX of any kind, not only host elements. A component
-   * that only composes others, which stamping cannot see, is exactly the one the marked walk
-   * exists to see.
-   *
-   * The mark goes on the binding the developer named, so for `memo(...)` and `forwardRef(...)`
-   * it is on the wrapper object. `rastro-core` reads it from there (see its `markOf`). The
-   * function itself is left syntactically untouched, so the React Compiler and Fast Refresh
-   * still recognise it as a component.
-   */
-  const mark = (program: NodePath<BabelTypes.Program>, state: RastroPluginPass): void => {
-    if (state.opts.markComponents !== true) return;
-    const filename = state.filename;
-    if (filename === undefined || !JSX_EXTENSIONS.test(filename)) return;
-
-    const owners = new Map<BabelTypes.Node, Owner>();
-    const collect = (path: NodePath): void => {
-      const owner = owningComponent(path);
-      if (owner !== null) owners.set(owner.path.node, owner);
-    };
-    program.traverse({ JSXElement: collect, JSXFragment: collect });
-
-    const file = state.opts.includeSourceFile === false ? null : stampedFile(state);
-    for (const owner of owners.values()) {
-      const statement = declaringStatement(owner);
-      if (statement === null) continue;
-      const value = t.objectExpression([
-        t.objectProperty(t.identifier('name'), t.stringLiteral(owner.name)),
-        ...(file === null ? [] : [t.objectProperty(t.identifier('file'), t.stringLiteral(file))]),
-      ]);
-      statement.insertAfter(
-        t.expressionStatement(
-          t.assignmentExpression(
-            '=',
-            t.memberExpression(t.identifier(owner.name), t.identifier(MARK_PROPERTY)),
-            value,
-          ),
-        ),
-      );
-    }
   };
 
   return {
@@ -353,9 +182,6 @@ export default function rastroComponentAnnotate(babel: {
       // (or pass the compiler as a preset). Listed after it, nothing here can recover.
       Program: {
         enter(program, state) {
-          // Marks are read off the same lexical structure, so they are placed in the same
-          // pass, before the compiler moves anything.
-          mark(program, state);
           program.traverse({ JSXOpeningElement: (path) => stamp(path, state) });
         },
       },

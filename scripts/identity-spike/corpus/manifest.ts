@@ -9,14 +9,14 @@
 export type AppId = 'actual' | 'react-admin';
 
 /**
- * Which build of a commit. §3.2 rule 1 measures strategies 1, 2, 4, 5 and 6 on the app as it
- * ships, and strategy 3 (the unmarked fiber walk, which reads function names) on a rebuild with
- * identifier mangling forced on, because both corpus apps keep names and most apps do not.
- * Strategy 3's as-shipped numbers come from `as-shipped` and are reported beside, not instead.
+ * Which build of a commit. Only the app as it ships, now. Run 2 also built `mangled`, with
+ * identifier mangling forced on, for the fiber walk alone; that walk was cut after it
+ * (docs/NOTES.md). The type stays so captures keep their `<variant>/` directory, and run 2's
+ * are read the same way.
  */
-export type BuildVariant = 'as-shipped' | 'mangled';
+export type BuildVariant = 'as-shipped';
 
-export const BUILD_VARIANTS: readonly BuildVariant[] = ['as-shipped', 'mangled'];
+export const BUILD_VARIANTS: readonly BuildVariant[] = ['as-shipped'];
 
 export interface CorpusCommit {
   /** 1-based, as numbered in CORPUS.md. Consecutive pairs are the deploys. */

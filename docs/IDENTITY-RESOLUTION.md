@@ -193,5 +193,12 @@ as good, the prompt is noise a developer learns to dismiss for no gain, and the 
 build-time plugin's source-location anchor (§4.3) instead — a rename does not move a file, so
 source location survives what the component name does not.
 
+**The source-file anchor is gone (2026-11-18).** After §3.2's run 2 the fingerprint dropped the
+source file to narrow identity to one fingerprint, and the build plugin stopped stamping it
+([`NOTES.md`](NOTES.md)). So the file match above has nothing to match on: rule 4's `anchor`
+proposer abstains on every subject, and this design's evidence is route, role, the remaining
+chain and neighbours. Whether that is enough is exactly what rule 4 measures. If it is not, a
+source anchor comes back as its own decision, not by default.
+
 Phase 0 does not need any of this. Hand-placed `data-telemetry-id` on one flow's elements
 means no drift at all for that exercise.
