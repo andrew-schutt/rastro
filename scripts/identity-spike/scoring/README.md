@@ -77,6 +77,42 @@ until then it read a failed commit's load 1 as if it had passed.* A screen absen
 not replaced. The first scored run uses the `key` referee alone (`VALIDATION-PLAN.md` calls it
 run 1; it is run 2, since run 1 was void and never scored).
 
+## Pre-registered 2026-11-20 for run 3, before any of its numbers
+
+Run 3's rules are in `VALIDATION-PLAN.md` §3.2, "Run 3", and its inputs in `CORPUS.md`, "Run 3".
+Items 1, 3 to 7, 9 and 10 above apply unchanged. These replace or add to the rest:
+
+11. **The referee is the site referee** (`src/site-referee.ts`), on the sequences each capture
+    records. It gives two groupings of a screen's elements into copies of one control:
+    - the **merging world**: equal `lower` sequences, so unstamped code counts as loops;
+    - the **splitting world**: equal `upper` sequences, so it counts as different things.
+
+    An element with no sequence is its own control in both. Every count below is computed in
+    each world. A comparison is decided only when both worlds agree, and is otherwise undecided.
+    That replaces item 8's bounds.
+12. **False merges**, per screen and world: for each fingerprint, distinct controls minus one,
+    summed.
+13. **Split repeats**, per screen and world: for each group of copies, the distinct
+    fingerprints it wears minus one, summed. Copies are of one control by the referee, so a
+    fingerprint that tells them apart has split one control. Counted on screens like rule 1.
+14. **Each strategy is read from its own build.** The call-site chain is read from `call-site`;
+    role + name, selector path and `attribute` from `as-shipped`. That holds for every axis,
+    rule 2's touched included. A commit void on either build is void for all strategies.
+15. **Rule 4's blind labels cover the call-site chain**, the fingerprint the resolution layer
+    would sit on if it passes. The `anchor` proposer abstains, as it has since 2026-11-18.
+16. **Rule 3's rows are matched by hand at the window's commit 10**, then proposed and confirmed
+    at the other nine, as item 3 says.
+17. **Reported, never judged:**
+    - The key referee's counts beside the site referee's.
+    - Caller reach on `call-site`: the share of elements with a `data-rastro-caller` on them or
+      on a DOM ancestor, and the share whose call-site fingerprint differs from their
+      `attribute` fingerprint on the same build.
+    - Cross-build differences for selector path and `attribute`, per screen. Elements are
+      matched by document order when both builds captured the same number on that screen.
+      Otherwise the screen is reported as not compared.
+    - Visible-only counts, as item 6.
+    - Run 2's twenty commits, rerun, under every heading, labelled seen.
+
 ## Running it
 
 Once every commit is built and captured under the freeze:
