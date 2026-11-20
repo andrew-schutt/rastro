@@ -15,7 +15,8 @@
 // every row of a nested list distinct (run-2-diagnostic.md).
 //
 // WHAT IS NOT STAMPED IS A RANGE. Code the build did not run the plugin on, which is mostly
-// node_modules, has fibers with no site of their own. Nothing says whether a library's children
+// node_modules, has fibers with no site. So do elements made by a spread into new props, or by
+// `cloneElement`. Nothing says whether a library's children
 // are one loop or several different things, so:
 //
 // - `atLeast` skips those fibers: a library loop's rows are copies.
@@ -23,11 +24,6 @@
 //   are all different.
 //
 // Every element whose path is stamped all the way down gets the same answer under both.
-//
-// INHERITED STAMPS. A component that spreads its props into unstamped code hands its own stamp
-// on. So a stamp equal to one already above the element is treated as unstamped. The cost is
-// recursion: a component that renders itself from one JSX line repeats that site honestly, and
-// `atLeast` then merges its depths.
 //
 // Where this is still wrong, in both directions:
 //
@@ -38,7 +34,7 @@
 //
 // ⚠ Fiber identity is not compared, only stamps, keys and indices, so one call's records are
 // plain data from the start. Ids are numbers unique within one `recordSequences` call.
-import { getFiber, SITE_PROPERTY } from './fiber.ts';
+import { getFiber, SITE_REGISTRY } from './fiber.ts';
 
 /** The private fiber fields this reads. */
 interface SiteFiber {
@@ -58,7 +54,7 @@ export interface RecordedSequence {
   upper: number;
   /** Fibers on the path carrying their own site. */
   stamped: number;
-  /** Fibers on the path with no site of their own, inherited stamps included. */
+  /** Fibers on the path with no site. */
   unstamped: number;
 }
 
@@ -69,12 +65,11 @@ export interface RecordedSequences {
   sites: string[][];
 }
 
-/** The site a fiber's own props carry, or null. */
-function stampOf(fiber: SiteFiber): string | null {
+/** The site the plugin recorded for this fiber's props, or null. */
+function stampOf(fiber: SiteFiber, registry: WeakMap<object, string> | undefined): string | null {
   const props = fiber.memoizedProps;
-  if (typeof props !== 'object' || props === null) return null;
-  const value = (props as Record<string, unknown>)[SITE_PROPERTY];
-  return typeof value === 'symbol' ? (Symbol.keyFor(value) ?? null) : null;
+  if (registry === undefined || typeof props !== 'object' || props === null) return null;
+  return registry.get(props) ?? null;
 }
 
 /** Every element's sequences, from ONE pass, so their ids are comparable across all of `elements`. */
@@ -103,6 +98,7 @@ export function recordSequences(elements: readonly Element[]): RecordedSequences
   const lowers = new Map<string, number>();
   const uppers = new Map<string, number>();
   const sites: string[][] = [];
+  const registry = (globalThis as Record<string, unknown>)[SITE_REGISTRY] as WeakMap<object, string> | undefined;
 
   const sequences = elements.map((element): RecordedSequence | null => {
     const path: SiteFiber[] = [];
@@ -111,13 +107,11 @@ export function recordSequences(elements: readonly Element[]): RecordedSequences
     }
     path.reverse();
 
-    const seen = new Set<string>();
     const lower: string[] = [];
     const upper: string[] = [];
     for (const fiber of path) {
-      const stamp = stampOf(fiber);
-      if (stamp !== null && !seen.has(stamp)) {
-        seen.add(stamp);
+      const stamp = stampOf(fiber, registry);
+      if (stamp !== null) {
         lower.push(stamp);
         upper.push(`s ${stamp}`);
       } else {
