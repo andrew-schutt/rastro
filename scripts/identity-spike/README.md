@@ -20,9 +20,15 @@ does not fix it. In a grid of rows × keyed columns, nothing in a key says which
 (the rows) and which lists different things (the columns).
 
 So later runs judge by **JSX site** instead. A measurement-only Babel plugin (`site-plugin.ts`)
-gives every JSX element, host and component, a prop naming where it was written
-(`file:line:column`, as a registered symbol, which React DOM never writes to the page). Each
-captured element records the sequence of sites above it and its own. **Two elements are copies
+records every JSX element, host and component, with where it was written (`file:line:column`).
+It wraps each JSX expression in a call that puts the element's props object in a page-wide
+`WeakMap`, and React keeps that object as the fiber's `memoizedProps`. Each captured element
+records the sequence of sites above it and its own.
+
+**The stamp is not a prop.** The first version added one, holding a symbol React DOM never
+writes to the page. On the smoke build, Actual crashed: a component hands its props to emotion's
+`css()`, which turns every value into a string, and a symbol cannot be one. Any value in props
+can reach code like that, so nothing the app's code can see is changed now. **Two elements are copies
 of one control exactly when their sequences are equal.** Every row runs the same JSX, and two
 columns are two JSX sites. Equality is transitive, so there is nothing to choose.
 
@@ -31,16 +37,18 @@ columns are two JSX sites. Equality is transitive, so there is nothing to choose
 | Rows of one list, a list nested per row, a grid's column | one |
 | Two controls in one row, two columns, two call sites of one component | two |
 | `<section key="left">` and `<section key="right">` | two (the key referee could only say 1 to 2) |
-| A loop inside code the build did not stamp (node_modules) | a range: 1 to one per row |
+| A loop inside code the build did not stamp (node_modules), or elements made by a spread or `cloneElement` | a range: 1 to one per row |
+| The depths of a recursive component | one per depth |
 | One JSX site rendering different controls from data | one: a known lenient error |
 | One control written at two sites, rows taking different branches | two: a known strict error |
 
-`atLeast` skips fibers with no site of their own. `atMost` counts each by its type and its key,
-or its index. A stamp that a component's spread carries into unstamped code is discounted, so
-it cannot hide a library's loop. The tests (`site-referee.test.ts`) run every row of that table
-through real React renders of fixtures compiled with the plugin. Mutating each rule's code (the
-discount, keys left in `atLeast`, unstamped fibers left out of `atMost`, a string stamp, the
-stamp before a spread) fails at least one test. Corpus builds stamp each app's own source. React-admin's library source
+`atLeast` skips fibers with no site. `atMost` counts each by its type and its key, or its index.
+A spread or `cloneElement` makes a new props object, which has no site, so a component forwarding
+its props into unstamped code cannot hide a library's loop. The tests (`site-referee.test.ts`) run every row of that table
+through real React renders of fixtures compiled with the plugin. Mutating each rule's code (nothing
+recorded, keys left in `atLeast`, unstamped fibers left out of `atMost`, a child left outside an
+expression container, fragments wrapped) fails at least one test. One test is the crash: a
+component that turns every prop into a string. Corpus builds stamp each app's own source. React-admin's library source
 (`packages/*/src`) is stamped with sites alone, and Actual's dependencies are not stamped.
 
 Run 2's captures predate the stamps, so they can only be judged by the key referee.
