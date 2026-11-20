@@ -35,3 +35,10 @@ export interface ComponentMark {
   /** Repo-relative, POSIX. Absent when the file sits outside the build's root. */
   file?: string;
 }
+
+/**
+ * The prop the spike's site plugin (site-plugin.ts) puts on every JSX element: a registered
+ * symbol, `Symbol.for('file:line:column')`, naming where the element was written. Read back from
+ * each fiber's props by the site referee (site-referee.ts).
+ */
+export const SITE_PROPERTY = '__rastroSite';

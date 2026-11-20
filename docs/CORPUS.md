@@ -541,7 +541,12 @@ one fingerprint ([`NOTES.md`](NOTES.md)), and the runner changed with it:
 - it measures three strategies, not six: role + name, selector path and `attribute`;
 - it builds `as-shipped` only, with no `mangled` variant;
 - the marks rule 2 reads come from a measurement-only Babel plugin
-  (`scripts/identity-spike/src/mark-plugin.ts`), not from `babel-plugin-rastro`.
+  (`scripts/identity-spike/src/mark-plugin.ts`), not from `babel-plugin-rastro`;
+- since 2026-11-19, a second measurement-only plugin (`src/site-plugin.ts`) stamps every JSX
+  element's site for a new collision referee (`src/site-referee.ts`), which fixes the key
+  referee's nested-list error. Both apps' own source gets it in the step above. React-admin's
+  library source (`packages/*/src`) gets it alone, in a second `@rolldown/plugin-babel` step.
+  Which referee judges the next run is part of that run's pre-registration.
 
 `freeze.json` still names run 2's runner, so every build and capture now refuses to run. That
 is deliberate. **The next run is pre-registered and frozen anew before it runs**, and everything

@@ -19,6 +19,8 @@ export interface ScreenCapture {
   captured: boolean;
   error?: string;
   elements: CapturedElement[];
+  /** The site referee's table for this capture (`PageCapture.sites`). Absent before run 3. */
+  sites?: string[][];
 }
 
 export interface ScreenVerdict {

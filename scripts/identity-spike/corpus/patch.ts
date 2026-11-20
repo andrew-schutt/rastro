@@ -12,9 +12,11 @@ export interface PatchPaths {
   rastroPlugin: string;
   /** Absolute path to the measurement's mark plugin, bundled for this build (build.ts). */
   markPlugin: string;
+  /** Absolute path to the measurement's site plugin, bundled likewise. */
+  sitePlugin: string;
   /** Absolute path to `@rolldown/plugin-babel`'s entry. Only react-admin needs it. */
   rolldownBabel: string;
-  /** Absolute path the mark plugin's `root` resolves to: CORPUS.md's `root`. */
+  /** Absolute path the mark and site plugins' `root` resolves to: CORPUS.md's `root`. */
   pluginRoot: string;
 }
 
@@ -30,12 +32,18 @@ function replaceOnce(text: string, anchor: string, replacement: string, where: s
   return text.slice(0, first) + replacement + text.slice(first + anchor.length);
 }
 
+/** The measurement's site stamps, for the collision referee (src/site-plugin.ts). */
+function siteEntry(paths: PatchPaths): string {
+  return `[${JSON.stringify(paths.sitePlugin)}, ${JSON.stringify({ root: paths.pluginRoot })}]`;
+}
+
 /**
- * The Babel plugins both apps get: rastro's, as an app installs it, with no options, then the
- * measurement's marks for rule 2's ancestry (src/mark-plugin.ts). No strategy reads the marks.
+ * The Babel plugins both apps' own source gets: rastro's, as an app installs it, with no options,
+ * then the measurement's marks for rule 2's ancestry (src/mark-plugin.ts), then its site stamps.
+ * No strategy reads the marks or the sites.
  */
 function pluginEntries(paths: PatchPaths): string {
-  return `${JSON.stringify(paths.rastroPlugin)}, [${JSON.stringify(paths.markPlugin)}, ${JSON.stringify({ root: paths.pluginRoot })}]`;
+  return `${JSON.stringify(paths.rastroPlugin)}, [${JSON.stringify(paths.markPlugin)}, ${JSON.stringify({ root: paths.pluginRoot })}], ${siteEntry(paths)}`;
 }
 
 /**
@@ -58,6 +66,10 @@ function patchActual(config: string, paths: PatchPaths): string {
  * right after `react()`. `include` scopes it to `examples/demo/src`, because Vite aliases every
  * react-admin package to its source, and an unscoped plugin would stamp the library as if the
  * app had written it. No React Compiler here: the demo does not use one.
+ *
+ * A second step gives the library's source, `packages/*\/src`, the site stamps alone. They are
+ * the referee's, never a fingerprint's, and without them every control react-admin renders
+ * would sit in unstamped code, where the referee can only give a range.
  */
 function patchReactAdmin(config: string, paths: PatchPaths): string {
   const where = 'react-admin examples/demo/vite.config.ts';
@@ -71,7 +83,8 @@ function patchReactAdmin(config: string, paths: PatchPaths): string {
     out,
     '            react(),\n',
     '            react(),\n' +
-      `            rastroCorpusBabel({ include: [/[\\\\/]examples[\\\\/]demo[\\\\/]src[\\\\/]/], plugins: [${pluginEntries(paths)}] }),\n`,
+      `            rastroCorpusBabel({ include: [/[\\\\/]examples[\\\\/]demo[\\\\/]src[\\\\/]/], plugins: [${pluginEntries(paths)}] }),\n` +
+      `            rastroCorpusBabel({ include: [/[\\\\/]packages[\\\\/][^\\\\/]+[\\\\/]src[\\\\/]/], plugins: [${siteEntry(paths)}] }),\n`,
     where,
   );
   return out;

@@ -59,9 +59,10 @@ workspace glob can ever reach third-party code.
   builds/<app>/<nn>-<sha7>/<variant>/
     app/                             the built app, copied out of the clone
     mark-plugin.cjs                  the mark plugin this build loaded, bundled from src/
+    site-plugin.cjs                  the site plugin, likewise
     build.json                       commit, variant, rastro commit (and whether it was dirty),
                                      Node version, duration, how the lockfile was installed,
-                                     and whether stamps and marks reached the bundle
+                                     and whether stamps, marks and sites reached the bundle
     vite.config.patched              the exact config it was built with
     build.log
 ```
@@ -179,8 +180,10 @@ so this is the incumbent's behaviour and not the runner's. See `CORPUS.md`'s ame
 ## What a build is
 
 One build per commit, `as-shipped`: the app as it ships, patched with `babel-plugin-rastro` (no
-options) and then the measurement's mark plugin (`src/mark-plugin.ts`, bundled to
-`mark-plugin.cjs` beside the build). No strategy reads the marks; rule 2's ancestry does. Run 2
+options), then the measurement's mark plugin (`src/mark-plugin.ts`, bundled to
+`mark-plugin.cjs` beside the build), then its site plugin (`src/site-plugin.ts`, likewise). No
+strategy reads the marks or the sites: rule 2's ancestry reads the marks, and the collision
+referee (`src/site-referee.ts`) reads the sites. The site plugin was added after run 2. Run 2
 also built `mangled`, with identifier mangling forced on, for the fiber walk alone. That walk was
 cut after it, and the variant with it (`docs/NOTES.md`).
 
@@ -193,7 +196,8 @@ commits of both apps before this was written, by reading the configs, not by bui
   `root` is the repo root.
 - **react-admin demo:** a `@rolldown/plugin-babel` step (0.2.4, as `CORPUS.md` pins, resolved
   from this package) right after `react()`, scoped to `examples/demo/src` so library source the
-  demo aliases in is not stamped. The marks' `root` is the demo directory.
+  demo aliases in is not stamped. The marks' `root` is the demo directory. A second step gives
+  the library's source, `packages/*/src`, the site plugin alone, for the referee.
 
 **No build cache can serve a stale stamp.** The plugin lives outside each app's repo, so no
 app-side cache key sees it change. That is safe today for a reason in each app's own config,
