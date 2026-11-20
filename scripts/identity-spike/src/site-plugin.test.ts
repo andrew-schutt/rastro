@@ -2,7 +2,6 @@
 // The stamps the site referee reads (site-referee.ts).
 import { transformSync, type PluginItem } from '@babel/core';
 import { describe, expect, it } from 'vitest';
-import { SITE_PROPERTY } from './fiber.ts';
 import rastroCorpusSites, { siteFile, type SitePluginOptions } from './site-plugin.ts';
 
 function stamped(source: string, options: SitePluginOptions = { root: '/repo' }, filename = '/repo/src/Table.tsx', after: PluginItem[] = []): string {
@@ -18,30 +17,36 @@ function stamped(source: string, options: SitePluginOptions = { root: '/repo' },
   );
 }
 
+const calls = (out: string): number => (out.match(/_rastroSite\(</g) ?? []).length;
+
 describe('rastro-corpus-sites', () => {
-  it('stamps every JSX element, host and component, with its file, line and column', () => {
+  it('records every JSX element, host and component, with its file, line and column', () => {
     const out = stamped(`function Row() {\n  return <tr><Cell /></tr>;\n}`);
-    expect(out).toContain('Symbol.for("src/Table.tsx:2:10")');
-    expect(out).toContain('Symbol.for("src/Table.tsx:2:14")');
-    expect(out.match(new RegExp(SITE_PROPERTY, 'g'))).toHaveLength(2);
+    expect(out).toContain('"src/Table.tsx:2:10"');
+    expect(out).toContain('"src/Table.tsx:2:14"');
+    expect(calls(out)).toBe(2);
   });
 
-  // An element's own site has to win over a stamp it was handed in a spread.
-  it('puts the stamp after every spread', () => {
-    expect(stamped(`const B = (p) => <button {...p} />;`)).toMatch(new RegExp(`<button \\{\\.\\.\\.p\\} ${SITE_PROPERTY}=\\{_rastroSite\\} />`));
+  // The first version added a prop, and Actual crashed: a component handed its props to a
+  // serializer. Nothing the app's code can see may change.
+  it('adds no prop and no attribute: the element is passed through a call, unchanged', () => {
+    const out = stamped(`const B = (p) => <button {...p} id="x" />;`);
+    expect(out).toContain('<button {...p} id="x" />');
   });
 
-  it('declares one constant per site, after the imports and before anything that renders', () => {
-    const out = stamped(`import a from 'a';\nimport b from 'b';\nconst top = <i />;\nexport const C = () => <b />;`);
-    const constant = out.indexOf('const _rastroSite');
-    expect(constant).toBeGreaterThan(out.indexOf("import b from 'b'"));
-    expect(constant).toBeLessThan(out.indexOf('const top'));
-    expect(out).toContain('_rastroSite2');
+  it('wraps a child element in an expression container, so it stays a child', () => {
+    expect(stamped(`const A = () => <a><b /></a>;`)).toMatch(/<a>\{_rastroSite\(<b \/>, "src\/Table\.tsx:1:20"\)\}<\/a>/);
   });
 
-  it('leaves fragments alone, which take no props', () => {
+  it('declares the helper once, as a hoisted function, before any module-level JSX', () => {
+    const out = stamped(`import a from 'a';\nconst top = <i />;\nexport const C = () => <b />;`);
+    expect(out.match(/function _rastroSite\(/g)).toHaveLength(1);
+    expect(out.indexOf('function _rastroSite(')).toBeLessThan(out.indexOf('const top'));
+  });
+
+  it('leaves fragments alone, which React keeps no props object for', () => {
     const out = stamped(`const L = () => <Fragment><React.Fragment key="k"><i /></React.Fragment><></></Fragment>;`);
-    expect(out.match(new RegExp(SITE_PROPERTY, 'g'))).toHaveLength(1);
+    expect(calls(out)).toBe(1);
   });
 
   it('is deterministic, so one build stamps one site one way', () => {
@@ -49,8 +54,9 @@ describe('rastro-corpus-sites', () => {
     expect(stamped(source)).toBe(stamped(source));
   });
 
-  it('touches only .jsx and .tsx files', () => {
-    expect(stamped(`const A = () => <a />;`, { root: '/repo' }, '/repo/src/a.js')).not.toContain(SITE_PROPERTY);
+  it('touches only .jsx and .tsx files, and adds no helper where there is no JSX', () => {
+    expect(stamped(`const A = () => <a />;`, { root: '/repo' }, '/repo/src/a.js')).not.toContain('_rastroSite');
+    expect(stamped(`export const n = 1;`)).not.toContain('_rastroSite');
   });
 
   it('names files relative to the root, or in full without one, and outside it too', () => {

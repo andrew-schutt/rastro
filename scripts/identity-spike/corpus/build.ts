@@ -41,7 +41,7 @@ import {
 } from './manifest.ts';
 import { installDifference } from './lockfile.ts';
 import { PATCH_MARKER, patchViteConfig, type PatchPaths } from './patch.ts';
-import { MARK_PROPERTY, SITE_PROPERTY } from '../src/fiber.ts';
+import { MARK_PROPERTY, SITE_REGISTRY } from '../src/fiber.ts';
 import {
   AFTER_FREEZE_FLAG,
   prepareRunner,
@@ -170,7 +170,7 @@ function buildVariant(
 
   const stamped = bundleCarries(join(outDir, 'app'), 'data-rastro-component');
   const marked = bundleCarries(join(outDir, 'app'), MARK_PROPERTY);
-  const sited = bundleCarries(join(outDir, 'app'), SITE_PROPERTY);
+  const sited = bundleCarries(join(outDir, 'app'), SITE_REGISTRY);
   writeFileSync(join(outDir, 'vite.config.patched'), patched);
   writeFileSync(
     join(outDir, 'build.json'),

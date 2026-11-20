@@ -37,8 +37,8 @@ export interface ComponentMark {
 }
 
 /**
- * The prop the spike's site plugin (site-plugin.ts) puts on every JSX element: a registered
- * symbol, `Symbol.for('file:line:column')`, naming where the element was written. Read back from
- * each fiber's props by the site referee (site-referee.ts).
+ * The global where the spike's site plugin (site-plugin.ts) records each JSX element: a
+ * `WeakMap` from the element's props object to `'file:line:column'`. React keeps that object as
+ * the fiber's `memoizedProps`, so the site referee (site-referee.ts) looks each fiber up here.
  */
-export const SITE_PROPERTY = '__rastroSite';
+export const SITE_REGISTRY = '__rastroSites';

@@ -153,9 +153,9 @@ describe('the site referee', () => {
     expect(distinctElements).toEqual({ atLeast: 1, atMost: 3 });
   });
 
-  // A stamp handed into unstamped code by a spread is not that code's site. Counted as its
-  // site, it would hide the library loop below it from `atMost`.
-  it('discounts a stamp a component spreads into unstamped code', () => {
+  // A spread makes a new props object, which carries no site, so a component forwarding its
+  // props into unstamped code cannot hide the library loop below it from `atMost`.
+  it('gives a spread into unstamped code no site', () => {
     const vendor = `function Item(props) { return <button {...props} />; }
       export function VList({ count, ...rest }) {
         return <ul>{Array.from({ length: count }, (_, i) => <Item key={i} {...rest} />)}</ul>;
@@ -164,6 +164,22 @@ describe('the site referee', () => {
       export function App() { return <VList count={3} />; }`, 'button', vendor);
     expect(distinctElements).toEqual({ atLeast: 1, atMost: 3 });
     expect(recorded.sequences[0]?.stamped).toBe(1);
+  });
+
+  // What crashed Actual with the first, prop-based stamp: emotion's css() stringifies props.
+  it('leaves props alone for a component that turns every one into a string', () => {
+    const { distinctElements } = judge(`
+      function Styled(props) { return <button data-css={Object.values(props).map((v) => \`\${v}\`).join()} />; }
+      export function App() { return <div><Styled a="1" /><Styled a="1" /></div>; }`);
+    expect(distinctElements).toEqual({ atLeast: 2, atMost: 2 });
+  });
+
+  it('keeps the depths of a recursive component apart', () => {
+    const { distinctElements, elements } = judge(`
+      function Tree({ depth }) { return <div><button />{depth > 0 ? <Tree depth={depth - 1} /> : null}</div>; }
+      export function App() { return <Tree depth={2} />; }`);
+    expect(elements).toHaveLength(3);
+    expect(distinctElements).toEqual({ atLeast: 3, atMost: 3 });
   });
 
   it('has no evidence for an element with no stamped fiber, and does not merge it', () => {
