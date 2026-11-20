@@ -413,6 +413,84 @@ window of commits. All of it is in
 [`run-2-diagnostic.md`](../scripts/identity-spike/scoring/results/run-2-diagnostic.md), and it is
 pre-registered properly before the next run.
 
+#### Run 3, pre-registered 2026-11-20, before any of its numbers
+
+Everything below was fixed before run 3 has a single number, and before any commit it is judged
+on exists in full: its window closes on 2026-11-29. The inputs (commits, builds, browser) are in
+[`CORPUS.md`](CORPUS.md), "Run 3". The scoring definitions are in
+[`scoring/README.md`](../scripts/identity-spike/scoring/README.md). **Any change after a run 3
+number is seen makes a different run, reported separately.**
+
+**What had been seen.** All of run 2's numbers and its diagnostic, on the twenty run 2 commits.
+The site referee was smoke-tested on the two exposed commits: there, element counts, page errors,
+and whether every element has a site sequence were read. No grouping, merge or split count from
+it has been computed anywhere. No commit after either pin has been built or read.
+
+**The candidate: the call-site chain.** Fixed with the maintainer on 2026-11-20.
+- *Stamping.* In the same scope as today's stamps, a measurement-only Babel plugin stamps every
+  component element (capitalised or member-expression name, except fragments) that a named
+  component writes, with `data-rastro-caller="<owner>"`. The owner is the name
+  `babel-plugin-rastro` already gives (`owningComponent`). The attribute is appended, so where
+  props pass through several components, the nearest call site wins, as host stamps already
+  do. It reaches the DOM only where a component spreads unknown props onto a DOM element.
+  Today's host stamps are unchanged.
+- *The chain.* Walk up the DOM from the element, as `attributeChain` does. Each element adds its
+  `data-rastro-component` and then its `data-rastro-caller`, so that, read outermost first, an
+  element reads `caller>component`. `NOISE` is filtered, consecutive repeats collapse, and the
+  walk stops at `MAX_CHAIN_DEPTH` (4) names, all unchanged. A `View` div written in
+  `SelectCell` reads `…>SelectCell>View`.
+- *The fingerprint* is that chain, role and accessible name, composed as `fingerprint()`
+  composes them.
+- It lives in `scripts/identity-spike/` until it passes. Nothing in the published packages
+  changes for this run.
+
+**The referee: by JSX site** (`scripts/identity-spike/src/site-referee.ts`). It replaces the
+2026-11-19 decision's path-matching definition, which was never built. In a grid of rows ×
+keyed columns, keys cannot say which list is the loop, and sites can (its README). Two elements
+are copies of one control when their site sequences are equal. Code the build does not stamp
+gives a range: copies under the merging bound, distinct under the splitting bound. The key
+referee is reported beside it and judges nothing.
+
+**Rule 1, restated for run 3.** Domination as before, over four axes:
+- (a) false merges;
+- (b) untouched churn;
+- (c) false splits;
+- (d) **split repeats**: copies of one control, by the referee, wearing different fingerprints.
+
+(a) and (d) are ranges. Each is computed in two worlds: copies grouped by the merging bound,
+then by the splitting bound. A strategy dominates only if it does so in both worlds. Otherwise
+that comparison is undecided, and undecided never passes.
+
+The candidate passes rule 1 only if, **on each app**:
+- it dominates `attribute`, the shipped fingerprint, on all four axes;
+- it dominates role + name on (a), (b) and (d). False splits are matched by role + name, so role
+  + name has none by construction. Its zero is not a measurement, and is not compared.
+  *Agreed with the maintainer 2026-11-20. The 2026-11-19 decision compared all four axes,
+  which would have required the candidate to have no false splits at all.*
+- it beats selector path. If selector path fails rule 2 on that app, it is beaten. Otherwise
+  the four-axis test applies.
+
+**Rules 2 to 4 are unchanged**, and are judged on the candidate. Rule 2 must hold on each app.
+Rules 3 and 4 follow their hand steps on the forward window, as for run 2.
+
+**Judged on the forward window only.** Run 2's twenty commits are rerun under the same runner,
+and every number from them is reported beside the verdict and labelled seen. They decide
+nothing.
+
+**Reported, not judged:**
+- `attribute` against both baselines on the forward window: whether run 2's rule 1 failure holds
+  on commits nobody has seen.
+- How far the caller stamps reach. That is the share of elements with a `data-rastro-caller` on
+  or above them, and the share whose candidate fingerprint differs from `attribute`'s.
+- Selector path and `attribute` compared between the two builds at each commit. Caller stamps
+  that reach a stylesheet call can change class names.
+
+**What the outcome decides.**
+- *The candidate passes rules 1 and 2 on both apps:* it replaces `attribute` as Rastro's
+  fingerprint. `babel-plugin-rastro` then stamps component elements, which reverses its
+  host-only rule, and `rastro-core` reads both attributes.
+- *It fails either:* it is not shipped, and the redesign continues. §3.2 has not passed.
+
 ---
 
 ### 3.3 — The two fixes Phase 0 actually requires · ~1 week · only after 3.2 passes

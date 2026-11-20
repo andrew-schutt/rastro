@@ -554,3 +554,80 @@ above stays as the record of what run 2 ran on. That includes this file's six st
 variants. Run 2's captures remain readable by the scoring for the three strategies that remain.
 A fingerprint redesigned after seeing run 2 is judged on corpus commits nobody has seen, and
 these two apps' commits are reported alongside it, labelled as seen.
+
+## Run 3, pre-registered 2026-11-20, before any of its numbers
+
+What run 3 runs on. Its rules are in [`VALIDATION-PLAN.md`](VALIDATION-PLAN.md) §3.2, "Run 3".
+Everything above still holds unless this section replaces it, and **any change after a run 3
+number is seen makes a different run.**
+
+**What had been seen.** All of run 2, and the run 2 diagnostic, on the twenty commits above.
+The site referee was smoke-tested at the two exposed commits, in a separate corpus directory,
+outside any freeze. That read element counts, page errors, rebuild-control verdicts and whether
+every element had a site sequence (all did, on both apps). No grouping, merge or split count was
+computed. For the forward window, only the two pins' own committer dates were read. No later
+commit has been listed, read or built.
+
+### The commits: a forward window
+
+**The rule above ("The commits") is applied to the 30 days after each pin**, unchanged in every
+other respect:
+- the same first-parent chain of the default branch;
+- the same build-input lists;
+- 10 eligible commits, spaced evenly by index;
+- 9 pairs per app.
+
+| | Window, by committer date |
+|---|---|
+| Actual | after `2026-10-30T08:59:36Z`, up to and including `2026-11-29T08:59:36Z` |
+| react-admin | after `2026-10-30T10:10:21+01:00`, up to and including `2026-11-29T10:10:21+01:00` |
+
+The pins themselves are run 2's and are not in the window. The chain is read from the default
+branch as fetched after the window closes. The commits are selected by script, and recorded
+here with their count of eligible commits before any of them is built. Two cases are fixed
+now, before anyone has looked:
+- *Fewer than 10 eligible in an app's window:* it widens in further 30-day steps, as the rule
+  says. The run waits for that.
+- *A new build input:* a commit in the window may add a path the browser build reads. If so,
+  the path is added to that app's list, and that is recorded before selection. It is never
+  added after a number is seen.
+
+**Run 2's twenty commits are rerun** under run 3's runner, with both builds. Their numbers are
+reported beside run 3's verdict, labelled seen. They judge nothing.
+
+### Builds: two per commit
+
+| Build | Plugins, in the app's own source | Measures |
+|---|---|---|
+| `as-shipped` | `babel-plugin-rastro`, the marks, the sites | role + name, selector path, `attribute` |
+| `call-site` | the same, then the caller plugin | the call-site chain |
+
+Each strategy is measured on the build an app using it would have. The caller stamps can
+change what a component passes into a stylesheet call, and so a class name the selector path
+reads. Selector path and `attribute` are also captured on `call-site`, and the differences from
+`as-shipped` at each commit are reported, not judged.
+
+The caller plugin's scope is each app's own source, as the stamps' is: Actual's
+`packages/*/src`, and react-admin's `examples/demo/src`. React-admin's library source gets the
+site stamps alone, on both builds, for the referee.
+
+The rebuild control applies to each build separately. A commit whose control fails on either
+build is void for every strategy, with both pairs it is part of, as for run 2.
+
+### Unchanged, restated so nothing is assumed
+
+- **Screens and flows** are run 2's. A screen or flow state that does not exist at a window
+  commit is reported absent, and never replaced. The flow drivers are frozen with the runner. A
+  step they cannot take at a later commit stops the walk, and the unreached states are
+  reported.
+- **Run conditions** are run 2's, the clock included (`2026-10-30T12:00:00Z`). It is kept for
+  the seen commits' sake, so their rerun is comparable with run 2.
+- **The browser** stays Chrome `157.0.8103.79`, now run from a Chrome for Testing copy outside
+  the repo, at `~/rastro-corpus/chrome-157.0.8103.79/` (`CHROME`). The installed Chrome updated
+  itself to 158 on 2026-11-19, which the runner refused.
+
+### The freeze
+
+The runner is frozen anew once it is built, and before any run 3 capture, including the
+reruns. `freeze.json` then names that commit. The window's commits are built only after it
+closes.

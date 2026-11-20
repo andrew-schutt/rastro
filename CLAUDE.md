@@ -32,7 +32,7 @@ emitted as OpenTelemetry Events. Open source, pre-alpha, one maintainer.
 intended; NOTES records what shipped, every deviation and why. Where they disagree about the
 code, NOTES is right. Trust it over your own reading of the design, and over assumptions.
 
-## State, as of 2026-11-18
+## State, as of 2026-11-20
 
 **Active again since 2026-10-29, on §3.2 (the identity spike).** Work had paused on
 2026-09-02.
@@ -56,9 +56,10 @@ step is fingerprint redesign, not more product. The report is
 is judged on them as a new run, under a new freeze (`corpus/freeze.json`), with definitions
 fixed before its numbers are seen, on commits nobody has seen. Rules 3 and 4 await their hand
 steps, and their worksheets exist. A diagnostic on run 2's seen data (2026-11-19,
-`scoring/results/run-2-diagnostic.md`) found host-only stamping blind on both apps. The order
-now: fix the referee's nested-list error, then pre-register a call-site chain on a forward
-window of commits.
+`scoring/results/run-2-diagnostic.md`) found host-only stamping blind on both apps. The referee
+now judges by JSX site (`src/site-referee.ts`). **Run 3 is pre-registered (2026-11-20,
+`VALIDATION-PLAN.md` §3.2, "Run 3")**: a call-site chain, judged on a forward window of commits
+that closes 2026-11-29. Its runner is not built or frozen yet.
 
 Identity derives from build-time DOM attributes stamped by `babel-plugin-rastro`, so it
 survives minification: the stamped component chain, role and accessible name. **Since
