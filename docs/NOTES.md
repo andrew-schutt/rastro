@@ -245,6 +245,18 @@ jsdom has no `PointerEvent`, so the DOM tests synthesize `pointerType` onto a `M
 
 ## Decisions worth knowing about
 
+**Host-only stamping is blind on both corpus apps (2026-11-19, diagnosed on run 2's seen data).**
+The plugin stamps a host element with the component that writes it. On Actual nearly every
+component renders the `View` primitive rather than a host element, so `View` is the only owner
+the DOM records: it is the nearest stamp of 2342 of run 2's 2436 merges. On react-admin the demo
+composes library components, and 2268 of 2340 merges have no stamp at all. A JSX site stamped the
+same way would separate at most 94 and 72, so it was dropped before pre-registration. The next
+candidate is a call-site chain, which stamps component elements too and relies on props being
+spread onto the DOM. That reverses the host-only rule this file and the plugin defend, and the
+reversal is pre-registered with its coverage measured. Most of run 2's merge counts are also the
+referee's nested-list error, so the referee is fixed first, with a recapture.
+`scripts/identity-spike/scoring/results/run-2-diagnostic.md` has the numbers and the decisions.
+
 **Identity is narrowed to one fingerprint (2026-11-18), after run 2.** The fingerprint is the
 build plugin's component chain, role and accessible name: §3.2's `attribute` strategy. Cut, with
 their code:

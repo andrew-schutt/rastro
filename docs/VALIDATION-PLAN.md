@@ -404,6 +404,15 @@ run's comparisons, and what a redesign has to beat, are pre-registered before it
 of the six-strategy table. With the file gone, rule 4's `anchor` proposer abstains on every
 subject.
 
+**Diagnosed, 2026-11-19, on seen data: host-only stamping cannot see what separates run 2's
+merges.** On Actual the nearest stamp of 2342 of 2436 merges is the `View` primitive, and on
+react-admin 2268 of 2340 have no stamp at all. A JSX site stamped the same way would separate at
+most 94 and 72, so it was not pre-registered. Decided from it: the referee's nested-list fix
+comes first, then a call-site chain is the candidate, under a restated rule 1, on a forward
+window of commits. All of it is in
+[`run-2-diagnostic.md`](../scripts/identity-spike/scoring/results/run-2-diagnostic.md), and it is
+pre-registered properly before the next run.
+
 ---
 
 ### 3.3 — The two fixes Phase 0 actually requires · ~1 week · only after 3.2 passes

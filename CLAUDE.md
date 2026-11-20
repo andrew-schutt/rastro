@@ -55,7 +55,10 @@ step is fingerprint redesign, not more product. The report is
 `scripts/identity-spike/scoring/` are the standing measure of identity. A changed fingerprint
 is judged on them as a new run, under a new freeze (`corpus/freeze.json`), with definitions
 fixed before its numbers are seen, on commits nobody has seen. Rules 3 and 4 await their hand
-steps, and their worksheets exist.
+steps, and their worksheets exist. A diagnostic on run 2's seen data (2026-11-19,
+`scoring/results/run-2-diagnostic.md`) found host-only stamping blind on both apps. The order
+now: fix the referee's nested-list error, then pre-register a call-site chain on a forward
+window of commits.
 
 Identity derives from build-time DOM attributes stamped by `babel-plugin-rastro`, so it
 survives minification: the stamped component chain, role and accessible name. **Since
