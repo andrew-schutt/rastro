@@ -465,8 +465,8 @@ The candidate passes rule 1 only if, **on each app**:
 - it dominates `attribute`, the shipped fingerprint, on all four axes;
 - it dominates role + name on (a), (b) and (d). False splits are matched by role + name, so role
   + name has none by construction. Its zero is not a measurement, and is not compared.
-  *Proposed 2026-11-20, and awaiting the maintainer: the 2026-11-19 decision compared all four
-  axes against role + name. That would require the candidate to have no false splits at all.*
+  *Agreed with the maintainer 2026-11-20. The 2026-11-19 decision compared all four axes,
+  which would have required the candidate to have no false splits at all.*
 - it beats selector path. If selector path fails rule 2 on that app, it is beaten. Otherwise
   the four-axis test applies.
 
